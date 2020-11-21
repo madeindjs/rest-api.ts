@@ -1,5 +1,5 @@
 
-[#chapter01a-introduction]
+[#chapter01a-initialize-application]
 
 = Initialisation de l'application
 
@@ -12,12 +12,13 @@ Dans ce chapitre nous allons poser l'architecture de notre application. Cela veu
 
 C'est à mons avis une des partie les plus intéressante car vous allez découvrir une manière de faire certainement différente de la vôtre.
 
-NOTE: Gardez à l'esprit que l'architecture que je vais vous présenter est celle que j'apprécie. Elle est totalement personnelle et je ne prétends pas que c'est la meilleure. Gardez toujours un esprit critique.
-
 
 Il existe une tonne de _framework_ complets comme https://nestjs.com/[Nest.js] qui est vraiment très bien. Mais ici nous allons partir de zéro en utilisant des librairies très populaires afin de maîtriser complètement notre application.
 
-Cette méthode vous permettra aussi d'adapter et de construire l'architecture qui vous convient le mieux. Gardez à l'esprit
+Cette méthode vous permettra aussi d'adapter et de construire l'architecture qui vous convient le mieux. Gardez à l'esprit que l'architecture que je vais vous présenter est celle que j'apprécie. Elle est totalement personnelle et je ne prétends pas que c'est la meilleure. Gardez toujours un esprit critique.
+
+
+Vous êtes prêt ? C'est partit !
 
 Placez vous donc dans le dossier de votre choix et créez un nouveau dossier :
 
@@ -27,9 +28,9 @@ $ mkdir node_market_place
 $ cd node_market_place
 ----
 
-==== Contrôle de version
+== Contrôle de version
 
-Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Verionnez tous vos projets. Même si c'est un petit projet.
+Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Versionnez tous vos projets. Même si c'est un petit projet.
 
 Initialiser Git dans votre projet ce résume à la commande suivante :
 
@@ -42,8 +43,8 @@ Il faut néanmoins configurer les informations de l’auteur des commits. Si ce 
 
 [source,bash]
 ----
-$ git config user.name "Type in your name"
-$ git config user.email "Type in your email"
+$ git config user.name "John Doe"
+$ git config user.email "john@doe.io"
 ----
 
 Et voilà. Passons à la suite.
@@ -63,11 +64,15 @@ $ npm init
 
 Plusieurs questions vous serons posées et à la fin vous verrez un nouveau fichier `package.json`. Ce fichier détaille les informations de votre projet et les dépendances de celui-ci.
 
-== Mise en place de Typescript [.tag]#todo#
+== Mise en place de Typescript
 
 Maintenant que nous avons créée nos dossiers, nous somme prêts à mettre en place Typescript.
 
-Typescript va nous apporter un typage fort et vérifi
+Typescript va nous apporter un typage fort et va effectuer des vérification avant de _transpiler_ le Code Typescript vers du Javascript :
+
+NOTE: On parle de *compilateur* pour une compilation d'un programme vers un éxecutable et d'une *transpilation* pour la conversion d'un programme dans un language vers un autre language.
+
+Nous installons donc Typescript en tant que dépendance de développement car il va uniquement nous servir à transpiler notre code. Ce sera Node.js qui va éxecuter le Javascript plus tard :
 
 [source,bash]
 ----
@@ -76,21 +81,18 @@ $ npm add typescript @types/node --save-dev
 
 Nous avons ajouté dex librairies :
 
-* `typescript` qui va nous offir les outils de *transpilation* du Typescript vers le Javascript
+* `typescript` qui va nous offrir les outils de *transpilation*
 * `@types/node` qui va ajouter la définition des types de Node.js
 
-Ces deux dépendances sont ajoutées en tant que dépendance de dévelopement car une fois le Typescript transpilé, nous avons besoin uniquement de Node.js pour faire fonctionner notre application.
 
 Ajoutons donc notre premier fichier Typescript :
 
 [source,ts]
 ----
 // backend/src/main.ts
-
 function say(message: string): void {
     console.log(`I said: ${message}`);
 }
-
 say("Hello");
 ----
 
@@ -127,7 +129,7 @@ A partir d'ici vous pouvez tester que tout fonctionne en executant la commande s
 $ ./node_modules/.bin/tsc
 ----
 
-Vous allez voir apparaitre un fichier `dist/main.js` de cette forme
+Vous allez voir apparaître un fichier `dist/main.js` de cette forme
 
 [source,javascript]
 ----
@@ -137,6 +139,8 @@ function say(message) {
 }
 say("Hello");
 ----
+
+Il s'agit de la version transpilé de notre fichier Typescript.
 
 Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
 
@@ -151,14 +155,14 @@ Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un pe
 }
 ----
 
-Et vous pouvez donc maintenant executer le script avec la commande dsuivante:
+Et vous pouvez donc maintenant executer le script avec la commande suivante:
 
 [source,bash]
 ----
 $ npm run start
 ----
 
-Maintenant que tout fonctionne il est temps de versionner nos changement. Mais avons d'ajouter tous nos fichiers, il est important de ne pas versionner certains dossier :
+Maintenant que tout fonctionne il est temps de versionner nos changement. N'ajoutez pas tous les fichiers crées, il est important de ne versionner certains dossier uniquement :
 
 * le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
 * le dossier `dist` car il résulte de la transpilation de notre code
@@ -178,18 +182,18 @@ $ git add .
 $ git commit -m "Setup Typescript for backend"
 ----
 
-==== Mise en place du Hot Reload avec Nodemon
+=== Mise en place du Hot Reload avec Nodemon
 
-Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se retranspilera et s'executera a chaque fois que notre code change.
+Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se transpilera à nouveau et s'exécutera a chaque fois que notre code change.
 
-La librairie `Nodemon` va nous offrir cette fonctionalité. Ajoutons la :
+La librairie `Nodemon` va nous offrir cette fonctionnalité. Ajoutons la :
 
 [source,bash]
 ----
 $ npm add nodemon --save-dev
 ----
 
-Il suffit maintenant de définir un fichier `nodemon.json`
+Il suffit maintenant de définir un fichier `nodemon.json` :
 
 [source,json]
 ----
@@ -201,7 +205,7 @@ Il suffit maintenant de définir un fichier `nodemon.json`
 }
 ----
 
-Quelques explications s'impose:
+Quelques explications s'imposent :
 
 * `watch` spécifie le dossier dans lequel Nodemon surveillera les changement de fichier
 * `ignore` permet d'éviter le Hot Reload pour certains types de fichiers (ici ce sont les tests que nous verrons plus tard)
@@ -221,21 +225,19 @@ I said: Hello
 [nodemon] clean exit - waiting for changes before restart
 ----
 
-Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `maint.ts` :
+Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `main.ts` :
 
 [source,diff]
 ----
 // backend/src/main.ts
-
 function say(message: string): void {
 -     console.log(`I said: ${message}`);
 +     console.log(`Nodemon said: ${message}`);
 }
-
 say("Hello");
 ----
 
-Lorsque vous allez sauvegarder e fichier, vous allez voir le travail de Nodemon dans le terminal
+Lorsque vous allez sauvegarder ce fichier, vous allez voir le travail de Nodemon dans le terminal
 
 [source,bash]
 ----
@@ -267,7 +269,7 @@ $ git add .
 $ git commit -m "Setup Nodemon"
 ----
 
-==== Mise en place du serveur web
+=== Mise en place du serveur web
 
 Jusqu'ici nous avons mis en place un environnement qui va nous permettre d'éviter les erreurs de syntaxe et de typage automatiquement avec Typescript. Il est temps d'enfin faire une vrai fonctionnalité: le serveur web.
 
@@ -280,7 +282,7 @@ Pour l'ajouter c'est très facile:
 $ npm add express --save
 ----
 
-On va aussi ajouter les typages Typescript qui vont aider un peu votre editeur de code :
+On va aussi ajouter les typages Typescript qui vont aider un peu votre éditeur de code :
 
 [source,bash]
 ----
@@ -327,23 +329,158 @@ Maintenant que tout fonctionne, commitons les changements:
 $ git commit -am "Add express.js server"
 ----
 
-[[mise-en-place-de-linjection-de-dépendance]]
-==== Mise en place de l'injection de dépendance [.tag]#todo#
+== Mise en place de l'injection de dépendance
 
-Dans cette section nous allons mettre en place un Logger des requêtes HTTP. Nous allons mettre en place ce logger sous forme de service.
+Dans cette section nous allons mettre en place le système d'*injection de dépendance*. Si vous n'en avez jamais entendu parler, il s'agit très certainement de la partie la plus abstraite de ce chapitre.
 
-L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
+=== Présentation de l'injection de dépendance
 
-Inversify permet de mettre tout cela en place très facilement. Cette bibliothèque propose aussi une extension pour créer des controlleurs très facilement avec des décorateurs Typescript.
+Je vais essayer ici de vous résumer ce qu'est l'injection de dépendance et à quoi ça sert.
 
-Les controlleurs font partis du patern *MVC: Modèle, Vue, Contrôlleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
+Imaginons une classe `User` qui a besoin d'une classe `Database` pour être sauvegardé. On serait tenter d'initialiser la connection à la base de donnée dans le constructeur de l'utilisateur :
+
+.Une mauvaise implémentation n'utilisant pas l'injection de dépendance
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    // do some stuff here
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+Cela pose plusieurs problème:
+
+1. la classe `User` depends de la classe `Database`. Si on change l'implémentation de la classe `Database`, il faudra modifier la classe `User`
+2. le code est beaucoup moins testable car pour tester un utilisateur, je dois connaître le fonctionnement de la classe user
+
+Pour vous accentuer le problème, rajoutons une classe `Logger` qui permet de logger les événements dans l'appli. Imaginons que nous avons besoin de logger la connection à la base de donnée. Le code devient donc
+
+
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    const logger = new Logger();
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+On voit bien que la situation se dégrade car toutes les classes deviennent dépendantes entre elles. Pour corriger cela, nous allons injecter directement la classe `Database` dans le constructeur de `User` :
+
+.La classe `Database` est maintenant injectée dans le constructeur
+[source,ts]
+----
+class Logger {/* ... */}
+
+class Database {
+  constructor(logger: Logger, connectionString: string) {
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  constructor(private database: Database) {}
+}
+
+const logger = new Logger();
+const database = new Database(logger, "db.sqlite");
+const user = new User(database);
+----
+
+Ce code devient plus solide car la classe `User`, `Database` et `Logger` sont découplés.
+
+> OK, mais ça devient plus pénible d'instancier une `User`.
+
+Effectivement. C'est pourquoi nous utilisons un `Container` qui va enregistrer les classes qui peuvent être injectées et nous proposer de créer des instances facilement :
+
+
+[source,ts]
+----
+class Logger { /* ... */}
+class Database { /* ... */}
+class User {/* ... */}
+
+class Container {
+  getLogger(): Logger {
+    return new Logger();
+  }
+
+  getDatabase(): Database {
+    return new Database(this.getLogger(), "db.sqlite");
+  }
+
+  getUser(): User {
+    return new User(this.getDatabase());
+  }
+}
+
+const container = new Container();
+const user = container.getUser();
+----
+
+Le code est plus long mais tout devient découpé. Rassurez-vous, nous n'allons pas implémenter tout cela à la mains. De très bonne librairies existent. Celle que j'ai choisi est https://github.com/inversify/InversifyJS[Inversify].
+
+=== Implémentation avec Inversify
+
+
+Dans cette section nous allons mettre en place concrètement un système d'injection de dépendance complet.
+
+Nous allons mettre en place un Logger qui pourra être injecté dans toutes les classes de notre application. Il nous permettra de les requêtes HTTP par exemple mais aussi bien d'autres événements.
 
 Installons donc `inversify` et `inversify-express-utils` en suivant https://github.com/inversify/inversify-express-utils[la documentation officielle].
+
+// TODO add invrisy exppress utils later ?.
 
 [source,bash]
 ----
 $ npm install inversify inversify-express-utils reflect-metadata --save
 ----
+
+// TODO is refrelct needed ?
+
+L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
+
+// TODO
+
+
+NOTE: Les contrôleurs font partis du _design patern_ *MVC: Modèle, Vue, Contrôleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
+
 
 On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
 
@@ -352,12 +489,12 @@ On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètr
 $ npm install body-parser
 ----
 
-. Le logger
-+
+==== Le logger
+
 Commençons par un service tout simple: Un logger.
-+
+
 On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
-+
+
 [source,ts]
 ----
 import { injectable } from "inversify";
@@ -375,14 +512,15 @@ export class Logger {
   }
 }
 ----
-+
-La classe en elle même est vraiment très simple. La chose a noter ici est la précence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse etre injecté dans nos futures dépendences.
-. Le container
-+
+
+La classe en elle même est vraiment très simple. La chose a noter ici est la présence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse être injecté dans nos futures dépendances.
+
+==== Le container
+
 Maintenant que nous avons crée notre service. Il nous suffit de créer le container et de lui ajouter ce service. Un container est en faite un registre de tous les services injectables dans notre application.
-+
+
 Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. Cette methode va prendre en paramètre un `Symbol`. Un symbole est un type qui permet d'avoir une référence unique. On va donc stocker ces symboles dans un object comme ceci
-+
+
 [source,ts]
 ----
 // backend/src/core/types.core.ts
@@ -390,9 +528,9 @@ export const TYPES = {
   Logger: Symbol.for("Logger"),
 };
 ----
-+
+
 Cet objet nous permettra de retrouver les `Symbol`. Nous allons utiliser ce symbole pour enregistrer notre service :
-+
+
 [source,ts]
 ----
 // backend/src/core/container.core.ts
@@ -403,16 +541,17 @@ import { TYPES } from "./types.core";
 export const container = new Container();
 container.bind(TYPES.Logger).to(Logger);
 ----
-+
+
 Comme vous les voyez, nos ajoutons notre class `Logger` sous le symbole `Logger`.
-+
-Passons maintenant à la suite pour voir à quoi va nous servire ce `container`.
-. Le contrôlleur
-+
-Le controlleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce controleur comme `@injectable` mais aussi nos offrir des fonctionalités spéciales.
-+
+
+Passons maintenant à la suite pour voir à quoi va nous servir ce `container`.
+
+==== Le contrôleur
+
+Le contrôleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce contrôleur comme `@injectable` mais aussi nos offrir des fonctionnalités spéciales.
+
 Nous allons injecter le logger dans le constructeur a l'aide du décorateur `@inject`. Voici l'implémentation :
-+
+
 [source,ts]
 ----
 // backend/src/controllers/home.controller.ts
@@ -431,11 +570,11 @@ export class HomeController {
   }
 }
 ----
-+
+
 Notez aussi le décorateur `@httpGet` qui va définir la route de cette action automatiquement.
-+
-Et il faut maintenant importer ce controlleur dans le container que nous avons définis précédement. C'est vraiment très simple à faire :
-+
+
+Et il faut maintenant importer ce contrôleur dans le container que nous avons définis précédemment. C'est vraiment très simple à faire :
+
 [source,diff]
 ----
 // backend/src/core/container.core.ts
@@ -444,10 +583,11 @@ import { Container } from "inversify";
 import "../controllers/users.controller";
 // ...
 ----
-. Le script
-+
-Maitenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
-+
+
+==== Le script
+
+Maintenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
+
 [source,ts]
 ----
 // backend/src/main.ts
@@ -471,18 +611,23 @@ app.listen(port, () =>
   console.log(`Server listen on http://localhost:${port}/`)
 );
 ----
-+
+
 Cela fait beaucoup de changements. Voici quelques explications :
-.. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
-.. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
-.. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
-+
+
+. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
+. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
+. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
+
 Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
-+
+
 Si tout fonctionne comme avant, vous pouvez commiter les changements :
-+
+
 [source,bash]
 ----
 $ git add .
 $ git commit -m "Add inversify"
 ----
+
+== Mise en place des tests
+
+// TODO
