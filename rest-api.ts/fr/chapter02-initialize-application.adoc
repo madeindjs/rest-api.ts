@@ -1,0 +1,488 @@
+
+[#chapter01a-introduction]
+
+= Initialisation de l'application
+
+Maintenant que votre poste de travail est prêt, nous sommes maintenant en mesure de créer notre projet !
+
+Dans ce chapitre nous allons poser l'architecture de notre application. Cela veut dire :
+
+* mise en place de l'ORM avec le connexion à la base de données
+* mise en place des contrôleur
+
+C'est à mons avis une des partie les plus intéressante car vous allez découvrir une manière de faire certainement différente de la vôtre.
+
+NOTE: Gardez à l'esprit que l'architecture que je vais vous présenter est celle que j'apprécie. Elle est totalement personnelle et je ne prétends pas que c'est la meilleure. Gardez toujours un esprit critique.
+
+
+Il existe une tonne de _framework_ complets comme https://nestjs.com/[Nest.js] qui est vraiment très bien. Mais ici nous allons partir de zéro en utilisant des librairies très populaires afin de maîtriser complètement notre application.
+
+Cette méthode vous permettra aussi d'adapter et de construire l'architecture qui vous convient le mieux. Gardez à l'esprit
+
+Placez vous donc dans le dossier de votre choix et créez un nouveau dossier :
+
+[source,bash]
+----
+$ mkdir node_market_place
+$ cd node_market_place
+----
+
+==== Contrôle de version
+
+Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Verionnez tous vos projets. Même si c'est un petit projet.
+
+Initialiser Git dans votre projet ce résume à la commande suivante :
+
+[source,bash]
+----
+$ git init
+----
+
+Il faut néanmoins configurer les informations de l’auteur des commits. Si ce n’est pas déjà fait, placez vous dans le répertoire et lancez les commandes suivantes:
+
+[source,bash]
+----
+$ git config user.name "Type in your name"
+$ git config user.email "Type in your email"
+----
+
+Et voilà. Passons à la suite.
+
+== Initialisation de NPM
+
+NPM est le gestionnaire de paquets officiel de Node.js. Depuis la version 0.6.3 de Node.js, npm fait partie de l'environnement et est donc automatiquement installé par défaut
+
+Initialiser votre projet avec Node.js signifie que vous serez en mesure d'installer n'importe quelle librairie publiée sur https://www.npmjs.com/[npmjs.com].
+
+Initialisons donc NPM dans notre projet :
+
+[source,bash]
+----
+$ npm init
+----
+
+Plusieurs questions vous serons posées et à la fin vous verrez un nouveau fichier `package.json`. Ce fichier détaille les informations de votre projet et les dépendances de celui-ci.
+
+== Mise en place de Typescript [.tag]#todo#
+
+Maintenant que nous avons créée nos dossiers, nous somme prêts à mettre en place Typescript.
+
+Typescript va nous apporter un typage fort et vérifi
+
+[source,bash]
+----
+$ npm add typescript @types/node --save-dev
+----
+
+Nous avons ajouté dex librairies :
+
+* `typescript` qui va nous offir les outils de *transpilation* du Typescript vers le Javascript
+* `@types/node` qui va ajouter la définition des types de Node.js
+
+Ces deux dépendances sont ajoutées en tant que dépendance de dévelopement car une fois le Typescript transpilé, nous avons besoin uniquement de Node.js pour faire fonctionner notre application.
+
+Ajoutons donc notre premier fichier Typescript :
+
+[source,ts]
+----
+// backend/src/main.ts
+
+function say(message: string): void {
+    console.log(`I said: ${message}`);
+}
+
+say("Hello");
+----
+
+Ce code est vraiment très basique et va juste nous servir a vérifier que la transpilation fonctionne.
+
+Afin d'utiliser la transpilation de Typescript, nous avons besoin de définir un fichier de configuration `tsconfig.json`. En voici un basique:
+
+[source,json]
+----
+{
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "dist",
+    "module": "commonjs",
+    "types": ["node"],
+    "target": "es6",
+    "esModuleInterop": true,
+    "lib": ["es6"],
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+----
+
+Cela fait beaucoup de code mais les deux directives a retenir ici sont: `rootDir` et `outDir`. Elles vont simplement spécifier ou sont les fichiers Typescript (`rootDir`) et ou placer les fichiers Javascript résultants de la transpilation (`outDir`).
+
+Dans notre cas je place tous les fichiers Typescript dans le dossier `src` et le résultat de la transpilation dans `dist`.
+
+A partir d'ici vous pouvez tester que tout fonctionne en executant la commande suivante :
+
+[source,bash]
+----
+$ ./node_modules/.bin/tsc
+----
+
+Vous allez voir apparaitre un fichier `dist/main.js` de cette forme
+
+[source,javascript]
+----
+// dist/main.js
+function say(message) {
+    console.log(`I said: ${message}`);
+}
+say("Hello");
+----
+
+Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
+
+[source,json]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js"
+  },
+  // ...
+}
+----
+
+Et vous pouvez donc maintenant executer le script avec la commande dsuivante:
+
+[source,bash]
+----
+$ npm run start
+----
+
+Maintenant que tout fonctionne il est temps de versionner nos changement. Mais avons d'ajouter tous nos fichiers, il est important de ne pas versionner certains dossier :
+
+* le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
+* le dossier `dist` car il résulte de la transpilation de notre code
+
+Afin de les ignorer, il suffit juste de créer un fichier `backend/.gitignore` avec le contenu suivant :
+
+....
+node_modules
+dist
+....
+
+Nous pouvons maintenant mettre ajouter tous nos fichiers avec Git et commiter :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Setup Typescript for backend"
+----
+
+==== Mise en place du Hot Reload avec Nodemon
+
+Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se retranspilera et s'executera a chaque fois que notre code change.
+
+La librairie `Nodemon` va nous offrir cette fonctionalité. Ajoutons la :
+
+[source,bash]
+----
+$ npm add nodemon --save-dev
+----
+
+Il suffit maintenant de définir un fichier `nodemon.json`
+
+[source,json]
+----
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["src/**/*.spec.ts"],
+  "exec": "tsc && node dist/main"
+}
+----
+
+Quelques explications s'impose:
+
+* `watch` spécifie le dossier dans lequel Nodemon surveillera les changement de fichier
+* `ignore` permet d'éviter le Hot Reload pour certains types de fichiers (ici ce sont les tests que nous verrons plus tard)
+* `exec`, la commande a executer a chaque changement
+
+Vérifions que tous fonctionne en lançant Nodemon à la main :
+
+[source,bash]
+----
+./node_modules/.bin/nodemon
+[nodemon] 2.0.6
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): src/**/*
+[nodemon] watching extensions: ts
+[nodemon] starting `tsc && node dist/main`
+I said: Hello
+[nodemon] clean exit - waiting for changes before restart
+----
+
+Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `maint.ts` :
+
+[source,diff]
+----
+// backend/src/main.ts
+
+function say(message: string): void {
+-     console.log(`I said: ${message}`);
++     console.log(`Nodemon said: ${message}`);
+}
+
+say("Hello");
+----
+
+Lorsque vous allez sauvegarder e fichier, vous allez voir le travail de Nodemon dans le terminal
+
+[source,bash]
+----
+[nodemon] restarting due to changes...
+[nodemon] starting `tsc && node dist/main`
+Nodemon said: Hello
+[nodemon] clean exit - waiting for changes before restart
+----
+
+Maintenant que tout fonctionne, nous pouvons modifier le fichier `package.json` et ajouter la commande `nodemon`:
+
+[source,json]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js",
+    "start:watch": "nodemon"
+  },
+  // ...
+}
+----
+
+Nous pouvons maintenant commiter les changements :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Setup Nodemon"
+----
+
+==== Mise en place du serveur web
+
+Jusqu'ici nous avons mis en place un environnement qui va nous permettre d'éviter les erreurs de syntaxe et de typage automatiquement avec Typescript. Il est temps d'enfin faire une vrai fonctionnalité: le serveur web.
+
+Il existe plusieurs bibliothèque pour faire un serveur web avec Node.js. Dans mon cas je recommande https://expressjs.com/fr/[Express.js] tout simplement car c'est celle qui a une plus grosse communauté et elle offre des fonctionnalités basique. Elle vous laisse aussi la liberté d'organiser votre code comme vous le souhaitez tout en offrant une tonne de plugin pour rajouter des fonctionnalités par dessus.
+
+Pour l'ajouter c'est très facile:
+
+[source,bash]
+----
+$ npm add express --save
+----
+
+On va aussi ajouter les typages Typescript qui vont aider un peu votre editeur de code :
+
+[source,bash]
+----
+$ npm add @types/express --save-dev
+----
+
+Et maintenant nous pouvons instancier notre serveur dans le fichier `main.ts`
+
+[source,ts]
+----
+// backend/src/main.ts
+import express, { Request, Response } from "express";
+
+const app = express();
+const port = 3000;
+
+app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
+
+app.listen(port, () =>
+  console.log(`Server listen on http://localhost:${port}/`)
+);
+----
+
+Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `npm run start:watch` et vous allez avoir le résultat suivant :
+
+....
+[nodemon] restarting due to changes...
+[nodemon] starting `tsc && node dist/main`
+Server listen on http://localhost:3000/
+....
+
+Vous pouvez donc ouvrir votre navigateur a l'adresse http://localhost:3000 et voir que tout fonctionne. Voici ici le résultat en utilisant `curl`:
+
+[source,bash]
+----
+$ curl http://localhost:3000
+Hello World!
+----
+
+Maintenant que tout fonctionne, commitons les changements:
+
+[source,bash]
+----
+$ git commit -am "Add express.js server"
+----
+
+[[mise-en-place-de-linjection-de-dépendance]]
+==== Mise en place de l'injection de dépendance [.tag]#todo#
+
+Dans cette section nous allons mettre en place un Logger des requêtes HTTP. Nous allons mettre en place ce logger sous forme de service.
+
+L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
+
+Inversify permet de mettre tout cela en place très facilement. Cette bibliothèque propose aussi une extension pour créer des controlleurs très facilement avec des décorateurs Typescript.
+
+Les controlleurs font partis du patern *MVC: Modèle, Vue, Contrôlleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
+
+Installons donc `inversify` et `inversify-express-utils` en suivant https://github.com/inversify/inversify-express-utils[la documentation officielle].
+
+[source,bash]
+----
+$ npm install inversify inversify-express-utils reflect-metadata --save
+----
+
+On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
+
+[source,bash]
+----
+$ npm install body-parser
+----
+
+. Le logger
++
+Commençons par un service tout simple: Un logger.
++
+On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
++
+[source,ts]
+----
+import { injectable } from "inversify";
+
+@injectable()
+export class Logger {
+  public log(
+    level: "DEBUG" | "INFO" | "ERROR" | "WARNING",
+    message: string,
+    meta: any = {}
+  ): void {
+    const dateStr = new Date().toISOString();
+    const metaStr = JSON.stringify(meta);
+    console.log(`${dateStr} - ${level} - ${message} - ${metaStr}`);
+  }
+}
+----
++
+La classe en elle même est vraiment très simple. La chose a noter ici est la précence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse etre injecté dans nos futures dépendences.
+. Le container
++
+Maintenant que nous avons crée notre service. Il nous suffit de créer le container et de lui ajouter ce service. Un container est en faite un registre de tous les services injectables dans notre application.
++
+Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. Cette methode va prendre en paramètre un `Symbol`. Un symbole est un type qui permet d'avoir une référence unique. On va donc stocker ces symboles dans un object comme ceci
++
+[source,ts]
+----
+// backend/src/core/types.core.ts
+export const TYPES = {
+  Logger: Symbol.for("Logger"),
+};
+----
++
+Cet objet nous permettra de retrouver les `Symbol`. Nous allons utiliser ce symbole pour enregistrer notre service :
++
+[source,ts]
+----
+// backend/src/core/container.core.ts
+import { Container } from "inversify";
+import { Logger } from "../services/logger.service";
+import { TYPES } from "./types.core";
+
+export const container = new Container();
+container.bind(TYPES.Logger).to(Logger);
+----
++
+Comme vous les voyez, nos ajoutons notre class `Logger` sous le symbole `Logger`.
++
+Passons maintenant à la suite pour voir à quoi va nous servire ce `container`.
+. Le contrôlleur
++
+Le controlleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce controleur comme `@injectable` mais aussi nos offrir des fonctionalités spéciales.
++
+Nous allons injecter le logger dans le constructeur a l'aide du décorateur `@inject`. Voici l'implémentation :
++
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+import { controller, httpGet } from "inversify-express-utils";
+import { TYPES } from "../core/container.core";
+import { Logger } from "../services/logger.service";
+
+@controller("/")
+export class HomeController {
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  @httpGet("")
+  public index(req: Request, res: Response) {
+    this.logger.log("INFO", "Get Home.index");
+    return res.send("Hello world");
+  }
+}
+----
++
+Notez aussi le décorateur `@httpGet` qui va définir la route de cette action automatiquement.
++
+Et il faut maintenant importer ce controlleur dans le container que nous avons définis précédement. C'est vraiment très simple à faire :
++
+[source,diff]
+----
+// backend/src/core/container.core.ts
+import { Container } from "inversify";
++ import "../controllers/home.controller";
+import "../controllers/users.controller";
+// ...
+----
+. Le script
++
+Maitenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
++
+[source,ts]
+----
+// backend/src/main.ts
+import "reflect-metadata";
+
+import { InversifyExpressServer } from "inversify-express-utils";
+import { container } from "./core/container.core";
+import * as bodyParser from "body-parser";
+
+const port = 3000;
+
+const server = new InversifyExpressServer(container);
+
+server.setConfig((app) => {
+  app.use(bodyParser.urlencoded({ extended: true }));
+  app.use(bodyParser.json());
+});
+
+const app = server.build();
+app.listen(port, () =>
+  console.log(`Server listen on http://localhost:${port}/`)
+);
+----
++
+Cela fait beaucoup de changements. Voici quelques explications :
+.. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
+.. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
+.. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
++
+Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
++
+Si tout fonctionne comme avant, vous pouvez commiter les changements :
++
+[source,bash]
+----
+$ git add .
+$ git commit -m "Add inversify"
+----

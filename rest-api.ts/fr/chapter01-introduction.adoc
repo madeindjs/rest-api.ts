@@ -1,28 +1,28 @@
 [#chapter01-introduction]
 = Introduction
 
-Bienvenue sur API on Rails 6, un tutoriel sous stéroïdes pour apprendre la meilleure façon de construire votre prochaine API avec Rails. Le but de ce livre est de vous fournir une méthodologie complète pour développer une API RESTful en suivant les meilleures pratiques.
+Bienvenue sur API-REST.ts, un tutoriel sous stéroïdes pour apprendre la meilleure façon de construire votre prochaine application avec Typescript. Le but de ce livre est de vous fournir une méthodologie complète pour développer une API RESTful en suivant les meilleures pratiques.
 
-Lorsque vous en aurez fini avec ce livre, vous serez en mesure de créer votre propre API et de l’intégrer à n’importe quel client comme un navigateur Web ou une application mobile. Le code généré est construit avec Ruby on Rails 6.0 qui est la version actuelle.
+Lorsque vous en aurez fini avec ce livre, vous serez en mesure de créer votre propre API et de l’intégrer à n’importe quel client comme un navigateur Web ou une application mobile. Le code généré est construit avec Typescript 4 qui est la version actuelle.
 
-L’intention de ce livre n’est pas seulement de vous apprendre à construire une API avec Rails mais plutôt de vous apprendre comment construire une API *évolutive* et *maintenable* avec Rails. C’est-à-dire améliorer vos connaissances actuelles avec Rails. Dans ce voyage, vous allez apprendre à:
+L’intention de ce livre n’est pas seulement de vous apprendre à construire une API mais plutôt de vous apprendre comment construire une API évolutive et maintenable avec Typescript. Dans ce voyage, vous allez apprendre à:
 
 - Utiliser Git pour le contrôle de version
 - Construire des réponses JSON
-- Tester vos points d'entrées avec des tests unitaires et fonctionnels
+- Tester vos points d’entrées avec des tests unitaires et fonctionnels
 - Mettre en place une authentification avec des JSON Web Tokens (JWT)
 - Utiliser les spécifications JSON:API
 - Optimiser et mettre en cache l’API
 
 Je vous recommande fortement de suivre toutes les étapes de ce livre. Essayez de ne pas sauter des chapitres car je vais vous proposer des conseils et des astuces pour vous améliorer tout au long du livre. Vous pouvez vous considérer comme le personnage principal d’un jeu vidéo qui obtient un niveau supérieur à chaque chapitre.
 
-Dans ce premier chapitre je vous expliquerai comment configurer votre environnement (au cas où vous ne l’auriez pas déjà fait). Nous allons ensuite créer une application appelée `market_place_api`. Je veillerai à vous enseigner les meilleures pratiques que j’ai pu apprendre au cours de mon expérience. Cela signifie qu’après avoir initialisé le projet, nous commencerons à utiliser *Git*.
+Dans ce premier chapitre je vous expliquerai comment configurer votre environnement (au cas où vous ne l’auriez pas déjà fait). Nous allons ensuite créer une application appelée =market_place=. Je veillerai à vous enseigner les meilleures pratiques que j’ai pu apprendre au cours de mon expérience. Cela signifie qu’après avoir initialisé le projet, nous commencerons à utiliser Git.
 
-Dans les prochains chapitres, nous allons construire l’application en suivant une méthode de travail simple que j’utilise quotidiennement. Nous développerons toute l’application en utilisant le *développement piloté par les tests* (TDD). Je vous expliquerai aussi l’intérêt d’utiliser une API pour votre prochain projet et de choisir un format de réponse adapté comme le JSON ou le XML. Plus loin, nous mettrons les mains dans le code et nous compléterons les bases de l’application en construisant toutes les routes nécessaires. Nous sécuriserons aussi l’accès à l’API en construisant une authentification par échange d’en-têtes HTTP. Enfin, dans le dernier chapitre, nous ajouterons quelques techniques d’optimisation pour améliorer la structure et les temps de réponse du serveur.
+Dans les prochains chapitres, nous allons construire l’application en suivant une méthode de travail simple que j’utilise quotidiennement. Nous développerons toute l’application en utilisant le développement dirigé par les tests (TDD). Je vous expliquerai aussi l’intérêt d’utiliser une API pour votre prochain projet et de choisir un format de réponse adapté comme le JSON ou le XML. Plus loin, nous mettrons les mains dans le code et nous compléterons les bases de l’application en construisant toutes les routes nécessaires. Nous sécuriserons aussi l’accès à l’API en construisant une authentification par échange d’en-têtes HTTP. Enfin, dans le dernier chapitre, nous ajouterons quelques techniques d’optimisation pour améliorer la structure et les temps de réponse du serveur.
 
 L’application finale sera une application de place de marché qui permettra à des vendeurs de mettre en place leur propre boutique en ligne. Les utilisateurs seront en mesure de passer des commandes, télécharger des produits et plus encore. Il existe de nombreuses options pour créer une boutique en ligne comme http://shopify.com/[Shopify], http://spreecommerce.com/[Spree] ou http://magento.com/[Magento].
 
-Tout au long de ce voyage (cela dépend de votre expertise), vous allez vous améliorer et être en mesure de mieux comprendre certaines des meilleures ressources Rails. J’ai aussi pris certaines des pratiques que j’ai trouvées sur http://railscasts.com/[Railscasts], http://codeschool.com/[CodeSchool] et http://jsonapi.org/format/[JSON API].
+Tout au long de ce voyage (cela dépend de votre expertise), vous allez vous améliorer et être en mesure de mieux comprendre le fonctionnement des frameworks modernes. J’ai aussi pris certaines des pratiques de mon expérience de développeur Ruby.
 
 
 == Conventions sur ce livre
@@ -51,14 +51,25 @@ Pour presque tous les développeurs, l’une des parties les plus douloureuses e
 
 === Éditeurs de texte et Terminal
 
-Les environnements de développement diffèrent d’un ordinateur à l’autre. Ce n’est pas le cas avec les éditeurs de texte. Je pense que pour le développement avec Rails, un IDE est beaucoup trop lourd. Cependant certains pensent que c’est la meilleure façon de travailler. Si c’est votre cas, je vous recommande d’essayer http://www.aptana.com/products/radrails[RadRails] ou http://www.jetbrains.com/ruby/index.html[RubyMine]. Tous deux sont bien maintenus et possèdent de nombreuses intégrations par défaut. Maintenant, pour ceux qui, comme moi, préfèrent des outils simples, je peux vous dire qu’il existe beaucoup d’outils disponibles que vous pourrez personnaliser via des plugins et plus.
+Il existe deux catégories d'éditeurs de code :
 
-* *Éditeur de texte*: J’utilise personnellement http://www.vim.org/[Vim] comme éditeur. Au cas où vous n’êtes pas un fan de Vim, il y a beaucoup d’autres solutions comme http://www.sublimetext.com/[Sublime Text] qui est facile à prendre en main et surtout multi-plateforme . Il est fortement inspiré par http://macromates.com/[TextMate]. Une troisième option est d’utiliser un éditeur de texte plus récent comme https://atom.io/[Atom] de http://gitub.com/[GitHub]. C’est un éditeur de texte prometteur fait en JavaScript. Il est facile à personnaliser pour répondre à vos besoins. N’importe lequel des éditeurs que je viens de vous présenter fera le travail. Choisissez donc celui où vous êtes le plus à l’aise.
-* *Terminal*: Je ne suis pas un fan de l’application Terminal par défaut sous Mac OS. Je recommande http://www.iterm2.com/#/section/home[iTerm2], qui est un remplacement de terminal pour Mac OS. Si vous êtes sous Linux, vous avez probablement déjà un bon terminal.
+- les *éditeurs de textes* comme https://atom.io/[Atom], https://www.sublimetext.com/[Sublime Text], https://www.vim.org/[VIM] et bien d'autres.
+- les *environnements de développement* complets comme https://www.eclipse.org/[Eclipse], https://netbeans.org/[Netbeans]], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
+
+Les environnement de développement sont plus complets et offre plus de fonctionnalités mais sont souvent beaucoup plus lourds.
+
+Il n'y a pas de mauvais choix et c'est vraiment une question de gout.
+
+Pour ma part j'utilise https://code.visualstudio.com/[Visual Studio Code] de Microsoft que se situe à mis chemin entre un éditeur de texte et un environnement de développement. Son auto-complétion est vraiment très performante lorsqu'on utilise https://www.typescriptlang.org/[Typescript]]. Si vous ne savez pas quoi utiliser, vous ne pouvez pas vous tromper en utilisant cet éditeur.
 
 === Navigateur web
 
 Quand au navigateur, je conseillerai directement http://www.mozilla.org/en-US/firefox/new/[Firefox]. Mais d’autres développeurs utilisent https://www.google.com/intl/en/chrome/browser/[Chrome] ou même https://www.apple.com/safari/[Safari]. N’importe lequel d’entre eux vous aidera à construire l’application que vous voulez. Ils proposent tous un bon inspecteur pour le DOM, un analyseur de réseau et de nombreuses autres fonctionnalités que vous connaissez peut-être déjà.
+
+Je vous conseille néanmoins d'utiliser au moins deux navigateurs web. Il y a quelques nuances sur l'intérprétation du Javascript ou du CSS. En utilisant deux navigateurs vous vous assurez que vos développements fonctionnent correctement pour la majorité de vos utilisateurs.
+
+Personnellement j'utilise Firefox dans la vie de tous les jours et je vérifie le bon fonctionnement de mes fonctionnalités sur https://www.chromium.org/[Chromium], un dérivé de Google Chrome.
+
 
 === Gestionnaire de paquets
 
@@ -78,74 +89,31 @@ Nous utiliserons beaucoup Git et vous devriez aussi l’utiliser (non seulement 
 * sous Mac OS: `$ brew install git`
 * sous Linux: `$ sudo apt-get install git`
 
-=== Ruby
+=== Node.js
 
-Il existe de nombreuses façons d’installer et de gérer Ruby. Vous devriez probablement déjà avoir une version installée sur votre système. Pour connaître votre version, tapez simplement:
-
-[source,bash]
-----
-$ ruby -v
-----
-
-Rails 6.0 nécessite l’installation de la version 2.5 ou supérieure.
-
-Pour l’installer, je vous recommande d’utiliser http://rvm.io/[Ruby Version Manager (RVM)] ou http://rbenv.org/[rbenv].
-
-Le principe de ces outils est de permettre d’installer plusieurs versions de Ruby sur une même machine, dans un environnement hermétique à une éventuelle version installée sur votre système d'exploitation et de pouvoir basculer de l’une à l’autre facilement.
-
-Dans ce tutoriel, nous allons utiliser RVM mais peu importe laquelle de ces deux options vous utiliserez.
-
-Pour installer RVM, rendez vous sur https://rvm.io/ et installez la clé GPG footnote:[La clé GPG vous permet de vérifier l’identité de l’auteur des sources que vous téléchargez.]. Une fois cela fait:
+Il existe de nombreuses façons d’installer et de gérer Node.js. Vous avez peut être même déjà avoir une version installée sur votre système. Pour le savoir, tapez simplement:
 
 [source,bash]
 ----
-$ gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
-$ \curl -sSL https://get.rvm.io | bash
+$ node -v
 ----
 
-Ensuite, vous pouvez installer la dernière version de Ruby:
+Si vous ne l'avez pas installé, vous pouvez le faire simplement avec votre gestionnaire de paquet. Je vous recommande néanmoins d'utiliser https://github.com/nvm-sh/nvm[Node Version Manager (NVM)]. Le principe de cet outil est de permettre d’installer plusieurs versions de Node.js sur une même machine, dans un environnement hermétique à une éventuelle version installée sur votre système d’exploitation et de pouvoir basculer de l’une à l’autre facilement.
+
+Pour l'installer, il suffit de https://github.com/nvm-sh/nvm#installing-and-updating[suivre la documentation officielle]. Il suffit donc de lancer le script suivant :
 
 [source,bash]
 ----
-$ rvm install 2.6
+$ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash
 ----
 
-Si tout s’est bien passé, il est temps d’installer le reste des dépendances que nous allons utiliser.
+L'URL du script peut varier en fonction de la version actuelle.
 
-==== Gemmes, Rails et bibliothèques manquantes
-
-Tout d’abord, nous mettons à jour les Gemmes sur l’ensemble du système:
+Une fois l'installation terminée, vous pouvez installer la dernière version de Node.js avec la commande suivante :
 
 [source,bash]
 ----
-$ gem update --system
-----
-
-Dans la plupart des cas, si vous êtes sous Mac OS, vous devriez installer des bibliothèques supplémentaires:
-
-[source,bash]
-----
-$ brew install libtool libxslt libksba openssl
-----
-
-Nous installons ensuite les gemmes nécessaires et ignorons la documentation pour chaque gemme:
-
-[source,bash]
-----
-$ printf 'gem: --no-document' >> ~/.gemrc
-$ gem install bundler
-$ gem install foreman
-$ gem install rails -v 6.0.0.rc1
-----
-
-NOTE: Vous pouvez vous demander ce que signifie RC1. RC1 signifie _Release Candidate_. Au moment où j'écris ces lignes, la version finale pour Rails 6.0 n'est pas terminée. J'utilise donc la version la plus récente qui est 6.0.0.0.rc1
-
-Vérifiez que tout fonctionne bien:
-
-[source,bash]
-----
-$ rails -v
-Rails 6.0.0.rc1
+$ nvm install node
 ----
 
 ==== Bases de données
@@ -164,89 +132,487 @@ ou
 $ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
 ----
 
-== Initialisation du projet
+// == Initialisation du projet
+// Nous sommes maintenant en mesure de créer notre projet !
 
-Vous devez sans doute déjà savoir comment initialiser une application Rails. Si ce n’est pas le cas, jetez un coup d’œil à cette section.
+// Il existe une tonne de _framework_ complets comme https://nestjs.com/[Nest.js] qui est vraiment très bien. Mais ici nous allons partir de zéro en utilisant des librairies très populaires afin de maîtriser complètement notre application.
 
-La commande est donc la suivante:
+// Placez vous donc dans le dossier de votre choix et créez un nouveau dossier :
 
-[source,bash]
-----
-$ mkdir ~/workspace
-$ cd ~/workspace
-$ rails new market_place_api --api
-----
+// [source,bash]
+// ----
+// $ mkdir node_market_place
+// $ cd node_market_place
+// ----
 
-NOTE: L’option `--api` est apparue lors de la version 5 de Rails. Elle permet de limiter les librairies et _Middleware_ inclus dans l’application. Cela permet aussi d’éviter de générer les vues HTML lors de l’utilisation des générateurs de Rails.
+// ==== Contrôle de version
 
-Comme vous pouvez le deviner, les commandes ci-dessus généreront les éléments indispensables à votre application Rails. La prochaine étape est d’ajouter quelques gemmes que nous utiliserons pour construire l’API.
+// Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Verionnez tous vos projets. Même si c'est un petit projet.
 
-== Contrôle de version
+// Initialiser Git dans votre projet ce résume à la commande suivante :
 
-Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Gardez à l’esprit que le code source de l’application est publié sur GitHub. Vous pouvez suivre le projet sur https://github.com/madeindjs/api_on_rails_6[GitHub]
+// [source,bash]
+// ----
+// $ git init
+// ----
 
-Lorsque vous avez utilisé la commande `rails new`, Ruby on Rails a initialisé le répertoire Git pour vous. Cela signifie que vous n'avez pas besoin d’exécuter la commande `git init`.
+// Il faut néanmoins configurer les informations de l’auteur des commits. Si ce n’est pas déjà fait, placez vous dans le répertoire et lancez les commandes suivantes:
 
-Il faut néanmoins configurer les informations de l'auteur des _commits_. Si ce n'est pas déjà fait, placez vous dans le répertoire et lancez les commandes suivantes:
+// [source,bash]
+// ----
+// $ git config user.name "Type in your name"
+// $ git config user.email "Type in your email"
+// ----
 
-[source,console]
-----
-$ git config user.name "Type in your name"
-$ git config user.email "Type in your email"
-----
+// Et voilà. Passons à la suite.
 
-Rails fournit également un fichier _.gitignore_ pour ignorer certains fichiers que nous ne voulons pas suivre. Le fichier _.gitignore_ par défaut devrait ressembler à celui illustré ci-dessous :
+// ==== Initialisation de NPM
 
-[source,console]
-..gitignore
-----
-# Ignore bundler config.
-/.bundle
+// NPM est le gestionnaire de paquets officiel de Node.js. Depuis la version 0.6.3 de Node.js, npm fait partie de l'environnement et est donc automatiquement installé par défaut
 
-# Ignore the default SQLite database.
-/db/*.sqlite3
-/db/*.sqlite3-journal
+// Initialiser votre projet avec Node.js signifie que vous serez en mesure d'installer n'importe quelle librairie publiée sur https://www.npmjs.com/[npmjs.com].
 
-# Ignore all logfiles and tempfiles.
-/log/*
-/tmp/*
-!/log/.keep
-!/tmp/.keep
+// Initialisons donc NPM dans notre projet :
 
-# Ignore uploaded files in development.
-/storage/*
-!/storage/.keep
-.byebug_history
+// [source,bash]
+// ----
+// $ npm init
+// ----
 
-# Ignore master key for decrypting credentials and more.
-/config/master.key
-----
+// Plusieurs questions vous serons posées et à la fin vous verrez un nouveau fichier `package.json`. Ce fichier détaille les informations de votre projet et les dépendances de celui-ci.
 
-Une fois Git mis en place, il suffit d’ajouter les fichiers et de valider les modifications. Les commandes nécessaires sont les suivantes:
+// [[mise-en-place-de-typescript]]
+// ==== Mise en place de Typescript [.tag]#todo#
 
-[source,bash]
-----
-$ git add .
-$ git commit -m "Initial commit"
-----
+// Maintenant que nous avons créée nos dossiers, nous somme prêts à mettre en place Typescript.
 
-NOTE: J’ai appris que commencer un message par un verbe au présent décrit ce que fait le commit et non ce qu’il a fait. De cette façon il est plus facile de lire et de comprendre l’historique du projet (ou du moins pour moi). Je vais suivre cette pratique jusqu’à la fin du tutoriel.
+// Typescript va nous apporter un typage fort et vérifi
 
-Enfin, et c’est une étape optionnelle, nous déployons le projet sur *GitHub* (je ne vais pas l’expliquer ici) et poussons notre code vers le serveur distant. On commence donc par ajouter un serveur distant:
+// [source,bash]
+// ----
+// $ npm add typescript @types/node --save-dev
+// ----
 
-[source,bash]
-----
-$ git remote add origin git@github.com:madeindjs/market_place_api_6.git
-----
+// Nous avons ajouté dex librairies :
 
-Ensuite nous poussons le code:
+// * `typescript` qui va nous offir les outils de *transpilation* du Typescript vers le Javascript
+// * `@types/node` qui va ajouter la définition des types de Node.js
 
-[source,bash]
-----
-$ git push -u origin master
-----
+// Ces deux dépendances sont ajoutées en tant que dépendance de dévelopement car une fois le Typescript transpilé, nous avons besoin uniquement de Node.js pour faire fonctionner notre application.
 
-Au fur et à mesure que nous avançons dans le tutoriel, j’utiliserai les pratiques que j’utilise quotidiennement. Cela inclut le travail avec les branches, le rebasage, le squash et bien d’autres. Vous n’avez pas à vous inquiéter si vous ne connaissez pas tous ces termes, je les expliquerai le temps venu.
+// Ajoutons donc notre premier fichier Typescript :
+
+// [source,ts]
+// ----
+// // backend/src/main.ts
+
+// function say(message: string): void {
+//     console.log(`I said: ${message}`);
+// }
+
+// say("Hello");
+// ----
+
+// Ce code est vraiment très basique et va juste nous servir a vérifier que la transpilation fonctionne.
+
+// Afin d'utiliser la transpilation de Typescript, nous avons besoin de définir un fichier de configuration `tsconfig.json`. En voici un basique:
+
+// [source,json]
+// ----
+// {
+//   "compilerOptions": {
+//     "rootDir": "./",
+//     "outDir": "dist",
+//     "module": "commonjs",
+//     "types": ["node"],
+//     "target": "es6",
+//     "esModuleInterop": true,
+//     "lib": ["es6"],
+//     "moduleResolution": "node",
+//     "experimentalDecorators": true,
+//     "emitDecoratorMetadata": true
+//   }
+// }
+// ----
+
+// Cela fait beaucoup de code mais les deux directives a retenir ici sont: `rootDir` et `outDir`. Elles vont simplement spécifier ou sont les fichiers Typescript (`rootDir`) et ou placer les fichiers Javascript résultants de la transpilation (`outDir`).
+
+// Dans notre cas je place tous les fichiers Typescript dans le dossier `src` et le résultat de la transpilation dans `dist`.
+
+// A partir d'ici vous pouvez tester que tout fonctionne en executant la commande suivante :
+
+// [source,bash]
+// ----
+// $ ./node_modules/.bin/tsc
+// ----
+
+// Vous allez voir apparaitre un fichier `dist/main.js` de cette forme
+
+// [source,javascript]
+// ----
+// // dist/main.js
+// function say(message) {
+//     console.log(`I said: ${message}`);
+// }
+// say("Hello");
+// ----
+
+// Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
+
+// [source,json]
+// ----
+// {
+//   // ...
+//   "scripts": {
+//     "start": "tsc && node dist/main.js"
+//   },
+//   // ...
+// }
+// ----
+
+// Et vous pouvez donc maintenant executer le script avec la commande dsuivante:
+
+// [source,bash]
+// ----
+// $ npm run start
+// ----
+
+// Maintenant que tout fonctionne il est temps de versionner nos changement. Mais avons d'ajouter tous nos fichiers, il est important de ne pas versionner certains dossier :
+
+// * le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
+// * le dossier `dist` car il résulte de la transpilation de notre code
+
+// Afin de les ignorer, il suffit juste de créer un fichier `backend/.gitignore` avec le contenu suivant :
+
+// ....
+// node_modules
+// dist
+// ....
+
+// Nous pouvons maintenant mettre ajouter tous nos fichiers avec Git et commiter :
+
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Setup Typescript for backend"
+// ----
+
+// ==== Mise en place du Hot Reload avec Nodemon
+
+// Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se retranspilera et s'executera a chaque fois que notre code change.
+
+// La librairie `Nodemon` va nous offrir cette fonctionalité. Ajoutons la :
+
+// [source,bash]
+// ----
+// $ npm add nodemon --save-dev
+// ----
+
+// Il suffit maintenant de définir un fichier `nodemon.json`
+
+// [source,json]
+// ----
+// {
+//   "watch": ["src"],
+//   "ext": "ts",
+//   "ignore": ["src/**/*.spec.ts"],
+//   "exec": "tsc && node dist/main"
+// }
+// ----
+
+// Quelques explications s'impose:
+
+// * `watch` spécifie le dossier dans lequel Nodemon surveillera les changement de fichier
+// * `ignore` permet d'éviter le Hot Reload pour certains types de fichiers (ici ce sont les tests que nous verrons plus tard)
+// * `exec`, la commande a executer a chaque changement
+
+// Vérifions que tous fonctionne en lançant Nodemon à la main :
+
+// [source,bash]
+// ----
+// ./node_modules/.bin/nodemon
+// [nodemon] 2.0.6
+// [nodemon] to restart at any time, enter `rs`
+// [nodemon] watching path(s): src/**/*
+// [nodemon] watching extensions: ts
+// [nodemon] starting `tsc && node dist/main`
+// I said: Hello
+// [nodemon] clean exit - waiting for changes before restart
+// ----
+
+// Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `maint.ts` :
+
+// [source,diff]
+// ----
+// // backend/src/main.ts
+
+// function say(message: string): void {
+// -     console.log(`I said: ${message}`);
+// +     console.log(`Nodemon said: ${message}`);
+// }
+
+// say("Hello");
+// ----
+
+// Lorsque vous allez sauvegarder e fichier, vous allez voir le travail de Nodemon dans le terminal
+
+// [source,bash]
+// ----
+// [nodemon] restarting due to changes...
+// [nodemon] starting `tsc && node dist/main`
+// Nodemon said: Hello
+// [nodemon] clean exit - waiting for changes before restart
+// ----
+
+// Maintenant que tout fonctionne, nous pouvons modifier le fichier `package.json` et ajouter la commande `nodemon`:
+
+// [source,json]
+// ----
+// {
+//   // ...
+//   "scripts": {
+//     "start": "tsc && node dist/main.js",
+//     "start:watch": "nodemon"
+//   },
+//   // ...
+// }
+// ----
+
+// Nous pouvons maintenant commiter les changements :
+
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Setup Nodemon"
+// ----
+
+// ==== Mise en place du serveur web
+
+// Jusqu'ici nous avons mis en place un environnement qui va nous permettre d'éviter les erreurs de syntaxe et de typage automatiquement avec Typescript. Il est temps d'enfin faire une vrai fonctionnalité: le serveur web.
+
+// Il existe plusieurs bibliothèque pour faire un serveur web avec Node.js. Dans mon cas je recommande https://expressjs.com/fr/[Express.js] tout simplement car c'est celle qui a une plus grosse communauté et elle offre des fonctionnalités basique. Elle vous laisse aussi la liberté d'organiser votre code comme vous le souhaitez tout en offrant une tonne de plugin pour rajouter des fonctionnalités par dessus.
+
+// Pour l'ajouter c'est très facile:
+
+// [source,bash]
+// ----
+// $ npm add express --save
+// ----
+
+// On va aussi ajouter les typages Typescript qui vont aider un peu votre editeur de code :
+
+// [source,bash]
+// ----
+// $ npm add @types/express --save-dev
+// ----
+
+// Et maintenant nous pouvons instancier notre serveur dans le fichier `main.ts`
+
+// [source,ts]
+// ----
+// // backend/src/main.ts
+// import express, { Request, Response } from "express";
+
+// const app = express();
+// const port = 3000;
+
+// app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
+
+// app.listen(port, () =>
+//   console.log(`Server listen on http://localhost:${port}/`)
+// );
+// ----
+
+// Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `npm run start:watch` et vous allez avoir le résultat suivant :
+
+// ....
+// [nodemon] restarting due to changes...
+// [nodemon] starting `tsc && node dist/main`
+// Server listen on http://localhost:3000/
+// ....
+
+// Vous pouvez donc ouvrir votre navigateur a l'adresse http://localhost:3000 et voir que tout fonctionne. Voici ici le résultat en utilisant `curl`:
+
+// [source,bash]
+// ----
+// $ curl http://localhost:3000
+// Hello World!
+// ----
+
+// Maintenant que tout fonctionne, commitons les changements:
+
+// [source,bash]
+// ----
+// $ git commit -am "Add express.js server"
+// ----
+
+// [[mise-en-place-de-linjection-de-dépendance]]
+// ==== Mise en place de l'injection de dépendance [.tag]#todo#
+
+// Dans cette section nous allons mettre en place un Logger des requêtes HTTP. Nous allons mettre en place ce logger sous forme de service.
+
+// L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
+
+// Inversify permet de mettre tout cela en place très facilement. Cette bibliothèque propose aussi une extension pour créer des controlleurs très facilement avec des décorateurs Typescript.
+
+// Les controlleurs font partis du patern *MVC: Modèle, Vue, Contrôlleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
+
+// Installons donc `inversify` et `inversify-express-utils` en suivant https://github.com/inversify/inversify-express-utils[la documentation officielle].
+
+// [source,bash]
+// ----
+// $ npm install inversify inversify-express-utils reflect-metadata --save
+// ----
+
+// On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
+
+// [source,bash]
+// ----
+// $ npm install body-parser
+// ----
+
+// . Le logger
+// +
+// Commençons par un service tout simple: Un logger.
+// +
+// On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
+// +
+// [source,ts]
+// ----
+// import { injectable } from "inversify";
+
+// @injectable()
+// export class Logger {
+//   public log(
+//     level: "DEBUG" | "INFO" | "ERROR" | "WARNING",
+//     message: string,
+//     meta: any = {}
+//   ): void {
+//     const dateStr = new Date().toISOString();
+//     const metaStr = JSON.stringify(meta);
+//     console.log(`${dateStr} - ${level} - ${message} - ${metaStr}`);
+//   }
+// }
+// ----
+// +
+// La classe en elle même est vraiment très simple. La chose a noter ici est la précence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse etre injecté dans nos futures dépendences.
+// . Le container
+// +
+// Maintenant que nous avons crée notre service. Il nous suffit de créer le container et de lui ajouter ce service. Un container est en faite un registre de tous les services injectables dans notre application.
+// +
+// Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. Cette methode va prendre en paramètre un `Symbol`. Un symbole est un type qui permet d'avoir une référence unique. On va donc stocker ces symboles dans un object comme ceci
+// +
+// [source,ts]
+// ----
+// // backend/src/core/types.core.ts
+// export const TYPES = {
+//   Logger: Symbol.for("Logger"),
+// };
+// ----
+// +
+// Cet objet nous permettra de retrouver les `Symbol`. Nous allons utiliser ce symbole pour enregistrer notre service :
+// +
+// [source,ts]
+// ----
+// // backend/src/core/container.core.ts
+// import { Container } from "inversify";
+// import { Logger } from "../services/logger.service";
+// import { TYPES } from "./types.core";
+
+// export const container = new Container();
+// container.bind(TYPES.Logger).to(Logger);
+// ----
+// +
+// Comme vous les voyez, nos ajoutons notre class `Logger` sous le symbole `Logger`.
+// +
+// Passons maintenant à la suite pour voir à quoi va nous servire ce `container`.
+// . Le contrôlleur
+// +
+// Le controlleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce controleur comme `@injectable` mais aussi nos offrir des fonctionalités spéciales.
+// +
+// Nous allons injecter le logger dans le constructeur a l'aide du décorateur `@inject`. Voici l'implémentation :
+// +
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// import { controller, httpGet } from "inversify-express-utils";
+// import { TYPES } from "../core/container.core";
+// import { Logger } from "../services/logger.service";
+
+// @controller("/")
+// export class HomeController {
+//   public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+//   @httpGet("")
+//   public index(req: Request, res: Response) {
+//     this.logger.log("INFO", "Get Home.index");
+//     return res.send("Hello world");
+//   }
+// }
+// ----
+// +
+// Notez aussi le décorateur `@httpGet` qui va définir la route de cette action automatiquement.
+// +
+// Et il faut maintenant importer ce controlleur dans le container que nous avons définis précédement. C'est vraiment très simple à faire :
+// +
+// [source,diff]
+// ----
+// // backend/src/core/container.core.ts
+// import { Container } from "inversify";
+// + import "../controllers/home.controller";
+// import "../controllers/users.controller";
+// // ...
+// ----
+// . Le script
+// +
+// Maitenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
+// +
+// [source,ts]
+// ----
+// // backend/src/main.ts
+// import "reflect-metadata";
+
+// import { InversifyExpressServer } from "inversify-express-utils";
+// import { container } from "./core/container.core";
+// import * as bodyParser from "body-parser";
+
+// const port = 3000;
+
+// const server = new InversifyExpressServer(container);
+
+// server.setConfig((app) => {
+//   app.use(bodyParser.urlencoded({ extended: true }));
+//   app.use(bodyParser.json());
+// });
+
+// const app = server.build();
+// app.listen(port, () =>
+//   console.log(`Server listen on http://localhost:${port}/`)
+// );
+// ----
+// +
+// Cela fait beaucoup de changements. Voici quelques explications :
+// .. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
+// .. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
+// .. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
+// +
+// Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
+// +
+// Si tout fonctionne comme avant, vous pouvez commiter les changements :
+// +
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Add inversify"
+// ----
+
+// === Conclusion
+
+// Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.
+
+// == L'API
+
+// Dans ce chapitre, je vais vous donner les grandes lignes de l’application. Vous devriez avoir lu le chapitre précédent. Si ce n’est pas le cas, je vous recommande de le faire.
 
 == Conclusion
 
