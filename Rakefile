@@ -2,8 +2,7 @@ require 'asciidoctor'
 require 'asciidoctor-pdf'
 require 'yaml'
 
-LANGS = %w[en fr es].freeze
-VERSIONS = %w[5 6].freeze
+LANGS = %w[en fr].freeze
 OUTPUT_DIR = File.join __dir__, 'build'
 THEMES_DIR = File.join __dir__, 'themes'
 FONTS_DIR = File.join __dir__, 'fonts'
@@ -15,31 +14,26 @@ def check_args(args)
     raise ArgumentError, msg
   end
 
-  version = args[:version]
-  unless VERSIONS.include?(version)
-    msg = format('Version not available. Select on of these versions: %s', VERSIONS.join(', '))
-    raise ArgumentError, msg
-  end
 
   lang
 end
 
 def in_filename(args)
-  format('rails%s/%s/api_on_rails.adoc', args[:version], args[:lang])
+  format('rest-api.ts/%s/main.adoc', args[:lang])
 end
 
 def out_filename(args, extension)
-  format("api_on_rails_%s-%s.%s",args[:version], args[:lang], extension)
+  format("rest-api-ts_%s.%s", args[:lang], extension)
 end
 
 namespace :build do
-  desc 'Build for all versions, languages'
+  desc 'Build for all languages'
   task :CI do
     builds = YAML.load(File.read("builds.yaml"))
     builds.each do |version, languages|
       languages.each do |language|
-        puts "VERSION: #{version} - LANG: #{language}"
-        args = { version: version.to_s, lang: language }
+        puts "LANG: #{language}"
+        args = { lang: language }
         Rake::Task['build:pdf'].execute(args)
         Rake::Task['build:html'].execute(args)
         Rake::Task['build:epub'].execute(args)
@@ -51,15 +45,15 @@ namespace :build do
   end
 
   desc 'Build all versions'
-  task :all, [:version, :lang] do |_task, args|
+  task :all, [:lang] do |_task, args|
     check_args(args)
-    Rake::Task['build:pdf'].invoke(args[:version], args[:lang])
-    Rake::Task['build:epub'].invoke(args[:version], args[:lang])
-    Rake::Task['build:mobi'].invoke(args[:version], args[:lang])
+    Rake::Task['build:pdf'].invoke(args[:lang])
+    Rake::Task['build:epub'].invoke(args[:lang])
+    Rake::Task['build:mobi'].invoke(args[:lang])
   end
 
   desc 'Build a PDF version'
-  task :pdf, [:version, :lang] do |_task, args|
+  task :pdf, [:lang] do |_task, args|
     check_args(args)
 
     input = in_filename args
@@ -83,7 +77,7 @@ namespace :build do
   end
 
   desc 'Build an HTML version'
-  task :html, [:version, :lang] do |_task, args|
+  task :html, [:lang] do |_task, args|
     check_args(args)
     input = in_filename args
     output = out_filename args, 'html'
@@ -92,7 +86,7 @@ namespace :build do
   end
 
   desc 'Build an EPUB version'
-  task :epub, [:version, :lang] do |_task, args|
+  task :epub, [:lang] do |_task, args|
     check_args(args)
     input = in_filename args
     output = out_filename args, 'epub'
