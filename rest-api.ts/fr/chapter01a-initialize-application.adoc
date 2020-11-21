@@ -463,37 +463,17 @@ Dans cette section nous allons mettre en place concrètement un système d'injec
 
 Nous allons mettre en place un Logger qui pourra être injecté dans toutes les classes de notre application. Il nous permettra de les requêtes HTTP par exemple mais aussi bien d'autres événements.
 
-Installons donc `inversify` et `inversify-express-utils` en suivant https://github.com/inversify/inversify-express-utils[la documentation officielle].
-
-// TODO add invrisy exppress utils later ?.
+Installons donc `inversify`:
 
 [source,bash]
 ----
-$ npm install inversify inversify-express-utils reflect-metadata --save
+$ npm install inversify --save
 ----
 
-// TODO is refrelct needed ?
+Et créons une classe pour logger les événements toute simple:
 
-L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
+NOTE: On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
 
-// TODO
-
-
-NOTE: Les contrôleurs font partis du _design patern_ *MVC: Modèle, Vue, Contrôleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
-
-
-On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
-
-[source,bash]
-----
-$ npm install body-parser
-----
-
-==== Le logger
-
-Commençons par un service tout simple: Un logger.
-
-On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
 
 [source,ts]
 ----
@@ -513,23 +493,28 @@ export class Logger {
 }
 ----
 
-La classe en elle même est vraiment très simple. La chose a noter ici est la présence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse être injecté dans nos futures dépendances.
+Pour la rendre injectable, il faut lui ajouter un décorateur `@injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse être injectée dans nos futures dépendances.
 
-==== Le container
+.ajout du décorateur `@injectable`
+[source,ts]
+----
+import { injectable } from "inversify";
 
-Maintenant que nous avons crée notre service. Il nous suffit de créer le container et de lui ajouter ce service. Un container est en faite un registre de tous les services injectables dans notre application.
+@injectable()
+export class Logger { /* ... */}
+----
 
-Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. Cette methode va prendre en paramètre un `Symbol`. Un symbole est un type qui permet d'avoir une référence unique. On va donc stocker ces symboles dans un object comme ceci
+Et voilà. Il ne nous reste plus qu'à créer le container qui va enregistrer ce service. https://github.com/inversify/InversifyJS#installation[La documentation] recommande de créer un objet `TYPES` qui va simplement stocker les identifiants de nos services. Nous allons créer un dossier `core` qui contiendra tout le code transverse à toute notre application.
 
 [source,ts]
 ----
 // backend/src/core/types.core.ts
-export const TYPES = {
-  Logger: Symbol.for("Logger"),
-};
+export const TYPES = { Logger: Symbol.for("Logger") };
 ----
 
-Cet objet nous permettra de retrouver les `Symbol`. Nous allons utiliser ce symbole pour enregistrer notre service :
+NOTE: Un https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol[`Symbol`] est un type primitif qui permet d'avoir une référence unique.
+
+Maintenant nous pouvons utiliser ce symbole pour enregistrer notre logger dans un nouveau fichier `container.core.ts` Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. On exporte ensuite cette instance pour l'utiliser dans l'application:
 
 [source,ts]
 ----
@@ -542,20 +527,92 @@ export const container = new Container();
 container.bind(TYPES.Logger).to(Logger);
 ----
 
-Comme vous les voyez, nos ajoutons notre class `Logger` sous le symbole `Logger`.
+Et voilà.
 
-Passons maintenant à la suite pour voir à quoi va nous servir ce `container`.
+=== Les contrôleurs
 
-==== Le contrôleur
+Laissons de côté cette classe que nous allons utiliser plus tard dans notre premier contrôleur. Les contrôleurs font partis du _design patern_ *MVC: Modèle, Vue, Contrôleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés. Il existe une librairie officielle Inversify pour intégrer l'injection de dépendance directement dans nos contrôleurs:  https://github.com/inversify/inversify-express-utils[`inverisfy-express-utils`].
 
-Le contrôleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce contrôleur comme `@injectable` mais aussi nos offrir des fonctionnalités spéciales.
+On commence par installer la librairie. On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
 
-Nous allons injecter le logger dans le constructeur a l'aide du décorateur `@inject`. Voici l'implémentation :
+Pour l'installer, c'est très facile. Il suffit de suivre la https://github.com/inversify/inversify-express-utils[documentation officielle]. On commence donc par installer quelques librairies.
 
+[source,bash]
+----
+$ npm install inversify-express-utils reflect-metadata body-parse --save
+----
+
+. `reflet-metadata` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
+- `body-parse` va nous donner la possibilité d'extraires les paramètres des requêtes HTTP (nous ren reparlerons plus tard)
+
+Avant d'écrire notre premier contrôleur, il est nécessaire de faire quelques modifications à la création de notre serveur HTTP. Créons un nouveau fichier `core/server.core.ts` qui va simplement définir notre serveur HTTP avec `inversify-express-utils`:
+
+.La définition de notre serveur HTTP avec `inversify-express-utils`
+[source,ts]
+----
+// backend/src/core/server.ts
+import * as bodyParser from "body-parser";
+import { InversifyExpressServer } from "inversify-express-utils";
+import { container } from "./container.core";
+
+export const server = new InversifyExpressServer(container);
+server.setConfig((app) => {
+  app.use(bodyParser.urlencoded({ extended: true }));
+  app.use(bodyParser.json());
+});
+----
+
+Comme vous pouvez le voir, nous utilisons maintenant une instance de `InversifyExpressServer`. La méthode `setConfig` permet d'ajouter des _middleware_ (nous y reviendrons plus tard). Passons au fichier `main.ts` que nous allons modifier un peu:
+
+[source,ts]
+----
+// backend/src/main.ts
+import "reflect-metadata";
+import { container } from "./core/container.core";
+import { server } from "./core/server";
+import { TYPES } from "./core/types.core";
+
+const port = 3000;
+
+const app = server.build();
+app.listen(port, () =>
+  console.log(`Server listen on http://localhost:${port}/`)
+);
+----
+
+Et voilà. Nous pouvons maintenant nous attaquer à notre premier contrôleur.
+
+Le contrôleur est une classe comme les autres. Elle va simplement le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce contrôleur comme `@injectable` mais aussi nos offrir des fonctionnalités spéciales.
+
+Passons directement à l'implémentation afin que cela soit plus parlant:
+
+. Création du premier contrôleur avec une unique route
 [source,ts]
 ----
 // backend/src/controllers/home.controller.ts
 import { controller, httpGet } from "inversify-express-utils";
+
+@controller("/")
+export class HomeController {
+
+  @httpGet("")
+  public index(req: Request, res: Response) {
+    return res.send("Hello world");
+  }
+}
+----
+
+Comme vous pouvez le voir, l'implémentation est très claire grâce aux décorateurs:
+
+* Le `@controller("/")` nous indique que toutes les routes de ce contrôleur seront préfixées par `/`
+* Le second décorateur `@httpGet("/")` définit que cette méthode sera accèssible sur l'URL `/` via le verbe HTTP POST.
+
+Maintenant essayons d'injecter le `Logger` afin d'afficher un message lorsque cette route est utilisée:
+
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
 import { TYPES } from "../core/container.core";
 import { Logger } from "../services/logger.service";
 
@@ -571,9 +628,11 @@ export class HomeController {
 }
 ----
 
-Notez aussi le décorateur `@httpGet` qui va définir la route de cette action automatiquement.
+Et voilà !
 
-Et il faut maintenant importer ce contrôleur dans le container que nous avons définis précédemment. C'est vraiment très simple à faire :
+Le décorateur `@inject` s'occupe de tout, il suffit de spécifier le symbole. C'est magique.
+
+La dernière étape est d'importer manuellement ce contrôleur dans le container. C'est vraiment très simple à faire :
 
 [source,diff]
 ----
@@ -583,40 +642,6 @@ import { Container } from "inversify";
 import "../controllers/users.controller";
 // ...
 ----
-
-==== Le script
-
-Maintenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
-
-[source,ts]
-----
-// backend/src/main.ts
-import "reflect-metadata";
-
-import { InversifyExpressServer } from "inversify-express-utils";
-import { container } from "./core/container.core";
-import * as bodyParser from "body-parser";
-
-const port = 3000;
-
-const server = new InversifyExpressServer(container);
-
-server.setConfig((app) => {
-  app.use(bodyParser.urlencoded({ extended: true }));
-  app.use(bodyParser.json());
-});
-
-const app = server.build();
-app.listen(port, () =>
-  console.log(`Server listen on http://localhost:${port}/`)
-);
-----
-
-Cela fait beaucoup de changements. Voici quelques explications :
-
-. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
-. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
-. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
 
 Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
 
