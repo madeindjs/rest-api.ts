@@ -670,6 +670,7 @@ Je n’en parle pas ici puisque nous essayons d’apprendre comment mettre en œ
 
 Dans cette section nous allons mettre en place la gestion des utilisateurs. Par "gestion" j'entends les actions CRUD classiques (Create, Read, Update, Delete).
 
+
 === Mise en place de TypeORM
 
 Afin d'accder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main.
@@ -820,6 +821,8 @@ Nous pouvons commiter les changements effectuées jusqu'à maintenant:
 $ git add .
 $ git commit -m "Setup TypeORM"
 ----
+
+// -- current
 
 === Création des actions CRUD
 
@@ -1365,7 +1368,7 @@ function hashPassword(password: string): string {
 }
 
 console.log(hashPassword("$uper_u$er_p@ssw0rd"));
-// => 51e649c92c8edfbbd8e1c1703217550d4f051f0b7838a2b27afc83093c2ddaec
+// => 51e649c92c8edfbbd8e1c17032...
 ----
 
 Et voilà! Pour savoir si le mot de passe correspond il suffit de vérifier si le hash correspond au précédent :
@@ -1384,7 +1387,7 @@ function isPasswordMatch(hash: string, password: string): boolean {
 
 const hash = hashPassword("$uper_u$er_p@ssw0rd");
 console.log(hash);
-// => 51e649c92c8edfbbd8e1c1703217550d4f051f0b7838a2b27afc83093c2ddaec
+// => 51e649c92c8edfbbd8e1c17032...
 
 console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
 // => true

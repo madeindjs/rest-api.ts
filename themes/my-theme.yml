@@ -142,14 +142,20 @@ blockquote:
   border_color: $base_border_color
   border_width: 5
   # FIXME disable negative padding bottom once margin collapsing is implemented
-  padding: [0, $horizontal_rhythm, $block_margin_bottom * -0.75, $horizontal_rhythm + $blockquote_border_width / 2]
+  padding:
+    [
+      0,
+      $horizontal_rhythm,
+      $block_margin_bottom * -0.75,
+      $horizontal_rhythm + $blockquote_border_width / 2,
+    ]
   cite_font_size: $base_font_size_small
   cite_font_color: 999999
 # code is used for source blocks (perhaps change to source or listing?)
 code:
   font_color: $base_font_color
   font_family: $literal_font_family
-  font_size: ceil($base_font_size)
+  font_size: ceil($base_font_size * 0.85)
   padding: $code_font_size
   line_height: 1.1
   # line_gap is an experimental property to control how a background color is applied to an inline block element
@@ -181,7 +187,8 @@ sidebar:
   border_radius: $base_border_radius
   border_width: $base_border_width
   # FIXME reenable padding bottom once margin collapsing is implemented
-  padding: [$vertical_rhythm, $vertical_rhythm * 1.25, 0, $vertical_rhythm * 1.25]
+  padding:
+    [$vertical_rhythm, $vertical_rhythm * 1.25, 0, $vertical_rhythm * 1.25]
   title:
     align: center
     font_color: $heading_font_color
@@ -243,7 +250,7 @@ footer:
   recto:
     #columns: "<50% =0% >50%"
     right:
-      content: '{page-number}'
+      content: "{page-number}"
       #content: '{section-or-chapter-title} | {page-number}'
       #content: '{document-title} | {page-number}'
     #center:

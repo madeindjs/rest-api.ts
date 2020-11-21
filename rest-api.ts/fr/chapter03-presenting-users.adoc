@@ -6,688 +6,990 @@ Dans le chapitre précédent, nous avons réussi à mettre en place les bases de
 
 Dans les prochains chapitres, nous traiterons l’authentification des utilisateurs à l’aide de jetons d’authentification ainsi que la définition de permissions pour limiter l’accès aux utilisateurs connectés. Nous relierons ensuite les produits aux utilisateurs et leur donnerons la possibilité de passer des commandes.
 
-Vous pouvez cloner le projet jusqu’à ce point avec:
+// Vous pouvez cloner le projet jusqu’à ce point avec:
 
-[source,bash]
-----
-$ git checkout tags/checkpoint_chapter03
-----
+// [source,bash]
+// ----
+// $ git checkout tags/checkpoint_chapter03
+// ----
 
-Comme vous pouvez déjà l’imaginer, il existe de nombreuses solutions d’authentification pour Rails comme https://github.com/binarylogic/authlogic[AuthLogic], https://github.com/thoughtbot/clearance[Clearance] et https://github.com/plataformatec/devise[Devise]. Ces solutions sont des librairies clé en main, c'est à dire qu'elles permettent de gérer tout un tas de choses comme l'authentification, la fonctionnalité d'oubli de mot de passe, la validation, etc..
+Comme vous pouvez déjà l’imaginer, il existe de nombreuses solutions d’authentification pour Node.js comme http://www.passportjs.org/[Passport.js], https://github.com/ianstormtaylor/permit[Permit] et https://github.com/simov/grant[Devise]. Ces solutions sont des librairies clé en main, c'est à dire qu'elles permettent de gérer tout un tas de choses comme l'authentification, la fonctionnalité d'oubli de mot de passe, la validation, etc..
 
-Nous ne les utiliserons pas afin de mieux appréhender le mécanisme d'authentification. Néanmoins nous allons utiliser la gemme https://github.com/codahale/bcrypt-ruby[bcrypt] afin de hasher le mots de passe de l'utilisateur.
+Nous ne les utiliserons pas afin de mieux appréhender le mécanisme d'authentification. Cela vous permettra de découvrir qu'il n'y a rien de magique derrière le chiffrement des mots de passe et la création des jetons d'authentifications.
 
 Ce chapitre sera complet. Il sera peut-être long mais je vais essayer d’aborder autant de sujets que possible. N’hésitez pas à vous prendre un café et allons-y. A la fin de ce chapitre, vous aurez construit toute la logique des utilisateurs ainsi que la validation et la gestion des erreurs.
 
-Nous voulons suivre ce chapitre, c’est donc un bon moment pour créer une nouvelle branche:
+// Nous voulons suivre ce chapitre, c’est donc un bon moment pour créer une nouvelle branche:
+
+// [source,bash]
+// ----
+// $ git checkout -b chapter03
+// ----
+
+// NOTE: Assurez-vous simplement d’être sur la branche `master` avant.
+== Mise en place de TypeORM
+
+Ici nous allons mettre e place la couche _Model_ du _design patern_ MVC. Il s'agit de la couche relative à la base de données.
+
+Afin d'accéder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main. Il nous permet aussi d'ajouter une couche d'abstraction au type de base de données et nous permet de ne pas nous soucier des différences entre PostgreSQL et SQlite par exemple.
+
+Il existe plusieurs ORM pour Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] et https://typeorm.io/[TypeORM]. J'ai choisis le dernier car c'est celui qui s'intègre le mieux avec Typescript. Il propose aussi une approche https://typeorm.io/#/active-record-data-mapper[Active Record ET Data Mapper] que j'apprécie beaucoup.
+
+Pour l'installer c'est très facile. Nous allons installer la librairie TypeORM mais aussi deux librairies supplémentaires :
+
+* `sqlite3` qui va nous permettre de dialoguer avec notre base de données Sqlite
+* https://www.npmjs.com/package/dotenv[`dotenv`] qui va nous permettre de commencer à définir des *variables d'environnement* comme la connexion à notre base de données.
+
+C'est parti:
+
+.Ajout des librairies pour installer TypeORM
+[source,bash]
+----
+$ npm add typeorm sqlite3 dotenv --save
+----
+
+Nous allons maintenant générer notre fichier de configuration. Par défault, `dotenv` va chercher un fichier nomé `.env`. Créons le:
 
 [source,bash]
 ----
-$ git checkout -b chapter03
+$ touch .env
 ----
 
-NOTE: Assurez-vous simplement d’être sur la branche `master` avant.
+Et commençons par définir https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables[les variables d'environnement de TypeORM] pour une connexion basique à une base de donnée SQlite:
 
-== Modèle d’utilisateur
+.La configuration de base de TypeORM pour une connexion à SQlite
+[source,env]
+----
+TYPEORM_CONNECTION=sqlite
+TYPEORM_DATABASE=db/development.sqlite
+TYPEORM_LOGGING=true
+TYPEORM_SYNCHRONIZE=true
+TYPEORM_ENTITIES=src/entities/*.entity.ts,dist/entities/*.entity.js
+----
 
+Comme vous pouvez le voir on définis que nous utiliserons Sqlite et que la base de données sera stockée dans le dossier `db/`. `TYPEORM_SYNCHRONIZE` permet d'éviter de ne pas se soucier des migrations et ainsi laisser TypeORM faire les modifications sur le schéma de notre base de données si nécessaire. Nous spécifions ensuite ou sont situé nos entités avec `TYPEORM_ENTITIES`.
 
-=== Génération du modèle `User`
+Il ne nous reste plus qu'a configurer `dotenv` pour charger ce fichier. Pour faire cela, j'utilise le _flag_ `--require` de Node.js qui permet de pré-charger une librairie. Il suffit donc de modifier le `package.json`:
 
-Nous allons commencer par générer notre modèle `User`. Ce modèle sera vraiment basique et contiendra seulement deux champs:
+.La configuration de base de TypeORM pour une connexion à SQlite
+[source,json]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js -r dotenv/config",
+    "start:watch": "nodemon",
+    // ...
+  },
+  // ...
+}
+----
 
-- `email` qui sera unique et lui permettra de se connecter à l'application
-- `password_digest` qui contiendra la version *haché* du mot de passe (nous en reparlerons plus tard dans ce chapitre)
+Nous allons maintenant créer un service `DatabaseService` qu va s'occuper de connecter TypeORM à notre base de données. Comme nous avons mis en place l'injection de dépendance, ce service sera lui aussi injectable. Voici l'implémentation complète. Pas de panique, je vous détaille la logique ensuite.
 
-Afin de générer notre modèle `User`, nous utiliserons la méthode _generate model_ fournie par Ruby on Rails. Elle s'utilise très facilement:
+.Implémentation du service d'initialisation de TypeORM
+[source,ts]
+----
+// backend/src/services/database.service.ts
+import { inject, injectable } from "inversify";
+import { Connection, createConnection, ObjectType } from "typeorm";
+import { TYPES } from "../core/types.core";
+import { Logger } from "./logger.service";
+
+@injectable()
+export class DatabaseService {
+  private static connection: Connection;
+
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  public async getConnection(): Promise<Connection> {
+    if (DatabaseService.connection instanceof Connection) {
+      return DatabaseService.connection;
+    }
+
+    try {
+      DatabaseService.connection = await createConnection();
+      this.logger.log("INFO", `Connection established`);
+    } catch (e) {
+      this.logger.log("ERROR", "Cannot establish database connection", e);
+      process.exit(1);
+    }
+
+    return DatabaseService.connection;
+  }
+
+  public async getRepository<T>(repository: ObjectType<T>): Promise<T> {
+    const connection = await this.getConnection();
+    return await connection.getCustomRepository<T>(repository);
+  }
+}
+----
+
+Cette classe possède deux méthodes :
+
+- `getConnection` : cette méthode va initialiser une nouvelle connection à la base de données. Celle-ci va appeler la méthode `createConnection` qui va chercher https://typeorm.io/#/using-ormconfig[un fichier de ormconfig] (dans notre cas les variables d'environnement chargée par `dotenv`) et établir une connection. Une fois la connection effectuée, elle est stoquée dans une propriété statique qui sera retournée directement la prochaine fois
+- `getRepository` : cette méthode va nous permettre de manipuler nos modèles via les repository. Nous en parlerons en détails plus loin
+
+NOTE: C'est une bonne pratique de cacher la logique de la librairie par nos propres classe. Cela nous permettrai de moi dépendre de la librairie et de pouvoir migrer plus facilement si un jours nous souhaiterions changer.
+
+Maintenant que notre service est créé, il faut l'ajouter à notre container :
+
+.Ajout du `Symbol` lié au service `DatabaseService`
+[source,diff]
+----
+// backend/src/core/types.core.ts
+export const TYPES = {
+  Logger: Symbol.for("Logger"),
++  DatabaseService: Symbol.for("DatabaseService"),
+};
+----
+
+.Enregistrement du service `DatabaseService` dans le container Inversify
+[source,diff]
+----
+// backend/src/core/container.core.ts
+import { Container } from "inversify";
+import "../controllers/home.controller";
++ import { DatabaseService } from "../services/database.service";
+import { Logger } from "../services/logger.service";
+import { TYPES } from "./types.core";
+
+export const container = new Container();
+container.bind(TYPES.Logger).to(Logger);
++ container.bind(TYPES.DatabaseService).to(DatabaseService);
+----
+
+Et voilà.
+
+Nous pouvons maintenant créer notre premier modèle `User`. En utilisant le _patern Data Mapper_ il va falloir créer deux classe :
+
+- l'_entity_ : elle va définir les attributs des champs à sauvegarder dans la base de donnée. Dans notre cas, je vais simplement créer deux attributs: `email` et `password` (le mot de passe sera chiffrée plus tards).
+- le _repository_ : elle va ajouter certaines logiques pour sauvegarder nos entités.
+
+Afin de simplifier l'exemple, je vais mettre ces deux classes dans le même fichier mais vous pouvez très bien les séparer :
+
+.Première implémentation de la classe `User`
+[source,ts]
+----
+// backend/src/entities/user.entity.ts
+import {
+  Column,
+  Entity,
+  EntityRepository,
+  PrimaryGeneratedColumn,
+  Repository,
+} from "typeorm";
+
+@Entity()
+export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ unique: true })
+  email: string;
+
+  @Column()
+  password: string;
+}
+
+@EntityRepository(User)
+export class UserRepository extends Repository<User> {}
+----
+
+Et voilà. Le résultat est vraiment très simple gràce aux décorateurs `@columns` proposées par TypeORM. Ceux-ci peuvent aussi définir le type d'information a stocker (Tex te, date, etc..). L'implémentation de ce modèle est suffisante pour le moment.
+
+Pour l'instant notre travail n'est pas très visible mais tenez bon car vous allez voir le résultat dans la prochaine section.
+
+Nous pouvons commiter les changements effectuées jusqu'à maintenant:
 
 [source,bash]
 ----
-$ rails generate model User email:string password_digest:string
-invoke  active_record
-      create    db/migrate/20190603195146_create_users.rb
-      create    app/models/user.rb
-      invoke    test_unit
-      create      test/models/user_test.rb
-      create      test/fixtures/users.yml
+$ git add .
+$ git commit -m "Setup TypeORM"
 ----
 
+== Création du contrôleur des utilisateurs
 
-NOTE: Dans le _design patern_ MVC, le modèle est l'élément qui contient les données ainsi que de la logique en rapport avec les données: validation, lecture et enregistrement. Nous allons donc dans un premier temps créer cette partie.
+Il est maintenant temps d'entrer dans la partie concrète et de créer le contrôleur qui va gérer les utiliseurs. Ce contrôleur va respecter les normes REST et proposer les actions CRUD classiques. C'est à dire _**C**reate_, _**R**ead_, _**U**pdate_ et _**D**elete_.
 
-Cette commande génère beaucoup de fichiers! Ne vous inquiétez pas, nous allons les passer en revue les un après les autres.
+=== Lister les utilisateurs
 
-Le fichier de migration contenu dans le dossier _db/migrate_ contient la *migration* qui décrit les modifications qui seront effectuées sur la base de données. Ce fichier devrait ressembler à ceci
+Nous allons commencer par la méthode `index` qui est la plus simple.
 
-.db/migrate/20190603195146_create_users.rb
-[source,ruby]
+Comme nous l'avons vu plutôt, les contrôleurs peuvent injecter nos services. Nous allons donc injecter le `DatabaseService` afin de pouvoir récupérer le `UserRepository`. Il suffira ensuite d'appeler la méthode `userRepository.find` afin de récupérer la liste de tous les utilisateur (qui est vide pour le moment).
+
+Voici l'implémentation de notre contrôleur:
+
+.Création du `UserController` avec la méthode `index`
+[source,ts]
 ----
-class CreateUsers < ActiveRecord::Migration[6.0]
-  def change
-    create_table :users do |t|
-      t.string :email
-      t.string :password_digest
+// backend/src/controllers/users.controller.ts
+import { Request, Response } from "express";
+import { inject } from "inversify";
+import { controller, httpGet } from "inversify-express-utils";
+import { TYPES } from "../core/types.core";
+import { UserRepository } from "../entities/user.entity";
+import { DatabaseService } from "../services/database.service";
 
-      t.timestamps
-    end
-  end
-end
-----
+@controller("/users")
+export class UsersController {
+  public constructor(@inject(TYPES.DatabaseService) private readonly database: DatabaseService) {}
 
+  @httpGet("/")
+  public async index(req: Request, res: Response) {
+    const userRepository = await this.database.getRepository(UserRepository);
 
-NOTE: la date insérée au début du nom du fichier de la migration devrait être différente chez vous puisque elle correspond à la date de création de la migration.
-
-Nous allons modifier un petit peu cette migration afin d'ajouter quelques validations côté base de données. Avec Rails il est d'usage de faire ces verifications directement dans le modèle Ruby mais c'est une bonne pratique de le faire aussi dans le schéma de la base de données.
-
-Nous allons donc rajouter deux contraintes:
-
-- l'email est présent: on utilise la propriété `null: false`
-- l'email est unique: on utilise la propriété `unique: true`
-- le mot de passe est obligatoire: on utilise la propriété `null: false`
-
-La migration devient donc:
-
-.db/migrate/20190603195146_create_users.rb
-[source,ruby]
-----
-# ...
-create_table :users do |t|
-  t.string :email, unique: true, null: false
-  t.string :password_digest, null: false
-  # ...
-end
+    const users = await userRepository.find();
+    return res.json(users);
+  }
+}
 ----
 
-Une fois la migration terminée, nous pouvons effectuer les modifications avec la commande suivante:
+Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau contrôleur dans le container:
 
-.db/migrate/20190603195146_create_users.rb
-[source,ruby]
+[source,diff]
 ----
-$ rake db:migrate
-== 20190603195146 CreateUsers: migrating ======================================
--- create_table(:users)
-   -> 0.0027s
-== 20190603195146 CreateUsers: migrated (0.0028s) =============================
-----
-
-NOTE: La commande va convertir notre migration en requête SQL qui va mettre à jour la base de données SQlite3 contenue dans le dossier _db_.
-
-==== Le modèle
-
-Nous avons donc défini notre schéma de la base de données. La prochaine étape est de mettre à jour notre modèle afin de définir les *règles de validation*. Ces règles se définissent dans le modèle situé dans le dossier _app/models_.
-
-Ruby on Rails propose un mécanisme complet de validation que vous pouvez consulter sur https://guides.rubyonrails.org/active_record_validations.html[leur documentation officielle]. Dans notre cas, nous voulons valider deux choses:
-
-- le courriel doit avoir un format valide
-- le courriel doit être unique
-- le mot de passe doit être rempli
-
-Ces trois règles se définissent par le code suivant:
-
-.app/models/user.rb
-[source,ruby]
-----
-class User < ApplicationRecord
-  validates :email, uniqueness: true
-  validates_format_of :email, with: /@/
-  validates :password_digest, presence: true
-end
+// backend/src/core/container.core.ts
+import { Container } from "inversify";
+import "../controllers/home.controller";
++ import "../controllers/users.controller";
+import { DatabaseService } from "../services/database.service";
+import { Logger } from "../services/logger.service";
+// ...
 ----
 
-Et voilà. Rails utilise une syntaxe très simple et le code est très lisible.
-
-.Validation du courriel
-****
-Vous remarquerez peut être que la validation du courriel utilise une validation simpliste en ne vérifiant que la présence d'un `@`.
-
-C'est normal.
-
-Une infinité d'exceptions existent en la matière d'adresse mail si bien https://davidcel.is/posts/stop-validating-email-addresses-with-regex/[que même `"Look at all these spaces!"@example.com` est une adresse valide]. Il vaut mieux donc privilégier une approche simple et confirmer le mail par un mail de validation.
-****
-
-==== Les tests unitaires
-
-Nous terminons par les tests unitaires. Nous utilisons ici le framework de test Minitest qui est fourni par défaut avec Rails.
-
-Minitest s'appuie sur des _Fixtures_ qui permettent de remplir votre base de données avec des données *prédéfinies*. Les _Fixtures_ sont définies dans des fichiers YAML dans le dossier `tests/fixtures`. Il y a un fichier par modèle.
-
-Nous devons donc commencer par mettre à jour nos `tests/fixtures`.
-
-NOTE: Les _fixtures_ ne sont pas conçues pour créer tous les données dont vos tests ont besoin. Elle permettent juste de définir les données basiques dont votre application a besoin.
-
-Nous allons donc commencer par créer une _fixture_ définissant un utilisateur:
-
-.test/fixtures/users.yml
-[source,yaml]
-----
-one:
-  email: one@one.org
-  password_digest: hashed_password
-----
-
-Nous pouvons donc maintenant créer les tests. Il y en aura trois:
-
-- nous vérifions qu'un utilisateur avec des données valides est valide:
-
-.test/models/user_test.rb
-[source,ruby]
-----
-# ...
-test 'user with a valid email should be valid' do
-  user = User.new(email: 'test@test.org', password_digest: 'test')
-  assert user.valid?
-end
-----
-
-- nous vérifions qu'un utilisateur avec un courriel invalide n'est pas valide:
-
-.test/models/user_test.rb
-[source,ruby]
-----
-# ...
-test 'user with unvalid email should be unvalid' do
-  user = User.new(email: 'test', password_digest: 'test')
-  assert_not user.valid?
-end
-----
-
-- nous vérifions qu'un utilisateur avec un courriel déjà utilisé n'est pas valide. Nous utilisons donc le même courriel que la _fixture_ que nous venons de créer.
-
-.test/models/user_test.rb
-[source,ruby]
-----
-# ...
-test 'user with taken email should be unvalid' do
-  other_user = users(:one)
-  user = User.new(email: other_user.email, password_digest: 'test')
-  assert_not user.valid?
-end
-----
-
-Et voilà. Nous pouvons vérifier que notre implémentation est correcte juste en lançant simplement les tests unitaires que nous venons de créer:
+Et voilà. Lancez la commande `npm run start:watch` pour démarrer le serveur si vous l'avez arrêté et testons la fonctionnalité avec `cURL`:
 
 [source,bash]
 ----
-$ rake test
-...
-3 runs, 3 assertions, 0 failures, 0 errors, 0 skips
+$ curl http://localhost:3000/users
 ----
 
-Je pense qu'il est temps de faire un petit _commit_ afin de valider notre avancement:
+Le retour de la commande nous indique un tableau vide: c'est normal car il n'y a pas encore d'utilisateur. En revanche, le terminal du serveur nous indique qu'il s'est passé beaucoup de chose:
 
-[source,bash]
-----
-$ git add . && git commit -m "Create user model"
-----
-
-=== Hachage du mot de passe
-
-Nous avons précédemment mis en place le stockage des données de l'utilisateur. Il nous reste un problème à régler: *le stockage des mot de passe est en clair*.
-
-> Si vous stockez les mots de passe des utilisateurs en clair, alors un attaquant qui vole une copie de votre base de données a une liste géante d'emails et de mots de passe. Certains de vos utilisateurs n'auront qu'un seul mot de passe -- pour leur compte de courriel, pour leur compte bancaire, pour votre application. Un simple piratage pourrait dégénérer en un vol d'identité massif. - https://github.com/codahale/bcrypt-ruby#why-you-should-use-bcrypt[source - Why you should use bcrypt]
-
-Nous allons donc utiliser la gemme bcrypt afin de hacher le mot de passe.
-
-NOTE: Le hachage consiste à transformer une chaîne de caractère en _Hash_. Ce _Hash_ ne permet pas de retrouver la chaîne de caractère d'origine. Cependant nous pouvons facilement l'utiliser afin de savoir si une chaîne de caractère donnée correspond au _hash_ que nous avons stocké.
-
-Nous devons d’abord ajouter la gemme Bcrypt au _Gemfile_. Nous pouvons utiliser la commande `bundle add`. Celle-ci va s'occuper:
-
-1. d'ajouter la gemme au Gemfile en récupérant la version actuelle
-2. lancer la commande `bundle install` qui va installer la gemme et mettre à jour le fichier _Gemfile.lock_ qui "verrouille" la version actuelle de la gemme
-
-Lancez donc la commande suivante:
-
-[source,bash]
-----
-$ bundle add bcrypt
-----
-
-Une fois la commande exécutée, la ligne suivante est ajoutée à la fin du _Gemfile_:
-
-[source,ruby]
-.Gemfile
-----
-gem "bcrypt", "~> 3.1"
-----
-
-NOTE: La version 3.1 de bcrypt est celle actuelle à l'heure où j'écris ces lignes. Elle peut donc varier pour votre cas.
-
-
-Active Record nous propose une méthode https://github.com/rails/rails/blob/6-0-stable/activemodel/lib/active_model/secure_password.rb#L61[`ActiveModel::SecurePassword::has_secure_password`] qui va s'interfacer avec Bcrypt et hacher le mot de passe pour nous très facilement.
-
-
-[source,ruby]
-.app/models/user.rb
-----
-class User < ApplicationRecord
-  # ...
-  has_secure_password
-end
-----
-
-`has_secure_password` ajoute les validations suivantes:
-
-* Le mot de passe doit être présent lors de la création.
-* La longueur du mot de passe doit être inférieure ou égale à 72 octets.
-* la confirmation du mot de passe à l'aide de l'attribut `password_confirmation` (s'il est envoyé)
-
-De plus, cette méthode va ajouter un attribut `User#password` qui sera automatiquement haché et sauvegardé dans l'attribut `User#password_digest`.
-
-Essayons cela tout de suite dans la console de Rails. Ouvrez une console avec `rails console`:
-
-[source,ruby]
-----
-2.6.3 :001 > User.create! email: 'toto@toto.org', password: '123456'
- =>#<User id: 1, email: "toto@toto.org", password_digest: [FILTERED], created_at: "2019-06-04 10:51:44", updated_at: "2019-06-04 10:51:44">
-----
-
-Vous pouvez ainsi constater que lorsqu'on appelle la méthode `User#create!`, l'attribut `password` est haché et stocké dans `password_digest`. Nous pouvons aussi envoyer un attribut `password_confirmation` que ActiveRecord va comparer à `password`:
-
-[source,ruby]
-----
-2.6.3 :002 > User.create! email: 'tata@tata.org', password: '123456', password_confirmation: 'azerty'
-ActiveRecord::RecordInvalid (Validation failed: Password confirmation doesn t match Password)
-----
-
-Tout fonctionne comme prévus! Faisons maintenant un _commit_ afin de garder un historique concis:
-
-[source,bash]
-----
-$ git commit -am "Setup Bcrypt"
-----
-
-== Construire les utilisateurs
-
-Il est temps de faire notre premier point d’entrée. Nous allons juste commencer à construire l’action `show` pour l’utilisateur qui va afficher un utilisateur en JSON. Nous allons d’abord
-
-1. générer le `users_controller`
-2. ajouter les tests correspondants
-3. construire le code réel.
-
-Occupons nous tout d'abord de générer le contrôleur et les test fonctionnels.
-
-Afin de respecter le visionnement de notre API, nous allons découper notre application en utilisant des *modules*. La syntaxe est donc la suivante:
-
-[source,bash]
-----
-$ rails generate controller api::v1::users
-----
-
-Cette commande va créer le fichier `users_controller_test.rb`. Avant d’entrer dans le vif du sujet, il y a deux choses que nous voulons tester pour une API:
-
-* La structure du JSON renvoyée par le serveur
-* Le code de réponse HTTP renvoyé par le serveur
-
-.Les codes HTTP courants
-****
-Le premier chiffre du code d’état spécifie l’une des cinq classes de réponse. Le strict minimum pour un client HTTP est qu’il utilise une ces cinq classes. Voici une liste des codes HTTP couramment utilisés:
-
-* `200`: Réponse standard pour les requêtes HTTP réussies. C’est généralement sur les requêtes `GET`
-* `201`: La demande a été satisfaite et a donné lieu à la création d’une nouvelle ressource. Après les demandes de `POST`
-* `204`: Le serveur a traité la requête avec succès, mais ne renvoie aucun contenu. Il s’agit généralement d’une requête `DELETE` réussie.
-* `400`: La requête ne peut pas être exécutée en raison d’une mauvaise syntaxe. Peut arriver pour tout type de requête.
-* `401`: Similaire au 403, mais spécifiquement pour une utilisation lorsque l’authentification est requise et qu’elle a échoué ou n’a pas encore été fournie. Peut arriver pour tout type de requête.
-* `404`: La ressource demandée n’a pas pu être trouvée mais peut être à nouveau disponible à l’avenir. Habituellement, concerne les requêtes `GET`
-* `500`: Un message d’erreur générique, donné lorsqu’une condition inattendue a été rencontrée et qu’aucun autre message spécifique ne convient.
-
-Pour une liste complète des codes de réponse HTTP, consultez l’ https://fr.wikipedia.org/wiki/Liste_des_codes_HTTP[article sur Wikipedia].
-****
-
-Nous allons donc implémenter le test fonctionnel qui vérifie l'accès à la méthode `Users#show`. pour cela,
-
-
-[source,ruby]
-.test/controllers/api/v1/users_controller_test.rb
-----
-# ...
-class UsersControllerTest < ActionDispatch::IntegrationTest
-  setup do
-    @user = users(:one)
-  end
-
-  test "should show user" do
-    get api_v1_user_url(@user), as: :json
-    assert_response :success
-    # on teste que la réponse contient le courriel
-    json_response = JSON.parse(self.response.body)
-    assert_equal @user.email, json_response['email']
-  end
-end
-----
-
-
-Il suffit ensuite d’ajouter l’action à notre contrôleur. C’est extrêmement simple:
-
-[source,ruby]
-.app/controllers/api/v1/users\_controller.rb
-----
-class  Api::V1::UsersController < ApplicationController
-  def show
-    render json: User.find(params[:id])
-  end
-end
-----
-
-Si vous exécutez les tests avec `rails test` vous obtenez l’erreur suivante:
-
-[source,bash]
-----
-$ rails test
-
-...E
-
-Error:
-UsersControllerTest#test_should_show_user:
-DRb::DRbRemoteError: undefined method `api_v1_user_url' for #<UsersControllerTest:0x000055ce32f00bd0> (NoMethodError)
-    test/controllers/users_controller_test.rb:9:in `block in <class:UsersControllerTest>'
-----
-
-Ce type d’erreur est très courant lorsque vous générez vos ressources à la main! En effet, nous avons totalement oublié *les routes*. Alors ajoutons-les:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      resources :users, only: [:show]
-    end
-  end
-end
-----
-
-Vos tests devraient désormais passer:
-
-----
-$ rails test
 ....
-4 runs, 5 assertions, 0 failures, 0 errors, 0 skips
+query: BEGIN TRANSACTION
+query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" IN ('user')
+query: SELECT * FROM "sqlite_master" WHERE "type" = 'index' AND "tbl_name" IN ('user')
+query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" = 'typeorm_metadata'
+query: CREATE TABLE "user" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "email" varchar NOT NULL, "password" varchar NOT NULL)
+query: COMMIT
+2020-11-15T22:09:25.476Z - INFO - Connection established - {}
+query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User"
+....
+
+Il s'agit des logs de TypeORM. Ceux-ci nous indiquent que:
+
+. TypeORM a essayé de voir s'il existait une table nommée `user`
+. TypeORM a crée cette table puisqu'elle n'existait pas
+. la connexion a la base de données été établie
+. La requête SQL pour retrouver tous les utilisateurs a été exécutée
+
+Cela nous indique que tout fonctionne parfaitement ! Mais je vous sent un peu déçu car nous n'avons pas encore d'utilisateur. Passons à la suite !
+
+=== Create
+
+Maintenant que toute notre structure a été mise en place, la suite va aller beaucoup plus vite. Passons directement à l'implémentation et je fous explique le code ensuite:
+
+.Ajout de la méthode `create` à la classe `UserRepository`
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
+import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
+// ...
+
+interface CreateUserBody {
+  email: string;
+  password: string;
+}
+
+@controller("/users")
+export class UsersController {
+  // ...
+  @httpPost("/")
+  public async create(@requestBody() body: CreateUserBody, req: Request, res: Response): Promise<User> {
+    const repository = await this.database.getRepository(UserRepository);
+    const user = new User();
+    user.email = body.email;
+    user.password = body.password;
+    return repository.save(user);
+  }
+}
 ----
 
-Comme d’habitude, après avoir ajouté une des fonctionnalités dont nous sommes satisfaits, nous faisons un _commit_:
+Cela fait un peut de code mais pas de panique. `CreateUserBody` est une interface qui définie les paramètres HTTP qui peuvent être reçu. Nous prenons ces paramètres et nous les envoyons directement au `repository`.
+
+Testons que tout cela fonctionne:
+
+.Création d'un utilisateur avec `cURL`
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
+{"email":"test@test.fr","password":"test","id":1
+----
+
+Parfait. On voit que tout fonctionne correctement!
+
+Passons à la suite pour récupérer les information de cet utilisateur.
+
+=== Show
+
+La méthode `show` va s'occuper de retrouver les informations d'un utilisateur. Cette méthode va prendre l'identifiant de l'utilisateur. On va ensuite utiliser le `repository` pour récupérer l'utilisateur.
+
+Voici l'implémentation :
+
+.Ajout de la méthode `create` à la classe `UserRepository`
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
+@controller("/users")
+export class UsersController {
+  // ...
+  @httpGet("/:userId")
+  public async show(@requestParam("userId") userId: number) {
+    const repository = await this.database.getRepository(UserRepository);
+    return repository.findOneOrFail(userId);
+  }
+}
+----
+
+L'implémentation est vraiment très simple. Il faut simplement retourner un objet et `inversify-express-utils` va s'occuper de convertir l'objet JavaScript en JSON.
+
+Essayons pour voir:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Adds show action the users controller"
+$ curl http://localhost:3000/users/1
+{"id":1,"email":"test@test.fr","password":"test"}
 ----
 
-=== Tester notre ressource avec cURL
+Et voilà. Tous fonctionne correctement. Essayons maintenant de modifier cet utilisateur.
 
-Nous avons donc enfin une ressource à tester. Nous avons plusieurs solutions pour la tester. La première qui me vient à l’esprit est l’utilisation de cURL qui est intégré dans presque toutes les distributions Linux. Alors, essayons:
+=== Update
+
+La méthode `update` va s'occuper de récupérer, modifier et enregistrer l'utilisateur. Comme pour la méthode précédente, TypeORM nous facilite beaucoup la tâche :
+
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
+interface UpdateUserBody {
+  email: string;
+  password: string;
+}
+
+@controller("/users")
+export class UsersController {
+  // ...
+  @httpPut("/:userId")
+  public async update(
+    @requestBody() body: UpdateUserBody,
+    @requestParam("userId") userId: number,
+  ) {
+    const repository = await this.database.getRepository(UserRepository);
+    const user = await repository.findOneOrFail(userId);
+    user.email = body.email ?? user.email;
+    user.password = body.password ?? user.password;
+    return repository.save(user);
+  }
+  // ...
+}
+----
+
+Et voilà. Comme tout à l'heure, essayons de voir si cela fonctionne :
 
 [source,bash]
 ----
-$ curl http://localhost:3000/api/v1/users/1
-{"id":1,"email":"toto@toto.org", ...
+$ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
+{"id":1,"email":"foo@bar.com","password":"test"}
 ----
 
-Nous retrouvons bien l'utilisateur que nous avons crée avec la console Rails dans la section précédente. Vous avez maintenant une entrée d’API d’enregistrement d’utilisateur.
+Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que Type ORM a effectué dans les logs du terminal
 
-=== Créer les utilisateurs
-
-Maintenant que nous avons une meilleure compréhension de la façon de construire des points d’entrée, il est temps d’étendre notre API. Une des fonctionnalités les plus importante est de laisser les utilisateurs créer un profil sur notre application. Comme d’habitude, nous allons écrire des tests avant d’implémenter notre code pour étendre notre suite de tests.
-
-Assurez-vous que votre répertoire Git est propre et que vous n’avez pas de fichier en _staging_. Si c’est le cas, _committez_-les pour que nous puissions recommencer à zéro.
-
-Commençons donc par écrire notre test en ajoutant une entrée pour créer un utilisateur sur le fichier `users_controller_test.rb` :
-
-[source,ruby]
-.test/controllers/users_controller_test.rb
+[source,sql]
 ----
-# ...
-class UsersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test "should create user" do
-    assert_difference('User.count') do
-      post api_v1_users_url, params: { user: { email: 'test@test.org', password: '123456' } }, as: :json
-    end
-    assert_response :created
-  end
-
-  test "should not create user with taken email" do
-    assert_no_difference('User.count') do
-      post api_v1_users_url, params: { user: { email: @user.email, password: '123456' } }, as: :json
-    end
-    assert_response :unprocessable_entity
-  end
-end
+query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: [1]
+query: BEGIN TRANSACTION
+query: UPDATE "user" SET "email" = ? WHERE "id" IN (?) -- PARAMETERS: ["foo@bar.com",1]
+query: COMMIT
 ----
 
-Cela fait beaucoup de code. Ne vous inquiétez pas, je vous explique tout:
+Passons maintenant à la dernière méthode du controlleur.
 
-* dans le premier test nous vérifions la création d'un utilisateur en envoyant une requête POST valide. Ensuite, nous vérifiions qu'un utilisateur supplémentaire existe en base et que le code HTTP de la réponse est `created`
-* dans le premier test nous vérifions que l'utilisateur n'est pas créé en utilisant un courriel déjà utilisé. Ensuite, nous vérifions que le code HTTP de la réponse est `created`
+=== Delete
 
-A ce moment là, les tests doivent échouer:
+La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur et d'appeler la méthode `repository.delete`. Allez c'est parti :
+
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
+
+@controller("/users")
+export class UsersController {
+  // ...
+  @httpDelete("/:userId")
+  public async destroy(@requestParam("userId") userId: number) {
+    const repository = await this.database.getRepository(UserRepository);
+    const user = await repository.findOneOrFail(userId);
+    await repository.delete(user);
+  }
+}
+----
+
+Et voilà. Nous pouvons aussi tester cette méthode :
 
 [source,bash]
 ----
-$ rails test
-...E
+$ curl -X DELETE  http://localhost:3000/users/1
 ----
 
-Il est donc temps d’implémenter le code pour que nos tests réussissent:
+Ici encore, nous pouvons vérifier que l'utilisateur a bien été supprimé en regardant les logs de TypeORM :
 
-[source,ruby]
-.app/controllers/api/v1/users_controller.rb
+[source,sql]
 ----
-class Api::V1::UsersController < ApplicationController
-  # ...
-
-  # POST /users
-  def create
-    @user = User.new(user_params)
-
-    if @user.save
-      render json: @user, status: :created
-    else
-      render json: @user.errors, status: :unprocessable_entity
-    end
-  end
-
-  private
-
-  # Only allow a trusted parameter "white list" through.
-  def user_params
-    params.require(:user).permit(:email, :password)
-  end
-end
-
+query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: ["1"]
+query: DELETE FROM "user" WHERE "id" = ? AND "email" = ? AND "password" = ? -- PARAMETERS: [1,"foo@bar.com","test"]
 ----
 
-Rappelez-vous qu’à chaque fois que nous ajoutons une entrée dans notre API il faut aussi ajouter cette action dans notre fichier `routes.rb`.
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      resources :users, only: %i[show create]
-    end
-  end
-end
-----
-
-Comme vous pouvez le constater, l’implémentation est assez simple. Nous avons également ajouté la méthode privée `user_params` pour protéger les assignations d’attributs en masse. Maintenant, nos tests devraient passer:
+Et voilà. Maintenant que nous arrivons à la fin de de notre controlleur, nous pouvons commiter tous ces changements:
 
 [source,bash]
 ----
-$ rails test
-......
-6 runs, 9 assertions, 0 failures, 0 errors, 0 skips
+$ git commit -am "Implement CRUD actions on user"
 ----
 
-Oura! _Committons_ les changements et continuons à construire notre application:
+== Validation de nos utilisateurs
+
+Tout semble fonctionner mais il rest une problème: nous ne validons pas les données que nous insérons en base. Ainsi, il est possible de créer un utilisateur avec un email faux :
+
+....
+$ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
+....
+
+Encore une fois, nous allons avoir recours a une librairie toute faite: `class-validator`. Cette librairie va nous offrir https://github.com/typestack/class-validator/#table-of-contents[une tonne de décorateurs] pour vérifier très facilement notre instance `User`.
+
+Installons la avec NPM :
+
+....
+$ npm install class-validator --save
+....
+
+Et il suffit ensuite d'ajouter les décorateurs `@IsEmail` et `@IsDefined` comme ceci :
+
+[source,diff]
+----
+// backend/src/entities/user.entity.ts
++ import { IsDefined, IsEmail, validateOrReject } from "class-validator";
+- import { /* ... */ } from "typeorm";
++ import { BeforeInsert, BeforeUpdate, /* ... */ } from "typeorm";
+
+@Entity()
+export class User {
+  // ...
++  @IsDefined()
++  @IsEmail()
+  @Column()
+  email: string;
+
++  @IsDefined()
+  @Column()
+  password: string;
+
++  @BeforeInsert()
++  @BeforeUpdate()
++  async validate() {
++    await validateOrReject(this);
++  }
+}
+// ...
+----
+
+Il n'a pas fallu beaucoup de code a ajouter. La partie la plus intéressante est la méthode `validate`. Elle possède deux décorateurs `BeforeInsert` et `BeforeUpdate` qui vont permettre d'appeler automatiquement la méthode `validate` lorsqu'on utilise la méthode `save` d'un repository. C'est très pratique et il n'y a rien a faire. Essayons maintenant de créer le même utilisateur avec l'email erroné :
 
 [source,bash]
 ----
-$ git commit -am "Adds the user create endpoint"
+$ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
+...
+<pre>An instance of User has failed the validation:<br> - property email has failed the following constraints: isDefined, isEmail <br></pre>
+...
 ----
 
-=== Mettre à jour les utilisateurs
+On voit que c'est beaucoup mieux. Cependant nous souhaiterions envoyer une erreur formatée en JSON avec le code d'erreur correspondant à la norme REST. Modifions donc le contrôleur :
 
-Le schéma de mise à jour des utilisateurs est très similaire à celui de la création. Si vous êtes un développeur de Rails expérimenté, vous connaissez peut-être déjà les différences entre ces deux actions:
-
-* L’action de mise à jour répond à une requête PUT/PATCH .
-* Seul un utilisateur connecté devrait être en mesure de mettre à jour ses informations. Ce qui signifie que nous devrons forcer un utilisateur à s’authentifier. Nous en parlerons au chapitre 5.
-
-Comme d’habitude, nous commençons par écrire nos tests:
-
-[source,ruby]
-.test/controllers/users_controller_test.rb
+.Ajout de la validation des utilisateur dans le `UserController`
+[source,ts]
 ----
-# ...
-class UsersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test "should update user" do
-    patch api_v1_user_url(@user), params: { user: { email: @user.email, password: '123456' } }, as: :json
-    assert_response :success
-  end
+// backend/src/controllers/home.controller.ts
+// ...
+@controller("/users")
+export class UsersController {
+  // ...
+  @httpPost("/")
+  public async create(/* ... */): Promise<User | Response> {
+    // ...
+    const errors = await validate(user);
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
 
-  test "should not update other user" do
-    patch api_v1_user_url(@user), params: { user: { email: 'bad_email', password: '123456' } }, as: :json
-    assert_response :unprocessable_entity
-  end
-end
-----
+    return repository.save(user);
+  }
 
-Pour que les tests réussissent, nous devons construire l’action de mise à jour sur le fichier `users_controller.rb` et ajouter la route au fichier `routes.rb`. Comme vous pouvez le voir, nous avons trop de code dupliqué, nous remanierons nos tests au chapitre 4. Tout d’abord nous ajoutons l’action le fichier `routes.rb`:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  # ...
-  resources :users, only: %i[show create update]
-  # ...
-end
+  @httpPut("/:id")
+  public async update(/* ... */): Promise<User | Response> {
+    // ...
+    const errors = await validate(user);
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
+    return repository.save(user);
+  }
+  // ...
+}
 ----
 
-Ensuite nous implémentons l’action de mise à jour sur le contrôleur utilisateur et faisons passer nos tests:
-
-[source,ruby]
-.app/controllers/api/v1/users_controller.rb
-----
-class Api::V1::UsersController < ApplicationController
-  before_action :set_user, only: %i[show update]
-
-  def show
-    render json: @user
-  end
-
-  # ...
-
-  def create
-    @user = User.new(user_params)
-
-    if @user.save
-      render json: @user, status: :created
-    else
-      render json: @user.errors, status: :unprocessable_entity
-    end
-  end
-
-  private
-  # ...
-
-  def set_user
-    @user = User.find(params[:id])
-  end
-end
-
-----
-
-Tous nos tests devraient maintenant passer:
+Essayons maintenant :
 
 [source,bash]
 ----
-$ rails test
-........
-8 runs, 11 assertions, 0 failures, 0 errors, 0 skips
+$ curl -X POST -d "test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+{"errors":[{"target":{"password":"test"},"property":"email","children":[],"constraints":{"isDefined":"email should not be null or undefined","isEmail":"email must be an email"}}]}
 ----
 
-Vue que tout fonctionne, on effectue un _commit_:
+Le résultat est vraiment complet et permettra a un utilisateur de l'API d'interpréter rapidement l'erreur.
+
+Commitons ces changements:
 
 [source,bash]
 ----
-$ git commit -am "Adds update action the users controller"
+$ git commit -am "Validate user"
 ----
 
-=== Supprimer l’utilisateur
+== Factorisation
 
-Jusqu’à présent, nous avons construit pas mal d’actions sur le contrôleur des utilisateurs avec leurs tests mais ce n’est terminé. Il nous en manque juste une dernière qui est l’action de destruction. Créons donc le test:
+Maintenant que nous avons un code qui fonctionne, il est temps de faire une passe pour *factoriser tout ça*.
 
-[source,ruby]
-.test/controllers/users_controller_test.rb
+Pendant la mise en place, vous avez sans doute remarqué que la méthode `show`, `update` et `destroy` possédait un logique commune: elles récupèrent toute l'utilisateur.
+
+Pour factoriser ce code il y aurait deux solutions :
+
+. déplacer le bout de code dans un méthode privée et l'appeler
+. créer un *Middleware* qui va être exécuté avant le contrôleur
+
+J'ai choisi la deuxième option car elle permet de réduire le code et la responsabilité du contrôleur. De plus, avec `inversify-express-utils` c'est très facile. Laissez moi vous montrer :
+
+[source,typescript]
 ----
-# ...
-class UsersControllerTest < ActionDispatch::IntegrationTest
-  # ...
+import { NextFunction, Request, Response } from "express";
+import { inject, injectable } from "inversify";
+import { BaseMiddleware } from "inversify-express-utils";
+import { TYPES } from "../core/types.core";
+import { User, UserRepository } from "../entities/user.entity";
+import { DatabaseService } from "../services/database.service";
 
-  test "should destroy user" do
-    assert_difference('User.count', -1) do
-      delete api_v1_user_url(@user), as: :json
-    end
-    assert_response :no_content
-  end
-end
-----
+@injectable()
+export class FetchUserMiddleware extends BaseMiddleware {
+  constructor(@inject(TYPES.DatabaseService) private readonly database: DatabaseService) {
+    super();
+  }
 
-Comme vous pouvez le voir, le test est très simple. Nous ne répondons qu’avec un statut de *204* qui signifie `No Content`. Nous pourrions aussi retourner un code d’état de *200*, mais je trouve plus naturel de répondre `No Content` dans ce cas car nous supprimons une ressource et une réponse réussie peut suffire.
+  public async handler(
+    req: Request & { user: User },
+    res: Response,
+    next: NextFunction
+  ): Promise<void | Response> {
+    const userId = req.query.userId ?? req.params.userId;
+    const repository = await this.database.getRepository(UserRepository);
+    req.user = await repository.findOne(Number(userId));
 
-La mise en œuvre de l’action de destruction est également assez simple:
+    if (!req.user) {
+      return res.status(404).send("User not found");
+    }
 
-[source,ruby]
-.app/controllers/api/v1/users_controller.rb
-----
-class Api::V1::UsersController < ApplicationController
-  before_action :set_user, only: %i[show update destroy]
-  # ...
-
-  def destroy
-    @user.destroy
-    head 204
-  end
-
-  # ...
-end
-----
-
-N’oubliez pas d’ajouter l’action `destroy` dans le fichier `routes.rb`:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  # ...
-  resources :users, only: %i[show create update destroy]
-  # ...
-end
+    next();
+  }
+}
 ----
 
-Si tout est correct, vos tests devraient passer:
+Voici quelques explications sur ce code :
+
+. `inversify-express-utils` nous donne accès a une classe abstraite `BaseMiddleware`. Nous devons aussi ajouter le décorateur `@injectable` pour l'utiliser plus tard dans notre contrôleur
+. un middleware est une simple méthode `handle` qui prend en paramètre :
++
+`req`::
+  la requête envoyée par l'utilisateur
+`res`::
+  la réponse HTTP à renvoyer.
+`next`::
+  un callback a appeler une fois que notre traitement est finit
+. la méthode `handle` s'occupe de récupérer l'utilisateur et de l'ajouter à l'objet `req` pour qu'il soit utilisé plus tard
+. si l'utilisateur n'existe pas, nous utilisons `res` pour renvoyer directement une réponse 404 sans même passer par l'utilisateur
+
+Vu que nous avons défini un nouvel injectable, il faut l'ajouter à notre container :
+
+[source,diff]
+----
+// backend/src/core/types.core.ts
+export const TYPES = {
+  Logger: Symbol.for("Logger"),
+  DatabaseService: Symbol.for("DatabaseService"),
++   // Middlewares
++   FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
+};
+----
+
+[source,diff]
+----
+// backend/src/core/container.core.ts
+// ...
++ import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
+
+export const container = new Container();
+// services
+container.bind(TYPES.Logger).to(Logger);
+container.bind(TYPES.DatabaseService).to(DatabaseService);
++ // middlewares
++ container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
+----
+
+Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutant `TYPE.FetchUserMiddleware` au décorateur. Voici donc la modification :
+
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
+@controller("/users")
+export class UsersController {
+  // ...
+
+  @httpGet("/:userId", TYPES.FetchUserMiddleware)
+  public async show(req: Request & { user: User }): Promise<User> {
+    return req.user;
+  }
+
+  @httpPut("/:userId", TYPES.FetchUserMiddleware)
+  public async update(
+    @requestBody() body: UpdateUserBody,
+    req: Request & { user: User },
+    res: Response
+  ): Promise<User | Response> {
+    const repository = await this.database.getRepository(UserRepository);
+    req.user.email = body.email ?? req.user.email;
+    req.user.password = body.password ?? req.user.password;
+
+    // ...
+    return repository.save(req.user);
+  }
+
+  @httpDelete("/:userId", TYPES.FetchUserMiddleware)
+  public async destroy(req: Request & { user: User }) {
+    const repository = await this.database.getRepository(UserRepository);
+    await repository.delete(req.user);
+  }
+}
+----
+
+Pas mal non ? Commitons les modifications avant d'aller plus loin :
 
 [source,bash]
 ----
-$ rails test
-.........
-9 runs, 13 assertions, 0 failures, 0 errors, 0 skips
+$ git add . && git commit -m "Factorise user controller with middleware"
 ----
 
-Rappelez-vous qu’après avoir apporté quelques modifications à notre code, il est de bonne pratique de les _commiter_ afin que nous gardions un historique bien découpé.
+== Hashage du mot de passe
+
+=== La théorie
+
+Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto] .
+
+Voici un exemple d'une méthode pour hasher le mot de pass
+
+[source,ts]
+----
+import { createHash } from "crypto";
+
+function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex");
+}
+
+console.log(hashPassword("$uper_u$er_p@ssw0rd"));
+// => 51e649c92c8edfbbd8e1c17032...
+----
+
+Et voilà! Pour savoir si le mot de passe correspond il suffit de vérifier si le hash correspond au précédent :
+
+[source,ts]
+----
+import { createHash } from "crypto";
+
+function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex");
+}
+
+function isPasswordMatch(hash: string, password: string): boolean {
+  return hash === hashPassword(password);
+}
+
+const hash = hashPassword("$uper_u$er_p@ssw0rd");
+console.log(hash);
+// => 51e649c92c8edfbbd8e1c17032...
+
+console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
+// => true
+console.log(isPasswordMatch(hash, "wrong password"));
+// => false
+----
+
+Impeccable. Il y a néanmoins un petit problème avec ce type de méthode.
+
+Si vos mots de passe fuite, il sera assez facile à retrouver le mot de passe correspondant en construisant un *bibliothèque de hash*. Concrètement, le malveillant utiliserait les mots de passe courant, les hasherai un par avec le même algorithme et les comparerait aux notre. Pour corriger cela, il faut utiliser un sel de hashage.
+
+Le sel de hachage consiste a rajouter un texte définis à chaque mot de passe. Voici la modification :
+
+[source,ts]
+----
+import { createHash } from "crypto";
+
+const salt = "my private salt";
+
+function hashPassword(password: string, salt: string): string {
+  return createHash("sha256").update(`${password}_${salt}`).digest("hex");
+}
+
+function isPasswordMatch(hash: string, password: string): boolean {
+  return hash === hashPassword(password, salt);
+}
+
+const hash = hashPassword("$uper_u$er_p@ssw0rd", salt);
+console.log(hash);
+// => 3fdd2b9c934cd34c3150a72fb4c981b8530dab4152c6f8c5de119f74d9c36ef7
+
+console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
+// => true
+console.log(isPasswordMatch(hash, "wrong password"));
+// => false
+----
+
+Et voilà ! Le fonctionnement est le même mais notre application est plus sécurisée. Si quelqu'un accedait à notre base de données, il faudrait qu'il ait en possession le *sel de hachage* pour retrouver les mots de passe correspondant.
+
+=== L'implémentation
+
+Maintenant que nous avons vu la théorie, passons à la pratique. Nous allons utiliser les mêmes méthodes dans un fichier `password.utils.ts`. C'est parti:
+
+[source,ts]
+----
+// backend/src/utils/password.utils.ts
+import { createHash } from "crypto";
+
+const salt = "my private salt";
+
+export function hashPassword(password: string, salt: string): string {
+  return createHash("sha256").update(`${password}_${salt}`).digest("hex");
+}
+
+export function isPasswordMatch(hash: string, password: string): boolean {
+  return hash === hashPassword(password, salt);
+}
+----
+
+Nous allons maintenant utiliser la méthode `hashPassword` dans l'entité `User`. Avec TypeORM c'est très facile en utilisant les hooks comme nous l'avons fait avec la validation.
+
+[source,ts]
+----
+// backend/src/entities/user.entity.ts
+// ...
+import { hashPassword } from "../utils/password.utils";
+
+@Entity()
+export class User {
+  // ...
+  @IsDefined()
+  @Column()
+  hashedPassword: string;
+
+  set password(password) {
+    if (password) {
+      this.hashedPassword = hashPassword(password);
+    }
+  }  // ...
+}
+// ...
+----
+
+Quelques explications s'imposent :
+
+* nous avons crée un attribut `hashedPassword` qui contient le mot de passe de l'utilisateur hashé. Cette valeur sera sauvegardée en base car nous avons ajouté le décorateur `@column`. Nous en aurons besoin plus tard pour savoir si le mot de passe fournis par l'utilisateur correspond a celui qu'il avait définit
+* l'attribut `password` devient un *setter*. C'est comme un attribut virtuel qui va être appelé lors de l'assignation. Ainsi en faisant `user.password = 'toto'`, cette méthode sera appelé. C'est parfait car nous ne voulons plus le stocker le mot de passe au cas ou notre base de données fuite.
+
+Maintenant essayons de créer un utilisateur via l'API:
 
 [source,bash]
 ----
-$ git commit -am "Adds destroy action to the users controller"
+$ curl -X POST -d "email=test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+{"email":"test@test.fr","password":"test","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
 ----
 
-Et comme nous arrivons à la fin de notre chapitre, il est temps d'appliquer toutes nos modifications sur la branche master en faisant un _merge_:
+Tout semble parfaitement fonctionner car on voit que l'utilisateur possède bien un mot de passe hashé. Si on change le mot de passe, le hash change correctement :
 
 [source,bash]
 ----
-$ git checkout master
-$ git merge chapter03
+$ curl -X PUT   -d "password=helloWorld" -H "Accept: application/json" http://localhost:3000/users/4
+{"id":4,"email":"test@test.fr","hashedPassword":"bdbe865951e5cd026bb82a299e3e1effb1e95ce8c8afe6814cecf8fa1e895d1f"}
 ----
+
+Tout marche parfaitement bien. Faisons un commit avant d'aller plus loin.
+
+[source,bash]
+----
+$ git add . && git commit -m "Hash user password"
+----
+
+=== Mise en place d'un test unitaire
+
+Nous avons un code qui fonctionne et c'est cool. Si nous pouvons nous assurer qu'il fonctionne comme cela à chaque évolution c'est encore mieux. C'est donc ici qu'interviennent les *tests unitaires*.
+
+Le rôle du test unitaire est de s'assurer que notre méthode fonctionne toujours de la même façon que nous l'avons décidé. Nous allons donc ici mettre en place un test simpliste pour s'assurer que tout fonctionne bien.
+
+Il existe plusieurs librairie de tests en JavaScript. J'ai choisi `Mocha` car c'est une des librairie les plus populaire et elle se met très facilement en place. Nous installons aussi `ts-mocha` qui va transpiler le TypeScript à la volée :
+
+[source,bash]
+----
+$ npm install mocha ts-mocha @types/mocha --save-dev
+----
+
+Il faut aussi modifier un peut notre `tsconfig.json` pour ajouter les déclaration de de Mocha et spécifier à Typescript de ne pas compiler ces fichier :
+
+[source,diff]
+----
+{
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "module": "commonjs",
+    "types": [
+      "node",
++      "mocha"
+    ],
+    "target": "es6",
+    "esModuleInterop": true,
+    "lib": [
+      "es6"
+    ],
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
++   "exclude": ["./**/*.spec.ts"]
+}
+----
+
+Nous voici prêt à créer notre premier test :
+
+[source,ts]
+----
+// backend/src/entities/user.entity.spec.ts
+import assert from "assert";
+import { hashPassword } from "../utils/password.utils";
+import { User } from "./user.entity";
+
+describe("User", () => {
+  it("should hash password", () => {
+    const user = new User();
+    user.password = "toto";
+    const expected = hashPassword("toto");
+    assert.strictEqual(user.hashedPassword, expected);
+  });
+});
+----
+
+Comme je vous le disait, c'est un test vraiment très simple. Aoutons maintenant la commande qui va nous permettre de lancer ce test dans le `package.json` :
+
+[source,diff]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js",
+    "start:watch": "nodemon",
++     "test": "ts-mocha src/**/*.spec.ts",
+    "build": "tsc"
+  },
+  // ...
+}
+----
+
+Et voilà. Nous pouvons maintenant exécuter ce test :
+
+[source,bash]
+----
+$ npm test
+
+> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
+> ts-mocha src/**/*.spec.ts
+
+
+
+  User
+    V should hash password
+
+
+  1 passing (5ms)
+----
+
+Et tant qu'à faire, nous pouvons aussi ajouter un autre test unitaire sur la méthode de comparaison du mot de passe `isPasswordMatch` :
+
+[source,ts]
+----
+// backend/src/utils/password.utils.spec.ts
+import assert from "assert";
+import { hashPassword, isPasswordMatch } from "./password.utils";
+
+describe("isPasswordMatch", () => {
+  const hash = hashPassword("good");
+  it("should match", () => {
+    assert.strictEqual(isPasswordMatch(hash, "good"), true);
+  });
+  it("should not match", () => {
+    assert.strictEqual(isPasswordMatch(hash, "bad"), false);
+  });
+});
+----
+
+Encore une fois, ce genre de test peut vous sembler simpliste mais ils sont très rapide et permettent d'avoir une sécurité supplémentaire. Lançons les tests :
+
+[source,bash]
+----
+npm test
+
+> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
+> ts-mocha src/**/*.spec.ts
+
+
+
+  User
+    ✓ should hash password
+
+  isPasswordMatch
+    ✓ should match
+    ✓ should not match
+
+
+  3 passing (6ms)
+----
+
+Maintenant que vous êtes échauffé, commitons et passons à la suite :
+
+[source,bash]
+----
+$ git add . && git commit -m "Add unit test about password hash"
+----
+
+== Ajout des tests fonctionnels
+
+// TODO
 
 == Conclusion
 

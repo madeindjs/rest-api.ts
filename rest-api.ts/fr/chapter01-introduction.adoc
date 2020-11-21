@@ -37,6 +37,23 @@ $ echo "A command-line command"
 A command-line command
 ----
 
+J'éssaierai de raccourcir au maximum les morceaux de code en ne gardant que lignes intéressantes en fonction de contexte. Je masquerai les lignes non pertinentes avec le symbole commentaire `// ...` ou `/* ... */`. Je spécifierai aussi, au début de chaque morceau de code, le chemin et le nom du fichier concerné. Voici un exemple:
+
+[source,ts]
+----
+// user.ts
+// ...
+class User {
+  constructor(/* ... */) {
+      doInterestingStuff(message);
+  }
+  // ...
+  doInterestingStuff(message: string) {
+    console.log(message)
+  }
+}
+----
+
 J’utiliserai quelques principes spécifiques à Ruby. C’est-à-dire:
 
 * _"Éviter"_ signifie que vous n’êtes pas censé le faire.
@@ -334,7 +351,7 @@ Il suffit maintenant de définir un fichier `nodemon.json` :
   "watch": ["src"],
   "ext": "ts",
   "ignore": ["src/**/*.spec.ts"],
-  "exec": "tsc && node dist/main"
+  "exec": "npm run start"
 }
 ----
 
@@ -353,7 +370,7 @@ Vérifions que tous fonctionne en lançant Nodemon à la main :
 [nodemon] to restart at any time, enter `rs`
 [nodemon] watching path(s): src/**/*
 [nodemon] watching extensions: ts
-[nodemon] starting `tsc && node dist/main`
+[nodemon] starting `npm run start`
 I said: Hello
 [nodemon] clean exit - waiting for changes before restart
 ----
@@ -375,7 +392,7 @@ Lorsque vous allez sauvegarder ce fichier, vous allez voir le travail de Nodemon
 [source,bash]
 ----
 [nodemon] restarting due to changes...
-[nodemon] starting `tsc && node dist/main`
+[nodemon] starting `npm run start`
 Nodemon said: Hello
 [nodemon] clean exit - waiting for changes before restart
 ----
@@ -443,7 +460,7 @@ Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `n
 
 ....
 [nodemon] restarting due to changes...
-[nodemon] starting `tsc && node dist/main`
+[nodemon] starting `npm run start`
 Server listen on http://localhost:3000/
 ....
 

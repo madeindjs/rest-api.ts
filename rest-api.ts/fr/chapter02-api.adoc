@@ -391,6 +391,10 @@ $ git commit -m "Add inversify"
 
 // TODO
 
+== Les variables de configuration
+
+
+
 == Conclusion
 
 Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.

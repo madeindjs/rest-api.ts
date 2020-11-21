@@ -25,10 +25,6 @@ include::chapter01-introduction.adoc[]
 
 <<<
 
-include::chapter01a-initialize-application.adoc[]
-
-<<<
-
 include::chapter02-api.adoc[]
 
 <<<
