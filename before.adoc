@@ -1,1645 +1,1645 @@
-[[avant-propos]]
-== Avant-propos [.tag]#todo#
+// [[avant-propos]]
+// == Avant-propos [.tag]#todo#
 
-"REST-API.ts: Construisez une API REST avec Typescript"
+// "REST-API.ts: Construisez une API REST avec Typescript"
 
-=== A propos de l’auteur
+// === A propos de l’auteur
 
-Je m'apelle https://rsseau.fr[Alexandre Rousseau], je suis un développeur passionné. J'aime partager mon expérience à travers https://rsseau.fr/blog/[mon blog] et certains livre comme https://leanpub.com/apionrails6-fr[API on Rails] ou même celui-ci.
+// Je m'apelle https://rsseau.fr[Alexandre Rousseau], je suis un développeur passionné. J'aime partager mon expérience à travers https://rsseau.fr/blog/[mon blog] et certains livre comme https://leanpub.com/apionrails6-fr[API on Rails] ou même celui-ci.
 
-Je suis actuellement associé chez https://isignif.fr/[iSignif] où je construis et maintiens un produit de type SAAS en utilisant https://rubyonrails.org[Ruby on Rails]. Je contribue aussi à la communauté Ruby en produisant et maintenant quelques gemmes que vous pouvez consulter sur https://rubygems.org/profiles/madeindjs[mon profil Rubygem]. La plupart de mes projets sont sur GitHub donc n’hésitez pas _à me suivre_.
+// Je suis actuellement associé chez https://isignif.fr/[iSignif] où je construis et maintiens un produit de type SAAS en utilisant https://rubyonrails.org[Ruby on Rails]. Je contribue aussi à la communauté Ruby en produisant et maintenant quelques gemmes que vous pouvez consulter sur https://rubygems.org/profiles/madeindjs[mon profil Rubygem]. La plupart de mes projets sont sur GitHub donc n’hésitez pas _à me suivre_.
 
-Mon précédent livre "API on Rails" a été une belle expérience et le livre est très actif car il https://github.com/madeindjs/api_on_rails/graphs/contributors[compte plusieurs contributeurs] (que je remercie encore ici) et j'ai eu beaucoup de retours positifs. J'ai donc décidé de retenter l'expérience avec des technologies différentes que Ruby on Rails.
+// Mon précédent livre "API on Rails" a été une belle expérience et le livre est très actif car il https://github.com/madeindjs/api_on_rails/graphs/contributors[compte plusieurs contributeurs] (que je remercie encore ici) et j'ai eu beaucoup de retours positifs. J'ai donc décidé de retenter l'expérience avec des technologies différentes que Ruby on Rails.
 
-[[droits-dauteur-et-licence]]
-=== Droits d’auteur et licence [.tag]#todo#
+// [[droits-dauteur-et-licence]]
+// === Droits d’auteur et licence [.tag]#todo#
 
-Cette traduction est disponible sous licence MIT. Tout le code source de ce livre est disponible au format Org sur GitHub.
+// Cette traduction est disponible sous licence MIT. Tout le code source de ce livre est disponible au format Org sur GitHub.
 
-"REST-API.ts" de https://rsseau.fr[Alexandre Rousseau] est mis à disposition selon les termes de la licence http://creativecommons.org/licenses/by-sa/4.0/[Creative Commons Attribution - Partage dans les Mêmes Conditions 4.0 International].
+// "REST-API.ts" de https://rsseau.fr[Alexandre Rousseau] est mis à disposition selon les termes de la licence http://creativecommons.org/licenses/by-sa/4.0/[Creative Commons Attribution - Partage dans les Mêmes Conditions 4.0 International].
 
-== Introduction
+// == Introduction
 
-=== API on Rails
+// === API on Rails
 
-Bienvenue sur API-REST.ts, un tutoriel sous stéroïdes pour apprendre la meilleure façon de construire votre prochaine application avec Typescript. Le but de ce livre est de vous fournir une méthodologie complète pour développer une API RESTful en suivant les meilleures pratiques.
+// Bienvenue sur API-REST.ts, un tutoriel sous stéroïdes pour apprendre la meilleure façon de construire votre prochaine application avec Typescript. Le but de ce livre est de vous fournir une méthodologie complète pour développer une API RESTful en suivant les meilleures pratiques.
 
-Lorsque vous en aurez fini avec ce livre, vous serez en mesure de créer votre propre API et de l’intégrer à n’importe quel client comme un navigateur Web ou une application mobile. Le code généré est construit avec Typescript 4 qui est la version actuelle.
+// Lorsque vous en aurez fini avec ce livre, vous serez en mesure de créer votre propre API et de l’intégrer à n’importe quel client comme un navigateur Web ou une application mobile. Le code généré est construit avec Typescript 4 qui est la version actuelle.
 
-L’intention de ce livre n’est pas seulement de vous apprendre à construire une API mais plutôt de vous apprendre comment construire une API évolutive et maintenable avec Typescript. Dans ce voyage, vous allez apprendre à:
+// L’intention de ce livre n’est pas seulement de vous apprendre à construire une API mais plutôt de vous apprendre comment construire une API évolutive et maintenable avec Typescript. Dans ce voyage, vous allez apprendre à:
 
-* Utiliser Git pour le contrôle de version
-* Construire des réponses JSON
-* Tester vos points d’entrées avec des tests unitaires et fonctionnels
-* Mettre en place une authentification avec des JSON Web Tokens (JWT)
-* Utiliser les spécifications JSON:API
-* Optimiser et mettre en cache l’API
+// * Utiliser Git pour le contrôle de version
+// * Construire des réponses JSON
+// * Tester vos points d’entrées avec des tests unitaires et fonctionnels
+// * Mettre en place une authentification avec des JSON Web Tokens (JWT)
+// * Utiliser les spécifications JSON:API
+// * Optimiser et mettre en cache l’API
 
-Je vous recommande fortement de suivre toutes les étapes de ce livre. Essayez de ne pas sauter des chapitres car je vais vous proposer des conseils et des astuces pour vous améliorer tout au long du livre. Vous pouvez vous considérer comme le personnage principal d’un jeu vidéo qui obtient un niveau supérieur à chaque chapitre.
+// Je vous recommande fortement de suivre toutes les étapes de ce livre. Essayez de ne pas sauter des chapitres car je vais vous proposer des conseils et des astuces pour vous améliorer tout au long du livre. Vous pouvez vous considérer comme le personnage principal d’un jeu vidéo qui obtient un niveau supérieur à chaque chapitre.
 
-Dans ce premier chapitre je vous expliquerai comment configurer votre environnement (au cas où vous ne l’auriez pas déjà fait). Nous allons ensuite créer une application appelée `market_place`. Je veillerai à vous enseigner les meilleures pratiques que j’ai pu apprendre au cours de mon expérience. Cela signifie qu’après avoir initialisé le projet, nous commencerons à utiliser Git.
+// Dans ce premier chapitre je vous expliquerai comment configurer votre environnement (au cas où vous ne l’auriez pas déjà fait). Nous allons ensuite créer une application appelée `market_place`. Je veillerai à vous enseigner les meilleures pratiques que j’ai pu apprendre au cours de mon expérience. Cela signifie qu’après avoir initialisé le projet, nous commencerons à utiliser Git.
 
-Dans les prochains chapitres, nous allons construire l’application en suivant une méthode de travail simple que j’utilise quotidiennement. Nous développerons toute l’application en utilisant le développement dirigé par les tests (TDD). Je vous expliquerai aussi l’intérêt d’utiliser une API pour votre prochain projet et de choisir un format de réponse adapté comme le JSON ou le XML. Plus loin, nous mettrons les mains dans le code et nous compléterons les bases de l’application en construisant toutes les routes nécessaires. Nous sécuriserons aussi l’accès à l’API en construisant une authentification par échange d’en-têtes HTTP. Enfin, dans le dernier chapitre, nous ajouterons quelques techniques d’optimisation pour améliorer la structure et les temps de réponse du serveur.
+// Dans les prochains chapitres, nous allons construire l’application en suivant une méthode de travail simple que j’utilise quotidiennement. Nous développerons toute l’application en utilisant le développement dirigé par les tests (TDD). Je vous expliquerai aussi l’intérêt d’utiliser une API pour votre prochain projet et de choisir un format de réponse adapté comme le JSON ou le XML. Plus loin, nous mettrons les mains dans le code et nous compléterons les bases de l’application en construisant toutes les routes nécessaires. Nous sécuriserons aussi l’accès à l’API en construisant une authentification par échange d’en-têtes HTTP. Enfin, dans le dernier chapitre, nous ajouterons quelques techniques d’optimisation pour améliorer la structure et les temps de réponse du serveur.
 
-L’application finale sera une application de place de marché qui permettra à des vendeurs de mettre en place leur propre boutique en ligne. Les utilisateurs seront en mesure de passer des commandes, télécharger des produits et plus encore. Il existe de nombreuses options pour créer une boutique en ligne comme http://shopify.com/[Shopify], http://spreecommerce.com/[Spree] ou http://magento.com/[Magento].
+// L’application finale sera une application de place de marché qui permettra à des vendeurs de mettre en place leur propre boutique en ligne. Les utilisateurs seront en mesure de passer des commandes, télécharger des produits et plus encore. Il existe de nombreuses options pour créer une boutique en ligne comme http://shopify.com/[Shopify], http://spreecommerce.com/[Spree] ou http://magento.com/[Magento].
 
-[[conventions-sur-ce-live]]
-=== Conventions sur ce live [.tag]#todo#
+// [[conventions-sur-ce-live]]
+// === Conventions sur ce live [.tag]#todo#
 
-=== Environnement de développement
+// === Environnement de développement
 
-Pour presque tous les développeurs, l’une des parties les plus douloureuses est de mettre en place un environnement de développement confortable. Si vous le faites correctement, les prochaines étapes devraient être un jeu d’enfant. Je vais vous guider dans cette étape afin de vous faciliter la tâche et de vous motiver.
+// Pour presque tous les développeurs, l’une des parties les plus douloureuses est de mettre en place un environnement de développement confortable. Si vous le faites correctement, les prochaines étapes devraient être un jeu d’enfant. Je vais vous guider dans cette étape afin de vous faciliter la tâche et de vous motiver.
 
-==== Editeur de texte
+// ==== Editeur de texte
 
-Il existe deux catégories d'éditeurs de code :
+// Il existe deux catégories d'éditeurs de code :
 
-* les *editeurs de textes* comme https://atom.io/[Atom], https://www.sublimetext.com/[Sublime Text], https://www.vim.org/[VIM], etc..
-* les *environements de développement* complets comme https://www.eclipse.org/[Eclipse], https://netbeans.org/[Netbeans], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
+// * les *editeurs de textes* comme https://atom.io/[Atom], https://www.sublimetext.com/[Sublime Text], https://www.vim.org/[VIM], etc..
+// * les *environements de développement* complets comme https://www.eclipse.org/[Eclipse], https://netbeans.org/[Netbeans], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
 
-Les environement de développement sont plus complets et offre plus de fonctionnalités mais sont souvent beaucouop plus lourds.
+// Les environement de développement sont plus complets et offre plus de fonctionnalités mais sont souvent beaucouop plus lourds.
 
-Il n'y a pas de bon ou mauvais choix et c'est vraiment une question de gout.
+// Il n'y a pas de bon ou mauvais choix et c'est vraiment une question de gout.
 
-Pour ma part j'utilise https://code.visualstudio.com/[Visual Studio Code] de Microsoft que se situe à mis chemin entre un éditeur de texte et un environement de développement. Son auto-complétion est vraiment très performante lorsqu'on utilise https://www.typescriptlang.org/[Typescript]. Si vous ne savez pas quoi utiliser, vous ne pouvez pas vous tromper en utilisant cet éditeur.
+// Pour ma part j'utilise https://code.visualstudio.com/[Visual Studio Code] de Microsoft que se situe à mis chemin entre un éditeur de texte et un environement de développement. Son auto-complétion est vraiment très performante lorsqu'on utilise https://www.typescriptlang.org/[Typescript]. Si vous ne savez pas quoi utiliser, vous ne pouvez pas vous tromper en utilisant cet éditeur.
 
-==== Navigateur Web
+// ==== Navigateur Web
 
-Quand au navigateur, je conseillerai directement https://www.mozilla.org/fr/firefox/[Firefox]. Mais d’autres développeurs utilisent https://www.google.com/chrome/[Chrome] ou même https://www.apple.com/fr/safari/[Safari]. N’importe lequel d’entre eux vous aidera à construire l’application que vous voulez. Ils proposent tous un bon inspecteur pour le DOM, un analyseur de réseau et de nombreuses autres fonctionnalités que vous connaissez peut-être déjà.
+// Quand au navigateur, je conseillerai directement https://www.mozilla.org/fr/firefox/[Firefox]. Mais d’autres développeurs utilisent https://www.google.com/chrome/[Chrome] ou même https://www.apple.com/fr/safari/[Safari]. N’importe lequel d’entre eux vous aidera à construire l’application que vous voulez. Ils proposent tous un bon inspecteur pour le DOM, un analyseur de réseau et de nombreuses autres fonctionnalités que vous connaissez peut-être déjà.
 
-Je vous conseille néanmoins d'utiliser au moins deux navigateurs web. Il y a quelques nuances sur l'intérprétation du Javascript ou du CSS. En utilisant deux navigateurs vous vous assurez que vos dévelopements fonctionnent correctement pour la majorité de vos utilisateurs.
+// Je vous conseille néanmoins d'utiliser au moins deux navigateurs web. Il y a quelques nuances sur l'intérprétation du Javascript ou du CSS. En utilisant deux navigateurs vous vous assurez que vos dévelopements fonctionnent correctement pour la majorité de vos utilisateurs.
 
-Personnellement j'utilise Firefox dans la vie de tous les jours et je vérifie le bon fonctionement de mes fonctionalités sur https://www.chromium.org/[Chromium], un dérivé de Google Chrome.
+// Personnellement j'utilise Firefox dans la vie de tous les jours et je vérifie le bon fonctionement de mes fonctionalités sur https://www.chromium.org/[Chromium], un dérivé de Google Chrome.
 
-==== Gestionnaire de paquets
+// ==== Gestionnaire de paquets
 
-Mac OS::
-  Il existe de nombreuses options pour gérer la façon dont vous installez les paquets sur votre Mac, comme https://www.macports.org/[Mac Ports] ou https://brew.sh/[Homebrew]. Les deux sont de bonnes options, mais je choisirais la dernière. J’ai rencontré moins de problèmes lors de l’installation de logiciels avec Homebrew. Pour installer brew il suffit d’exécuter la commande ci-dessous:
+// Mac OS::
+//   Il existe de nombreuses options pour gérer la façon dont vous installez les paquets sur votre Mac, comme https://www.macports.org/[Mac Ports] ou https://brew.sh/[Homebrew]. Les deux sont de bonnes options, mais je choisirais la dernière. J’ai rencontré moins de problèmes lors de l’installation de logiciels avec Homebrew. Pour installer brew il suffit d’exécuter la commande ci-dessous:
 
-[source,bash]
-----
-$ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-----
+// [source,bash]
+// ----
+// $ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+// ----
 
-Linux::
-  Vous êtes déjà prêts! Peu importe si vous utilisez `apt`, `pacman`, `yum` tant que vous vous sentez à l’aise et que vous savez comment installer des paquets.
+// Linux::
+//   Vous êtes déjà prêts! Peu importe si vous utilisez `apt`, `pacman`, `yum` tant que vous vous sentez à l’aise et que vous savez comment installer des paquets.
 
-==== Git
+// ==== Git
 
-Nous utiliserons beaucoup Git et vous devriez aussi l’utiliser (non seulement pour ce tutoriel mais aussi pour tous vos projets). Pour l’installer, c’est très facile:
+// Nous utiliserons beaucoup Git et vous devriez aussi l’utiliser (non seulement pour ce tutoriel mais aussi pour tous vos projets). Pour l’installer, c’est très facile:
 
-Mac OS::
-  `$ brew install git`
-Linux::
-  `$ sudot apt install git`
+// Mac OS::
+//   `$ brew install git`
+// Linux::
+//   `$ sudot apt install git`
 
-==== Node.js
+// ==== Node.js
 
-Il existe de nombreuses façons d’installer et de gérer Node.js. Vous avez peut être même déjà avoir une version installée sur votre système. Pour le savoir, tapez simplement:
+// Il existe de nombreuses façons d’installer et de gérer Node.js. Vous avez peut être même déjà avoir une version installée sur votre système. Pour le savoir, tapez simplement:
 
-[source,bash]
-----
-$ node -v
-----
+// [source,bash]
+// ----
+// $ node -v
+// ----
 
-Si vous ne l'avez pas installé, vous pouvez le faire simplement avec votre gestionnaire de paquet. Je vous recommande néanmoins d'utiliser https://github.com/nvm-sh/nvm[Node Version Manager (NVM)]. Le principe de cet outil est de permettre d’installer plusieurs versions de Node.js sur une même machine, dans un environnement hermétique à une éventuelle version installée sur votre système d’exploitation et de pouvoir basculer de l’une à l’autre facilement.
+// Si vous ne l'avez pas installé, vous pouvez le faire simplement avec votre gestionnaire de paquet. Je vous recommande néanmoins d'utiliser https://github.com/nvm-sh/nvm[Node Version Manager (NVM)]. Le principe de cet outil est de permettre d’installer plusieurs versions de Node.js sur une même machine, dans un environnement hermétique à une éventuelle version installée sur votre système d’exploitation et de pouvoir basculer de l’une à l’autre facilement.
 
-Pour l'installer, il suffit de https://github.com/nvm-sh/nvm#installing-and-updating[suivre la documentation officielle]. Il suffit donc de lancer le script suivant :
+// Pour l'installer, il suffit de https://github.com/nvm-sh/nvm#installing-and-updating[suivre la documentation officielle]. Il suffit donc de lancer le script suivant :
 
-[source,bash]
-----
-$ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash
-----
+// [source,bash]
+// ----
+// $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash
+// ----
 
-L'URL du script peut varier en fonction de la version actuelle.
+// L'URL du script peut varier en fonction de la version actuelle.
 
-Une fois l'installation terminée, vous pouvez installer la dernière version de Node.js avec la commande suivante :
+// Une fois l'installation terminée, vous pouvez installer la dernière version de Node.js avec la commande suivante :
 
-[source,bash]
-----
-$ nvm install node
-----
+// [source,bash]
+// ----
+// $ nvm install node
+// ----
 
-==== Base de données
+// ==== Base de données
 
-Je vous recommande fortement d’installer http://www.postgresql.org/[Postgres] pour gérer vos bases de données. Mais ici, pour plus de simplicité, nous allons utiliser http://www.sqlite.org/[SQlite]. Si vous utilisez Mac OS vous n’avez pas de bibliothèques supplémentaires à installer. Si vous êtes sous Linux, ne vous inquiétez pas, je vous guide:
+// Je vous recommande fortement d’installer http://www.postgresql.org/[Postgres] pour gérer vos bases de données. Mais ici, pour plus de simplicité, nous allons utiliser http://www.sqlite.org/[SQlite]. Si vous utilisez Mac OS vous n’avez pas de bibliothèques supplémentaires à installer. Si vous êtes sous Linux, ne vous inquiétez pas, je vous guide:
 
-[source,bash]
-----
-$ sudo apt-get install libxslt-dev libxml2-dev libsqlite3-dev
-----
+// [source,bash]
+// ----
+// $ sudo apt-get install libxslt-dev libxml2-dev libsqlite3-dev
+// ----
 
-ou
+// ou
 
-[source,bash]
-----
-$ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
-----
+// [source,bash]
+// ----
+// $ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
+// ----
 
-=== Initialisation du projet
+// === Initialisation du projet
 
-Nous sommes maintenant en mesure de créer notre projet !
+// Nous sommes maintenant en mesure de créer notre projet !
 
-Il existe une tonne de _framework_ complets comme https://nestjs.com/[Nest.js] qui est vraiment très bien. Mais ici nous allons partir de zéro en utilisant des librairies très populaires afin de maîtriser complètement notre application.
+// Il existe une tonne de _framework_ complets comme https://nestjs.com/[Nest.js] qui est vraiment très bien. Mais ici nous allons partir de zéro en utilisant des librairies très populaires afin de maîtriser complètement notre application.
 
-Placez vous donc dans le dossier de votre choix et créez un nouveau dossier :
+// Placez vous donc dans le dossier de votre choix et créez un nouveau dossier :
 
-[source,bash]
-----
-$ mkdir node_market_place
-$ cd node_market_place
-----
+// [source,bash]
+// ----
+// $ mkdir node_market_place
+// $ cd node_market_place
+// ----
 
-==== Contrôle de version
+// ==== Contrôle de version
 
-Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Verionnez tous vos projets. Même si c'est un petit projet.
+// Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Verionnez tous vos projets. Même si c'est un petit projet.
 
-Initialiser Git dans votre projet ce résume à la commande suivante :
+// Initialiser Git dans votre projet ce résume à la commande suivante :
 
-[source,bash]
-----
-$ git init
-----
+// [source,bash]
+// ----
+// $ git init
+// ----
 
-Il faut néanmoins configurer les informations de l’auteur des commits. Si ce n’est pas déjà fait, placez vous dans le répertoire et lancez les commandes suivantes:
+// Il faut néanmoins configurer les informations de l’auteur des commits. Si ce n’est pas déjà fait, placez vous dans le répertoire et lancez les commandes suivantes:
 
-[source,bash]
-----
-$ git config user.name "Type in your name"
-$ git config user.email "Type in your email"
-----
+// [source,bash]
+// ----
+// $ git config user.name "Type in your name"
+// $ git config user.email "Type in your email"
+// ----
 
-Et voilà. Passons à la suite.
+// Et voilà. Passons à la suite.
 
-==== Initialisation de NPM
+// ==== Initialisation de NPM
 
-NPM est le gestionnaire de paquets officiel de Node.js. Depuis la version 0.6.3 de Node.js, npm fait partie de l'environnement et est donc automatiquement installé par défaut
+// NPM est le gestionnaire de paquets officiel de Node.js. Depuis la version 0.6.3 de Node.js, npm fait partie de l'environnement et est donc automatiquement installé par défaut
 
-Initialiser votre projet avec Node.js signifie que vous serez en mesure d'installer n'importe quelle librairie publiée sur https://www.npmjs.com/[npmjs.com].
+// Initialiser votre projet avec Node.js signifie que vous serez en mesure d'installer n'importe quelle librairie publiée sur https://www.npmjs.com/[npmjs.com].
 
-Initialisons donc NPM dans notre projet :
+// Initialisons donc NPM dans notre projet :
 
-[source,bash]
-----
-$ npm init
-----
+// [source,bash]
+// ----
+// $ npm init
+// ----
 
-Plusieurs questions vous serons posées et à la fin vous verrez un nouveau fichier `package.json`. Ce fichier détaille les informations de votre projet et les dépendances de celui-ci.
+// Plusieurs questions vous serons posées et à la fin vous verrez un nouveau fichier `package.json`. Ce fichier détaille les informations de votre projet et les dépendances de celui-ci.
 
-[[mise-en-place-de-typescript]]
-==== Mise en place de Typescript [.tag]#todo#
+// [[mise-en-place-de-typescript]]
+// ==== Mise en place de Typescript [.tag]#todo#
 
-Maintenant que nous avons créée nos dossiers, nous somme prêts à mettre en place Typescript.
+// Maintenant que nous avons créée nos dossiers, nous somme prêts à mettre en place Typescript.
 
-Typescript va nous apporter un typage fort et vérifi
+// Typescript va nous apporter un typage fort et vérifi
 
-[source,bash]
-----
-$ npm add typescript @types/node --save-dev
-----
+// [source,bash]
+// ----
+// $ npm add typescript @types/node --save-dev
+// ----
 
-Nous avons ajouté dex librairies :
+// Nous avons ajouté dex librairies :
 
-* `typescript` qui va nous offir les outils de *transpilation* du Typescript vers le Javascript
-* `@types/node` qui va ajouter la définition des types de Node.js
+// * `typescript` qui va nous offir les outils de *transpilation* du Typescript vers le Javascript
+// * `@types/node` qui va ajouter la définition des types de Node.js
 
-Ces deux dépendances sont ajoutées en tant que dépendance de dévelopement car une fois le Typescript transpilé, nous avons besoin uniquement de Node.js pour faire fonctionner notre application.
+// Ces deux dépendances sont ajoutées en tant que dépendance de dévelopement car une fois le Typescript transpilé, nous avons besoin uniquement de Node.js pour faire fonctionner notre application.
 
-Ajoutons donc notre premier fichier Typescript :
+// Ajoutons donc notre premier fichier Typescript :
 
-[source,ts]
-----
-// backend/src/main.ts
+// [source,ts]
+// ----
+// // backend/src/main.ts
 
-function say(message: string): void {
-    console.log(`I said: ${message}`);
-}
+// function say(message: string): void {
+//     console.log(`I said: ${message}`);
+// }
 
-say("Hello");
-----
+// say("Hello");
+// ----
 
-Ce code est vraiment très basique et va juste nous servir a vérifier que la transpilation fonctionne.
+// Ce code est vraiment très basique et va juste nous servir a vérifier que la transpilation fonctionne.
 
-Afin d'utiliser la transpilation de Typescript, nous avons besoin de définir un fichier de configuration `tsconfig.json`. En voici un basique:
+// Afin d'utiliser la transpilation de Typescript, nous avons besoin de définir un fichier de configuration `tsconfig.json`. En voici un basique:
 
-[source,json]
-----
-{
-  "compilerOptions": {
-    "rootDir": "./",
-    "outDir": "dist",
-    "module": "commonjs",
-    "types": ["node"],
-    "target": "es6",
-    "esModuleInterop": true,
-    "lib": ["es6"],
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  }
-}
-----
+// [source,json]
+// ----
+// {
+//   "compilerOptions": {
+//     "rootDir": "./",
+//     "outDir": "dist",
+//     "module": "commonjs",
+//     "types": ["node"],
+//     "target": "es6",
+//     "esModuleInterop": true,
+//     "lib": ["es6"],
+//     "moduleResolution": "node",
+//     "experimentalDecorators": true,
+//     "emitDecoratorMetadata": true
+//   }
+// }
+// ----
 
-Cela fait beaucoup de code mais les deux directives a retenir ici sont: `rootDir` et `outDir`. Elles vont simplement spécifier ou sont les fichiers Typescript (`rootDir`) et ou placer les fichiers Javascript résultants de la transpilation (`outDir`).
+// Cela fait beaucoup de code mais les deux directives a retenir ici sont: `rootDir` et `outDir`. Elles vont simplement spécifier ou sont les fichiers Typescript (`rootDir`) et ou placer les fichiers Javascript résultants de la transpilation (`outDir`).
 
-Dans notre cas je place tous les fichiers Typescript dans le dossier `src` et le résultat de la transpilation dans `dist`.
+// Dans notre cas je place tous les fichiers Typescript dans le dossier `src` et le résultat de la transpilation dans `dist`.
 
-A partir d'ici vous pouvez tester que tout fonctionne en executant la commande suivante :
+// A partir d'ici vous pouvez tester que tout fonctionne en executant la commande suivante :
 
-[source,bash]
-----
-$ ./node_modules/.bin/tsc
-----
+// [source,bash]
+// ----
+// $ ./node_modules/.bin/tsc
+// ----
 
-Vous allez voir apparaitre un fichier `dist/main.js` de cette forme
+// Vous allez voir apparaitre un fichier `dist/main.js` de cette forme
 
-[source,javascript]
-----
-// dist/main.js
-function say(message) {
-    console.log(`I said: ${message}`);
-}
-say("Hello");
-----
+// [source,javascript]
+// ----
+// // dist/main.js
+// function say(message) {
+//     console.log(`I said: ${message}`);
+// }
+// say("Hello");
+// ----
 
-Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
+// Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
 
-[source,json]
-----
-{
-  // ...
-  "scripts": {
-    "start": "tsc && node dist/main.js"
-  },
-  // ...
-}
-----
+// [source,json]
+// ----
+// {
+//   // ...
+//   "scripts": {
+//     "start": "tsc && node dist/main.js"
+//   },
+//   // ...
+// }
+// ----
 
-Et vous pouvez donc maintenant executer le script avec la commande dsuivante:
+// Et vous pouvez donc maintenant executer le script avec la commande dsuivante:
 
-[source,bash]
-----
-$ npm run start
-----
+// [source,bash]
+// ----
+// $ npm run start
+// ----
 
-Maintenant que tout fonctionne il est temps de versionner nos changement. Mais avons d'ajouter tous nos fichiers, il est important de ne pas versionner certains dossier :
+// Maintenant que tout fonctionne il est temps de versionner nos changement. Mais avons d'ajouter tous nos fichiers, il est important de ne pas versionner certains dossier :
 
-* le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
-* le dossier `dist` car il résulte de la transpilation de notre code
+// * le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
+// * le dossier `dist` car il résulte de la transpilation de notre code
 
-Afin de les ignorer, il suffit juste de créer un fichier `backend/.gitignore` avec le contenu suivant :
+// Afin de les ignorer, il suffit juste de créer un fichier `backend/.gitignore` avec le contenu suivant :
 
-....
-node_modules
-dist
-....
+// ....
+// node_modules
+// dist
+// ....
 
-Nous pouvons maintenant mettre ajouter tous nos fichiers avec Git et commiter :
+// Nous pouvons maintenant mettre ajouter tous nos fichiers avec Git et commiter :
 
-[source,bash]
-----
-$ git add .
-$ git commit -m "Setup Typescript for backend"
-----
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Setup Typescript for backend"
+// ----
 
-==== Mise en place du Hot Reload avec Nodemon
+// ==== Mise en place du Hot Reload avec Nodemon
 
-Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se retranspilera et s'executera a chaque fois que notre code change.
+// Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se retranspilera et s'executera a chaque fois que notre code change.
 
-La librairie `Nodemon` va nous offrir cette fonctionalité. Ajoutons la :
+// La librairie `Nodemon` va nous offrir cette fonctionalité. Ajoutons la :
 
-[source,bash]
-----
-$ npm add nodemon --save-dev
-----
+// [source,bash]
+// ----
+// $ npm add nodemon --save-dev
+// ----
 
-Il suffit maintenant de définir un fichier `nodemon.json`
+// Il suffit maintenant de définir un fichier `nodemon.json`
 
-[source,json]
-----
-{
-  "watch": ["src"],
-  "ext": "ts",
-  "ignore": ["src/**/*.spec.ts"],
-  "exec": "tsc && node dist/main"
-}
-----
+// [source,json]
+// ----
+// {
+//   "watch": ["src"],
+//   "ext": "ts",
+//   "ignore": ["src/**/*.spec.ts"],
+//   "exec": "tsc && node dist/main"
+// }
+// ----
 
-Quelques explications s'impose:
+// Quelques explications s'impose:
 
-* `watch` spécifie le dossier dans lequel Nodemon surveillera les changement de fichier
-* `ignore` permet d'éviter le Hot Reload pour certains types de fichiers (ici ce sont les tests que nous verrons plus tard)
-* `exec`, la commande a executer a chaque changement
+// * `watch` spécifie le dossier dans lequel Nodemon surveillera les changement de fichier
+// * `ignore` permet d'éviter le Hot Reload pour certains types de fichiers (ici ce sont les tests que nous verrons plus tard)
+// * `exec`, la commande a executer a chaque changement
 
-Vérifions que tous fonctionne en lançant Nodemon à la main :
+// Vérifions que tous fonctionne en lançant Nodemon à la main :
 
-[source,bash]
-----
-./node_modules/.bin/nodemon
-[nodemon] 2.0.6
-[nodemon] to restart at any time, enter `rs`
-[nodemon] watching path(s): src/**/*
-[nodemon] watching extensions: ts
-[nodemon] starting `tsc && node dist/main`
-I said: Hello
-[nodemon] clean exit - waiting for changes before restart
-----
+// [source,bash]
+// ----
+// ./node_modules/.bin/nodemon
+// [nodemon] 2.0.6
+// [nodemon] to restart at any time, enter `rs`
+// [nodemon] watching path(s): src/**/*
+// [nodemon] watching extensions: ts
+// [nodemon] starting `tsc && node dist/main`
+// I said: Hello
+// [nodemon] clean exit - waiting for changes before restart
+// ----
 
-Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `maint.ts` :
+// Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `maint.ts` :
 
-[source,diff]
-----
-// backend/src/main.ts
+// [source,diff]
+// ----
+// // backend/src/main.ts
 
-function say(message: string): void {
--     console.log(`I said: ${message}`);
-+     console.log(`Nodemon said: ${message}`);
-}
+// function say(message: string): void {
+// -     console.log(`I said: ${message}`);
+// +     console.log(`Nodemon said: ${message}`);
+// }
 
-say("Hello");
-----
+// say("Hello");
+// ----
 
-Lorsque vous allez sauvegarder e fichier, vous allez voir le travail de Nodemon dans le terminal
+// Lorsque vous allez sauvegarder e fichier, vous allez voir le travail de Nodemon dans le terminal
 
-[source,bash]
-----
-[nodemon] restarting due to changes...
-[nodemon] starting `tsc && node dist/main`
-Nodemon said: Hello
-[nodemon] clean exit - waiting for changes before restart
-----
+// [source,bash]
+// ----
+// [nodemon] restarting due to changes...
+// [nodemon] starting `tsc && node dist/main`
+// Nodemon said: Hello
+// [nodemon] clean exit - waiting for changes before restart
+// ----
 
-Maintenant que tout fonctionne, nous pouvons modifier le fichier `package.json` et ajouter la commande `nodemon`:
+// Maintenant que tout fonctionne, nous pouvons modifier le fichier `package.json` et ajouter la commande `nodemon`:
 
-[source,json]
-----
-{
-  // ...
-  "scripts": {
-    "start": "tsc && node dist/main.js",
-    "start:watch": "nodemon"
-  },
-  // ...
-}
-----
+// [source,json]
+// ----
+// {
+//   // ...
+//   "scripts": {
+//     "start": "tsc && node dist/main.js",
+//     "start:watch": "nodemon"
+//   },
+//   // ...
+// }
+// ----
 
-Nous pouvons maintenant commiter les changements :
+// Nous pouvons maintenant commiter les changements :
 
-[source,bash]
-----
-$ git add .
-$ git commit -m "Setup Nodemon"
-----
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Setup Nodemon"
+// ----
 
-==== Mise en place du serveur web
+// ==== Mise en place du serveur web
 
-Jusqu'ici nous avons mis en place un environnement qui va nous permettre d'éviter les erreurs de syntaxe et de typage automatiquement avec Typescript. Il est temps d'enfin faire une vrai fonctionnalité: le serveur web.
+// Jusqu'ici nous avons mis en place un environnement qui va nous permettre d'éviter les erreurs de syntaxe et de typage automatiquement avec Typescript. Il est temps d'enfin faire une vrai fonctionnalité: le serveur web.
 
-Il existe plusieurs bibliothèque pour faire un serveur web avec Node.js. Dans mon cas je recommande https://expressjs.com/fr/[Express.js] tout simplement car c'est celle qui a une plus grosse communauté et elle offre des fonctionnalités basique. Elle vous laisse aussi la liberté d'organiser votre code comme vous le souhaitez tout en offrant une tonne de plugin pour rajouter des fonctionnalités par dessus.
+// Il existe plusieurs bibliothèque pour faire un serveur web avec Node.js. Dans mon cas je recommande https://expressjs.com/fr/[Express.js] tout simplement car c'est celle qui a une plus grosse communauté et elle offre des fonctionnalités basique. Elle vous laisse aussi la liberté d'organiser votre code comme vous le souhaitez tout en offrant une tonne de plugin pour rajouter des fonctionnalités par dessus.
 
-Pour l'ajouter c'est très facile:
+// Pour l'ajouter c'est très facile:
 
-[source,bash]
-----
-$ npm add express --save
-----
+// [source,bash]
+// ----
+// $ npm add express --save
+// ----
 
-On va aussi ajouter les typages Typescript qui vont aider un peu votre editeur de code :
+// On va aussi ajouter les typages Typescript qui vont aider un peu votre editeur de code :
 
-[source,bash]
-----
-$ npm add @types/express --save-dev
-----
+// [source,bash]
+// ----
+// $ npm add @types/express --save-dev
+// ----
 
-Et maintenant nous pouvons instancier notre serveur dans le fichier `main.ts`
+// Et maintenant nous pouvons instancier notre serveur dans le fichier `main.ts`
 
-[source,ts]
-----
-// backend/src/main.ts
-import express, { Request, Response } from "express";
+// [source,ts]
+// ----
+// // backend/src/main.ts
+// import express, { Request, Response } from "express";
 
-const app = express();
-const port = 3000;
+// const app = express();
+// const port = 3000;
 
-app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
+// app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
 
-app.listen(port, () =>
-  console.log(`Server listen on http://localhost:${port}/`)
-);
-----
+// app.listen(port, () =>
+//   console.log(`Server listen on http://localhost:${port}/`)
+// );
+// ----
 
-Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `npm run start:watch` et vous allez avoir le résultat suivant :
+// Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `npm run start:watch` et vous allez avoir le résultat suivant :
 
-....
-[nodemon] restarting due to changes...
-[nodemon] starting `tsc && node dist/main`
-Server listen on http://localhost:3000/
-....
-
-Vous pouvez donc ouvrir votre navigateur a l'adresse http://localhost:3000 et voir que tout fonctionne. Voici ici le résultat en utilisant `curl`:
-
-[source,bash]
-----
-$ curl http://localhost:3000
-Hello World!
-----
-
-Maintenant que tout fonctionne, commitons les changements:
-
-[source,bash]
-----
-$ git commit -am "Add express.js server"
-----
-
-[[mise-en-place-de-linjection-de-dépendance]]
-==== Mise en place de l'injection de dépendance [.tag]#todo#
-
-Dans cette section nous allons mettre en place un Logger des requêtes HTTP. Nous allons mettre en place ce logger sous forme de service.
-
-L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
-
-Inversify permet de mettre tout cela en place très facilement. Cette bibliothèque propose aussi une extension pour créer des controlleurs très facilement avec des décorateurs Typescript.
-
-Les controlleurs font partis du patern *MVC: Modèle, Vue, Contrôlleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
-
-Installons donc `inversify` et `inversify-express-utils` en suivant https://github.com/inversify/inversify-express-utils[la documentation officielle].
-
-[source,bash]
-----
-$ npm install inversify inversify-express-utils reflect-metadata --save
-----
-
-On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
-
-[source,bash]
-----
-$ npm install body-parser
-----
-
-. Le logger
-+
-Commençons par un service tout simple: Un logger.
-+
-On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
-+
-[source,ts]
-----
-import { injectable } from "inversify";
-
-@injectable()
-export class Logger {
-  public log(
-    level: "DEBUG" | "INFO" | "ERROR" | "WARNING",
-    message: string,
-    meta: any = {}
-  ): void {
-    const dateStr = new Date().toISOString();
-    const metaStr = JSON.stringify(meta);
-    console.log(`${dateStr} - ${level} - ${message} - ${metaStr}`);
-  }
-}
-----
-+
-La classe en elle même est vraiment très simple. La chose a noter ici est la précence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse etre injecté dans nos futures dépendences.
-. Le container
-+
-Maintenant que nous avons crée notre service. Il nous suffit de créer le container et de lui ajouter ce service. Un container est en faite un registre de tous les services injectables dans notre application.
-+
-Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. Cette methode va prendre en paramètre un `Symbol`. Un symbole est un type qui permet d'avoir une référence unique. On va donc stocker ces symboles dans un object comme ceci
-+
-[source,ts]
-----
-// backend/src/core/types.core.ts
-export const TYPES = {
-  Logger: Symbol.for("Logger"),
-};
-----
-+
-Cet objet nous permettra de retrouver les `Symbol`. Nous allons utiliser ce symbole pour enregistrer notre service :
-+
-[source,ts]
-----
-// backend/src/core/container.core.ts
-import { Container } from "inversify";
-import { Logger } from "../services/logger.service";
-import { TYPES } from "./types.core";
-
-export const container = new Container();
-container.bind(TYPES.Logger).to(Logger);
-----
-+
-Comme vous les voyez, nos ajoutons notre class `Logger` sous le symbole `Logger`.
-+
-Passons maintenant à la suite pour voir à quoi va nous servire ce `container`.
-. Le contrôlleur
-+
-Le controlleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce controleur comme `@injectable` mais aussi nos offrir des fonctionalités spéciales.
-+
-Nous allons injecter le logger dans le constructeur a l'aide du décorateur `@inject`. Voici l'implémentation :
-+
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-import { controller, httpGet } from "inversify-express-utils";
-import { TYPES } from "../core/container.core";
-import { Logger } from "../services/logger.service";
-
-@controller("/")
-export class HomeController {
-  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
-
-  @httpGet("")
-  public index(req: Request, res: Response) {
-    this.logger.log("INFO", "Get Home.index");
-    return res.send("Hello world");
-  }
-}
-----
-+
-Notez aussi le décorateur `@httpGet` qui va définir la route de cette action automatiquement.
-+
-Et il faut maintenant importer ce controlleur dans le container que nous avons définis précédement. C'est vraiment très simple à faire :
-+
-[source,diff]
-----
-// backend/src/core/container.core.ts
-import { Container } from "inversify";
-+ import "../controllers/home.controller";
-import "../controllers/users.controller";
+// ....
+// [nodemon] restarting due to changes...
+// [nodemon] starting `tsc && node dist/main`
+// Server listen on http://localhost:3000/
+// ....
+
+// Vous pouvez donc ouvrir votre navigateur a l'adresse http://localhost:3000 et voir que tout fonctionne. Voici ici le résultat en utilisant `curl`:
+
+// [source,bash]
+// ----
+// $ curl http://localhost:3000
+// Hello World!
+// ----
+
+// Maintenant que tout fonctionne, commitons les changements:
+
+// [source,bash]
+// ----
+// $ git commit -am "Add express.js server"
+// ----
+
+// [[mise-en-place-de-linjection-de-dépendance]]
+// ==== Mise en place de l'injection de dépendance [.tag]#todo#
+
+// Dans cette section nous allons mettre en place un Logger des requêtes HTTP. Nous allons mettre en place ce logger sous forme de service.
+
+// L'idée sera donc de modifier notre actuel et de créer deux nouvelles classes:
+
+// Inversify permet de mettre tout cela en place très facilement. Cette bibliothèque propose aussi une extension pour créer des controlleurs très facilement avec des décorateurs Typescript.
+
+// Les controlleurs font partis du patern *MVC: Modèle, Vue, Contrôlleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés.
+
+// Installons donc `inversify` et `inversify-express-utils` en suivant https://github.com/inversify/inversify-express-utils[la documentation officielle].
+
+// [source,bash]
+// ----
+// $ npm install inversify inversify-express-utils reflect-metadata --save
+// ----
+
+// On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
+
+// [source,bash]
+// ----
+// $ npm install body-parser
+// ----
+
+// . Le logger
+// +
+// Commençons par un service tout simple: Un logger.
+// +
+// On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
+// +
+// [source,ts]
+// ----
+// import { injectable } from "inversify";
+
+// @injectable()
+// export class Logger {
+//   public log(
+//     level: "DEBUG" | "INFO" | "ERROR" | "WARNING",
+//     message: string,
+//     meta: any = {}
+//   ): void {
+//     const dateStr = new Date().toISOString();
+//     const metaStr = JSON.stringify(meta);
+//     console.log(`${dateStr} - ${level} - ${message} - ${metaStr}`);
+//   }
+// }
+// ----
+// +
+// La classe en elle même est vraiment très simple. La chose a noter ici est la précence d'un décorateur `injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse etre injecté dans nos futures dépendences.
+// . Le container
+// +
+// Maintenant que nous avons crée notre service. Il nous suffit de créer le container et de lui ajouter ce service. Un container est en faite un registre de tous les services injectables dans notre application.
+// +
+// Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. Cette methode va prendre en paramètre un `Symbol`. Un symbole est un type qui permet d'avoir une référence unique. On va donc stocker ces symboles dans un object comme ceci
+// +
+// [source,ts]
+// ----
+// // backend/src/core/types.core.ts
+// export const TYPES = {
+//   Logger: Symbol.for("Logger"),
+// };
+// ----
+// +
+// Cet objet nous permettra de retrouver les `Symbol`. Nous allons utiliser ce symbole pour enregistrer notre service :
+// +
+// [source,ts]
+// ----
+// // backend/src/core/container.core.ts
+// import { Container } from "inversify";
+// import { Logger } from "../services/logger.service";
+// import { TYPES } from "./types.core";
+
+// export const container = new Container();
+// container.bind(TYPES.Logger).to(Logger);
+// ----
+// +
+// Comme vous les voyez, nos ajoutons notre class `Logger` sous le symbole `Logger`.
+// +
+// Passons maintenant à la suite pour voir à quoi va nous servire ce `container`.
+// . Le contrôlleur
+// +
+// Le controlleur utilisera le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce controleur comme `@injectable` mais aussi nos offrir des fonctionalités spéciales.
+// +
+// Nous allons injecter le logger dans le constructeur a l'aide du décorateur `@inject`. Voici l'implémentation :
+// +
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// import { controller, httpGet } from "inversify-express-utils";
+// import { TYPES } from "../core/container.core";
+// import { Logger } from "../services/logger.service";
+
+// @controller("/")
+// export class HomeController {
+//   public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+//   @httpGet("")
+//   public index(req: Request, res: Response) {
+//     this.logger.log("INFO", "Get Home.index");
+//     return res.send("Hello world");
+//   }
+// }
+// ----
+// +
+// Notez aussi le décorateur `@httpGet` qui va définir la route de cette action automatiquement.
+// +
+// Et il faut maintenant importer ce controlleur dans le container que nous avons définis précédement. C'est vraiment très simple à faire :
+// +
+// [source,diff]
+// ----
+// // backend/src/core/container.core.ts
+// import { Container } from "inversify";
+// + import "../controllers/home.controller";
+// import "../controllers/users.controller";
+// // ...
+// ----
+// . Le script
+// +
+// Maitenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
+// +
+// [source,ts]
+// ----
+// // backend/src/main.ts
+// import "reflect-metadata";
+
+// import { InversifyExpressServer } from "inversify-express-utils";
+// import { container } from "./core/container.core";
+// import * as bodyParser from "body-parser";
+
+// const port = 3000;
+
+// const server = new InversifyExpressServer(container);
+
+// server.setConfig((app) => {
+//   app.use(bodyParser.urlencoded({ extended: true }));
+//   app.use(bodyParser.json());
+// });
+
+// const app = server.build();
+// app.listen(port, () =>
+//   console.log(`Server listen on http://localhost:${port}/`)
+// );
+// ----
+// +
+// Cela fait beaucoup de changements. Voici quelques explications :
+// .. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
+// .. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
+// .. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
+// +
+// Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
+// +
+// Si tout fonctionne comme avant, vous pouvez commiter les changements :
+// +
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Add inversify"
+// ----
+
+// === Conclusion
+
+// Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.
+
+// == L'API
+
+// Dans ce chapitre, je vais vous donner les grandes lignes de l’application. Vous devriez avoir lu le chapitre précédent. Si ce n’est pas le cas, je vous recommande de le faire.
+
+// === Planification de l’application
+
+// Notre application sera assez simple. Elle se composera de cinq modèles. Ne vous inquiétez pas si vous ne comprenez pas bien ce qui se passe, nous reverrons et développerons chacune de ces ressources au fur et à mesure que nous avancerons avec le tutoriel.
+
+// En bref, nous avons l’utilisateur (`User`) qui sera en mesure de passer de nombreuses commandes (`Order`), ajouter de multiples produits (`Product`) qui peuvent avoir de nombreuses images (`Image`) ou commentaires (`Comment`) d’autres utilisateurs sur l’application.
+
+// Nous n’allons pas construire d’interface pour l’interaction avec l’API afin de ne pas surcharger le tutoriel. Si vous voulez construire des vues, il existe de nombreuses options comme des frameworks JavaScript (https://angular.io/[Angular], https://vuejs.org/[Vue.js], https://reactjs.org/[React.js]) ou des librairies mobiles.
+
+// À ce stade, vous devriez vous poser cette question:
+
+// ____
+// D’accord, mais j’ai besoin d’explorer et de visualiser l’API que je vais construire, non?
+// ____
+
+// C’est juste. Si vous googlez quelque chose lié à l’exploration d’une API, vous allez trouver pas mal de résultats. Vous pouvez par exemple utiliser https://www.postman.com/[Postman] qui est devenu incontournable. Mais nous n’allons pas l’utiliser. Dans notre cas nous allons utiliser `cURL` qui est un outil en ligne de commande disponible presque partout.
+
+// === Mise en place de l'API
+
+// Une API est définie par https://fr.wikipedia.org/wiki/Interface_de_programmation[Wikipedia] comme une interface de programmation d’application (API) qui est un ensemble normalisé de composants qui sert de façade par laquelle un logiciel offre des services à d’autres logiciels. En d’autres termes, il s’agit d’une façon dont les systèmes interagissent les uns avec les autres via une interface (dans notre cas un service web construit avec JSON). Il existe d’autres types de protocoles de communication comme SOAP, mais nous n’en parlons pas ici.
+
+// JSON est devenu incontournable en tant que format de fichier pour Internet en raison de sa lisibilité, de son extensibilité et de sa facilité à mettre en œuvre. Nous allons donc utiliser ce format pour construire notre API. La première idée qui pourrait vous venir à l’esprit serait de commencer à créer des routes en vrac. Le problème est qu’elles ne seraient pas normalisées. Un utilisateur ne pourrait pas deviner quelle ressource est renvoyée par une route.
+
+// C’est pourquoi une norme existe: REST (Representational State Transfer). REST impose une norme pour les routes qui créent, lisent, mettent à jour ou suppriment des informations sur un serveur en utilisant de simples appels HTTP. C’est une alternative aux mécanismes plus complexes comme SOAP, CORBA et RPC. Un appel REST est simplement une requête GET HTTP vers le serveur.
+
+// Les API RESTful doivent suivre au minimum trois règles:
+
+// * Une URI de base comme `http://example.com/resources/`
+// * Un type de média Internet pour représenter les données, il est communément JSON et est communément défini par l’échange d’en-têtes.
+// * Suivre les méthodes HTTP standard telles :
+// +
+// `GET`::
+//   Lit la ou les ressources définies par le modèle URI
+// `POST`::
+//   Crée une nouvelle entrée dans la collection de ressources
+// `PUT`::
+//   Met à jour une collection ou un membre des ressources
+// `DELETE`::
+//   Détruit une collection ou un membre des ressources
+
+// Cela peut sembler compliqué mais au fur et à mesure que nous avancerons dans le tutoriel cela deviendra beaucoup plus facile à comprendre.
+
+// === Conclusion
+
+// Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.
+
+// Je n’en parle pas ici puisque nous essayons d’apprendre comment mettre en œuvre ce genre de fonctionnalité.
+
+// == Gestion des utilisateurs
+
+// Dans cette section nous allons mettre en place la gestion des utilisateurs. Par "gestion" j'entends les actions CRUD classiques (Create, Read, Update, Delete).
+
+
+// === Mise en place de TypeORM
+
+// Afin d'accder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main.
+
+// Il existe plusieurs ORM pour Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] et https://typeorm.io/[TypeORM]. J'ai choisis le dernier car c'est celui qui s'intègre le mieux avec Typescript.
+
+// Il propose aussi une approche https://typeorm.io/#/active-record-data-mapper[Active Record ET Data Mapper].
+
+// [source,bash]
+// ----
+// $ npm add typeorm sqlite3 --save
+// ----
+
+// Créer un fichier de configuration appelé `ormconfig.json`
+
+// [source,json]
+// ----
+// {
+//    "type": "sqlite",
+//    "database": "development.sqlite",
+//    "synchronize": true,
+//    "logging": true,
+//    "entities": ["dist/entities/*.js"]
+// }
+// ----
+
+// Nous allons maintenant créer un service `DatabaseService` qu va s'occuper de connecter TypeORM à notre base de données. Voici donc la classe.
+
+// Voici l'implémentation complète. Pas de panique, je vous détaille la logique ensuite.
+
+// [source,ts]
+// ----
+// // backend/src/services/database.service.ts
+// import { inject, injectable } from "inversify";
+// import { Connection, createConnection, ObjectType } from "typeorm";
+// import { TYPES } from "../core/types.core";
+// import { Logger } from "./logger.service";
+
+// @injectable()
+// export class DatabaseService {
+//   private static connection: Connection;
+
+//   public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+//   public async getConnection(): Promise<Connection> {
+//     if (DatabaseService.connection instanceof Connection) {
+//       return DatabaseService.connection;
+//     }
+
+//     try {
+//       DatabaseService.connection = await createConnection();
+//       this.logger.log("INFO", `Connection established`);
+//     } catch (e) {
+//       this.logger.log("ERROR", "Cannot establish database connection", e);
+//       process.exit(1);
+//     }
+
+//     return DatabaseService.connection;
+//   }
+
+//   public async getRepository<T>(repository: ObjectType<T>): Promise<T> {
+//     const connection = await this.getConnection();
+//     return await connection.getCustomRepository<T>(repository);
+//   }
+// }
+// ----
+
+// Cette classe possède deux méthodes :
+
+// `getConnection`::
+//   cette méthode va initialiser une nouvelle connection à la base de données. Celle-ci va appeler la méthode `createConnection` qui va chercher https://typeorm.io/#/using-ormconfig[un fichier de ormconfig] (dans notre cas au format JSON) et établir une connection. Une fois la connection effectuée, elle est stoquée dans une propriété statique qui sera retournée directement la prochaine fois
+// `getRepository`::
+//   cette méthode va nous permettre de manipuler nos modèles via les repository. Nous en parlerons en détails plus loin
+
+// J'aimerais aussi aujouter que c'est une bonne pratique de cacher la logique de la librairie par nos propres classe. Cela nous permettrai de moi dépendre de la librairie et de pouvoir migrer plus facilement si un jours nous souhaiterions changer.
+
+// Maintenant que notre service est créé, il faut l'ajouter à notre container :
+
+// [source,diff]
+// ----
+// // backend/src/core/types.core.ts
+// export const TYPES = {
+//   Logger: Symbol.for("Logger"),
+// +  DatabaseService: Symbol.for("DatabaseService"),
+// };
+// ----
+
+// [source,diff]
+// ----
+// // backend/src/core/container.core.ts
+// import { Container } from "inversify";
+// import "../controllers/home.controller";
+// + import { DatabaseService } from "../services/database.service";
+// import { Logger } from "../services/logger.service";
+// import { TYPES } from "./types.core";
+
+// export const container = new Container();
+// container.bind(TYPES.Logger).to(Logger);
+// + container.bind(TYPES.DatabaseService).to(DatabaseService);
+// ----
+
+// Et voilà.
+
+// Nous pouvons maintenant créer notre premier modèle `User`. En utilisant le patern Data Mapper il va falloir créer deux classe :
+
+// l'`entity`::
+//   elle va définir les attributs des champs à sauvegarder dans la base de donnée. Dans notre cas, je vais simplement créer deux attributs: `email` et `password` (le mot de passe sera chifrée plus tards).
+// le `repository`::
+//   elle va ajouter certaines logiques pour sauvegarder nos entités.
+
+// Afin de simplifier l'exemple, je vais mettre ces deux classes dans le même fichier mais vous pouvez très bien les séparer :
+
+// [source,ts]
+// ----
+// // backend/src/entities/user.entity.ts
+// import {
+//   Column,
+//   Entity,
+//   EntityRepository,
+//   PrimaryGeneratedColumn,
+//   Repository,
+// } from "typeorm";
+
+// @Entity()
+// export class User {
+//   @PrimaryGeneratedColumn()
+//   id: number;
+
+//   @Column({ unique: true })
+//   email: string;
+
+//   @Column()
+//   password: string;
+// }
+
+// @EntityRepository(User)
+// export class UserRepository extends Repository<User> {}
+// ----
+
+// Et voilà. Le résultat est vraiment très simple gràce aux décorateurs `@columns` proposées par TypeORM. Ceux-ci peuvent aussi définir le type d'information a stocker (Tex te, date, etc..). L'implémentation de ce modèle est suffisante pour le moment.
+
+// Pour l'instant notre travail n'est pas très visible mais tenez bon car vous allez voir le résultat dans la prochaine section.
+
+// Nous pouvons commiter les changements effectuées jusqu'à maintenant:
+
+// [source,bash]
+// ----
+// $ git add .
+// $ git commit -m "Setup TypeORM"
+// ----
+
+// // -- current
+
+// === Création des actions CRUD
+
+// ==== Lister les utilisateurs
+
+// Il ne nous reste plus que a ajouter notre controlleur pour les utilisateurs que nous allons remplir au fur et à mesure. Je vais néanmoins commencer par la méthode `index` qui est la plus simple.
+
+// Comme nous l'avons vu plutôt, les controlleurs peuvent injecter nos services. Nous allons donc injecter le `DatabaseService` afin de pouvoir récupérer le `UserRepository`. Il suffira ensuite d'appeler la méthode `userRepository.find` afin de récuperer la liste de tous les utilisateus (qui est vide pour le moment).
+
+// Voici l'implémentation de notre controlleur:
+
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// import { Request, Response } from "express";
+// import { inject } from "inversify";
+// import { controller, httpGet } from "inversify-express-utils";
+// import { TYPES } from "../core/types.core";
+// import { UserRepository } from "../entities/user.entity";
+// import { DatabaseService } from "../services/database.service";
+
+// @controller("/users")
+// export class UsersController {
+//   public constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {}
+
+//   @httpGet("/")
+//   public async index(req: Request, res: Response) {
+//     const userRepository = await this.databaseService.getRepository(UserRepository);
+
+//     const users = await userRepository.find();
+//     return res.json(users);
+//   }
+// }
+// ----
+
+// Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau controlleur dans le container :
+
+// [source,diff]
+// ----
+// // backend/src/core/container.core.ts
+// import { Container } from "inversify";
+// import "../controllers/home.controller";
+// + import "../controllers/users.controller";
+// import { DatabaseService } from "../services/database.service";
+// import { Logger } from "../services/logger.service";
+// // ...
+// ----
+
+// Et voilà. Lancez la commande `npm run start:watch` pour démarrer le serveur si vous l'avez arrêté et testons la focntionalité avec `cURL` :
+
+// [source,bash]
+// ----
+// $ curl http://localhost:3000/users
+// ----
+
+// Le retour de la commande nous indique un tableau vide: c'est normal car il n'y a pas encore d'utilisateur. En revanche, le terminal du serveur nous indique qu'il s'est passé beaucoup de chose:
+
+// ....
+// query: BEGIN TRANSACTION
+// query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" IN ('user')
+// query: SELECT * FROM "sqlite_master" WHERE "type" = 'index' AND "tbl_name" IN ('user')
+// query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" = 'typeorm_metadata'
+// query: CREATE TABLE "user" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "email" varchar NOT NULL, "password" varchar NOT NULL)
+// query: COMMIT
+// 2020-11-15T22:09:25.476Z - INFO - Connection established - {}
+// query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User"
+// ....
+
+// Il s'agit des logs de TypeORM. Ceux-ci nous indiquent que:
+
+// . TypeORM a essayé de voir s'il existait une table nomée `user`
+// . TypeORM a crée cette table puisqu'elle n'existait pas
+// . la connexion a la base de données été établie
+// . La requête SQL pour retrouver tous les utilisateurs a été executée
+
+// Cela nous indique que tout fonctionne parfaitement ! Mais je vous sent un peu déçu car nous n'avons pas encore d'utilisateur. Passons à la suite !
+
+// ==== Create
+
+// Maintenant que toute notre structure a été mise en place, la suite va aller beaucoup plus vite. Passons directement à l'implémentation et je fous explique le code ensuite
+
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// // ...
+// import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
+// // ...
+
+// interface CreateUserBody {
+//   email: string;
+//   password: string;
+// }
+
+// @controller("/users")
+// export class UsersController {
+//   // ...
+
+//   @httpPost("/")
+//   public async create(@requestBody() body: CreateUserBody, req: Request, res: Response): Promise<User> {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     const user = new User();
+//     user.email = body.email;
+//     user.password = body.password;
+//     return repository.save(user);
+// }
+// ----
+
+// Cela fait un peut de code mais pas de panique. `CreateUserBody` est une interface qui définie les paramètres HTTP qui peuvent être reçu. Nous prenons ces paramètres et nous les envoyons directement au `repository`.
+
+// Testons que tout cela fonctionne :
+
+// [source,bash]
+// ----
+// $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
+// {"email":"test@test.fr","password":"test","id":1
+// ----
+
+// Parfait. On voit que tout fonctionne correctement!
+
+// Passons à la suite pour récupérer les information de cet utilisateur.
+
+// ==== Show
+
+// La méthode `show` va s'occuper de retrouver les informations d'un utilisateur. Cette méthode va prendre l'identifiant de l'utilisateur. On va ensuite utiliser le `repository` pour récupérer l'utilisateur.
+
+// Voici l'implémentation :
+
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// // ...
+
+// @controller("/users")
+// export class UsersController {
+//   // ...
+//   @httpGet("/:userId")
+//   public async show(
+//     @requestParam("userId") userId: number,
+//     req: Request,
+//     res: Response
+//   ): Promise<User> {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     return repository.findOneOrFail(userId);
+//   }
+// }
+// ----
+
+// L'implémentation est vraiment très simple. Il faut simplement retourner un objet et `inversify-express-utils` va s'occuper de convertir l'objet JavaScript en JSON.
+
+// Essayons pour voir:
+
+// [source,bash]
+// ----
+// $ œcurl http://localhost:3000/users/1
+// {"id":1,"email":"test@test.fr","password":"test"}
+// ----
+
+// Et voilà. Tous fonctionne correctement. Essayons maintenant de modifier cet utilisateur.
+
+// ==== Update
+
+// La méthode `update` va s'occuper de récupérer, modifier et enregistrer l'utilisateur. Comme pour la méthode précédente, TypeORM nous facilite beaucoup la tâche :
+
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// // ...
+// interface UpdateUserBody {
+//   email: string;
+//   password: string;
+// }
+
+// @controller("/users")
+// export class UsersController {
+//   // ...
+//   @httpPut("/:userId")
+//   public async update(
+//     @requestBody() body: UpdateUserBody,
+//     @requestParam("userId") userId: number,
+//     req: Request,
+//     res: Response
+//   ): Promise<User> {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     const user = await repository.findOneOrFail(userId);
+//     user.email = body.email ?? user.email;
+//     user.password = body.password ?? user.password;
+//     return repository.save(user);
+//   }
+//   // ...
+// }
+// ----
+
+// Et voilà. Comme tout à l'heure, essayons de voir si cela fonctionne :
+
+// [source,bash]
+// ----
+// $ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
+// {"id":1,"email":"foo@bar.com","password":"test"}
+// ----
+
+// Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que Type ORM a effectué dans les logs du terminal
+
+// [source,sql]
+// ----
+// query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: [1]
+// query: BEGIN TRANSACTION
+// query: UPDATE "user" SET "email" = ? WHERE "id" IN (?) -- PARAMETERS: ["foo@bar.com",1]
+// query: COMMIT
+// ----
+
+// Passons maintenant à la dernière méthode du controlleur.
+
+// ==== Delete
+
+// La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur et d'appeler la méthode `repository.delete`. Allez c'est parti :
+
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// // ...
+
+// @controller("/users")
+// export class UsersController {
+//   // ...
+//   @httpDelete("/:userId")
+//   public async destroy(@requestParam("userId") userId: number) {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     const user = await repository.findOneOrFail(userId);
+//     repository.delete(user);
+//   }
+// }
+// ----
+
+// Et voilà. Nous pouvons aussi tester cette méthode :
+
+// [source,bash]
+// ----
+// $ curl -X DELETE  http://localhost:3000/users/1
+// ----
+
+// Ici encore, nous pouvons vérifier que l'utilisateur a bien été supprimé en regardant les logs de TypeORM :
+
+// [source,sql]
+// ----
+// query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: ["1"]
+// query: DELETE FROM "user" WHERE "id" = ? AND "email" = ? AND "password" = ? -- PARAMETERS: [1,"foo@bar.com","test"]
+// ----
+
+// Et voilà. Maintenant que nous arrivons à la fin de de notre controlleur, nous pouvons commiter tous ces changements:
+
+// [source,bash]
+// ----
+// $ git commit -am "Implement CRUD actions on user"
+// ----
+
+// === Validation de nos utilisateurs
+
+// Tout semble fonctionner mais il rest une problème: nous ne validons pas les données que nous insérons en base. Ainsi, il est possible de créer un utilisateur avec un email faux :
+
+// ....
+// $ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
+// ....
+
+// Encore une fois, nous allons avoir recours a une librairie toute faite: `class-validator`. Cette librairie va nous offrir https://github.com/typestack/class-validator/#table-of-contents[une tonne de décorateurs] pour vérifier très facilement notre instance `User`.
+
+// Installons la avec NPM :
+
+// ....
+// $ npm install class-validator --save
+// ....
+
+// Et il suffit ensuite d'ajouter les décorateurs `@IsEmail` et `@IsDefined` comme ceci :
+
+// [source,diff]
+// ----
+// // backend/src/entities/user.entity.ts
+// + import { IsDefined, IsEmail, validateOrReject } from "class-validator";
+// import {
+// +  BeforeInsert,
+// +  BeforeUpdate,
+//   Column,
+//   Entity,
+//   EntityRepository,
+//   PrimaryGeneratedColumn,
+//   Repository,
+// } from "typeorm";
+
+// @Entity()
+// export class User {
+//   @PrimaryGeneratedColumn()
+//   id: number;
+
+// +  @IsDefined()
+// +  @IsEmail()
+//   @Column()
+//   email: string;
+
+//   // TODO: hash password
+// +  @IsDefined()
+//   @Column()
+//   password: string;
+
+// +  @BeforeInsert()
+// +  @BeforeUpdate()
+// +  async validate() {
+// +    await validateOrReject(this);
+// +  }
+// }
+// // ...
+// ----
+
+// Il n'a pas fallu beaucoup de code a ajouter. La partie la plus intéressante est la méthode `validate`. Elle possède deux décorateurs `BeforeInsert` et `BeforeUpdate` qui vont permettre d'appeler automatiquement la méthode `validate` lorsqu'on utilise la méthode `save` d'un repository. C'est très pratique et il n'y a rien a faire. Essayons maintenant de créer le même utilisateur avec l'email erroné :
+
+// [source,bash]
+// ----
+// $ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
 // ...
-----
-. Le script
-+
-Maitenant que tout est prêt, il ne nous reste plus qu'à modifier notre fichier pour démarrer l'application. Pour ceci il suffit de https://github.com/inversify/inversify-express-utils[suivre la documentation]. `inversify-express-utils` nous facilite vraiment la tâche :
-+
-[source,ts]
-----
-// backend/src/main.ts
-import "reflect-metadata";
-
-import { InversifyExpressServer } from "inversify-express-utils";
-import { container } from "./core/container.core";
-import * as bodyParser from "body-parser";
-
-const port = 3000;
-
-const server = new InversifyExpressServer(container);
-
-server.setConfig((app) => {
-  app.use(bodyParser.urlencoded({ extended: true }));
-  app.use(bodyParser.json());
-});
-
-const app = server.build();
-app.listen(port, () =>
-  console.log(`Server listen on http://localhost:${port}/`)
-);
-----
-+
-Cela fait beaucoup de changements. Voici quelques explications :
-.. `import "reflet-metadata"` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
-.. Nous utilisons maintenant la classe `InversifyExpressServer` au lieu de `expressjs` directement. Cela va nous permettre de ne pas avoir à définir les routes nous mêmes.
-.. nous utilisons la méthode `app.setConfig` pour définir tous nos Middleware. Pour l'instant, nous n'avons que `bodyParser`.
-+
-Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
-+
-Si tout fonctionne comme avant, vous pouvez commiter les changements :
-+
-[source,bash]
-----
-$ git add .
-$ git commit -m "Add inversify"
-----
-
-=== Conclusion
-
-Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.
-
-== L'API
-
-Dans ce chapitre, je vais vous donner les grandes lignes de l’application. Vous devriez avoir lu le chapitre précédent. Si ce n’est pas le cas, je vous recommande de le faire.
-
-=== Planification de l’application
-
-Notre application sera assez simple. Elle se composera de cinq modèles. Ne vous inquiétez pas si vous ne comprenez pas bien ce qui se passe, nous reverrons et développerons chacune de ces ressources au fur et à mesure que nous avancerons avec le tutoriel.
-
-En bref, nous avons l’utilisateur (`User`) qui sera en mesure de passer de nombreuses commandes (`Order`), ajouter de multiples produits (`Product`) qui peuvent avoir de nombreuses images (`Image`) ou commentaires (`Comment`) d’autres utilisateurs sur l’application.
-
-Nous n’allons pas construire d’interface pour l’interaction avec l’API afin de ne pas surcharger le tutoriel. Si vous voulez construire des vues, il existe de nombreuses options comme des frameworks JavaScript (https://angular.io/[Angular], https://vuejs.org/[Vue.js], https://reactjs.org/[React.js]) ou des librairies mobiles.
-
-À ce stade, vous devriez vous poser cette question:
-
-____
-D’accord, mais j’ai besoin d’explorer et de visualiser l’API que je vais construire, non?
-____
-
-C’est juste. Si vous googlez quelque chose lié à l’exploration d’une API, vous allez trouver pas mal de résultats. Vous pouvez par exemple utiliser https://www.postman.com/[Postman] qui est devenu incontournable. Mais nous n’allons pas l’utiliser. Dans notre cas nous allons utiliser `cURL` qui est un outil en ligne de commande disponible presque partout.
-
-=== Mise en place de l'API
-
-Une API est définie par https://fr.wikipedia.org/wiki/Interface_de_programmation[Wikipedia] comme une interface de programmation d’application (API) qui est un ensemble normalisé de composants qui sert de façade par laquelle un logiciel offre des services à d’autres logiciels. En d’autres termes, il s’agit d’une façon dont les systèmes interagissent les uns avec les autres via une interface (dans notre cas un service web construit avec JSON). Il existe d’autres types de protocoles de communication comme SOAP, mais nous n’en parlons pas ici.
-
-JSON est devenu incontournable en tant que format de fichier pour Internet en raison de sa lisibilité, de son extensibilité et de sa facilité à mettre en œuvre. Nous allons donc utiliser ce format pour construire notre API. La première idée qui pourrait vous venir à l’esprit serait de commencer à créer des routes en vrac. Le problème est qu’elles ne seraient pas normalisées. Un utilisateur ne pourrait pas deviner quelle ressource est renvoyée par une route.
-
-C’est pourquoi une norme existe: REST (Representational State Transfer). REST impose une norme pour les routes qui créent, lisent, mettent à jour ou suppriment des informations sur un serveur en utilisant de simples appels HTTP. C’est une alternative aux mécanismes plus complexes comme SOAP, CORBA et RPC. Un appel REST est simplement une requête GET HTTP vers le serveur.
-
-Les API RESTful doivent suivre au minimum trois règles:
-
-* Une URI de base comme `http://example.com/resources/`
-* Un type de média Internet pour représenter les données, il est communément JSON et est communément défini par l’échange d’en-têtes.
-* Suivre les méthodes HTTP standard telles :
-+
-`GET`::
-  Lit la ou les ressources définies par le modèle URI
-`POST`::
-  Crée une nouvelle entrée dans la collection de ressources
-`PUT`::
-  Met à jour une collection ou un membre des ressources
-`DELETE`::
-  Détruit une collection ou un membre des ressources
-
-Cela peut sembler compliqué mais au fur et à mesure que nous avancerons dans le tutoriel cela deviendra beaucoup plus facile à comprendre.
-
-=== Conclusion
-
-Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.
-
-Je n’en parle pas ici puisque nous essayons d’apprendre comment mettre en œuvre ce genre de fonctionnalité.
-
-== Gestion des utilisateurs
-
-Dans cette section nous allons mettre en place la gestion des utilisateurs. Par "gestion" j'entends les actions CRUD classiques (Create, Read, Update, Delete).
-
-
-=== Mise en place de TypeORM
-
-Afin d'accder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main.
-
-Il existe plusieurs ORM pour Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] et https://typeorm.io/[TypeORM]. J'ai choisis le dernier car c'est celui qui s'intègre le mieux avec Typescript.
-
-Il propose aussi une approche https://typeorm.io/#/active-record-data-mapper[Active Record ET Data Mapper].
-
-[source,bash]
-----
-$ npm add typeorm sqlite3 --save
-----
-
-Créer un fichier de configuration appelé `ormconfig.json`
-
-[source,json]
-----
-{
-   "type": "sqlite",
-   "database": "development.sqlite",
-   "synchronize": true,
-   "logging": true,
-   "entities": ["dist/entities/*.js"]
-}
-----
-
-Nous allons maintenant créer un service `DatabaseService` qu va s'occuper de connecter TypeORM à notre base de données. Voici donc la classe.
-
-Voici l'implémentation complète. Pas de panique, je vous détaille la logique ensuite.
-
-[source,ts]
-----
-// backend/src/services/database.service.ts
-import { inject, injectable } from "inversify";
-import { Connection, createConnection, ObjectType } from "typeorm";
-import { TYPES } from "../core/types.core";
-import { Logger } from "./logger.service";
-
-@injectable()
-export class DatabaseService {
-  private static connection: Connection;
-
-  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
-
-  public async getConnection(): Promise<Connection> {
-    if (DatabaseService.connection instanceof Connection) {
-      return DatabaseService.connection;
-    }
-
-    try {
-      DatabaseService.connection = await createConnection();
-      this.logger.log("INFO", `Connection established`);
-    } catch (e) {
-      this.logger.log("ERROR", "Cannot establish database connection", e);
-      process.exit(1);
-    }
-
-    return DatabaseService.connection;
-  }
-
-  public async getRepository<T>(repository: ObjectType<T>): Promise<T> {
-    const connection = await this.getConnection();
-    return await connection.getCustomRepository<T>(repository);
-  }
-}
-----
-
-Cette classe possède deux méthodes :
-
-`getConnection`::
-  cette méthode va initialiser une nouvelle connection à la base de données. Celle-ci va appeler la méthode `createConnection` qui va chercher https://typeorm.io/#/using-ormconfig[un fichier de ormconfig] (dans notre cas au format JSON) et établir une connection. Une fois la connection effectuée, elle est stoquée dans une propriété statique qui sera retournée directement la prochaine fois
-`getRepository`::
-  cette méthode va nous permettre de manipuler nos modèles via les repository. Nous en parlerons en détails plus loin
-
-J'aimerais aussi aujouter que c'est une bonne pratique de cacher la logique de la librairie par nos propres classe. Cela nous permettrai de moi dépendre de la librairie et de pouvoir migrer plus facilement si un jours nous souhaiterions changer.
-
-Maintenant que notre service est créé, il faut l'ajouter à notre container :
-
-[source,diff]
-----
-// backend/src/core/types.core.ts
-export const TYPES = {
-  Logger: Symbol.for("Logger"),
-+  DatabaseService: Symbol.for("DatabaseService"),
-};
-----
-
-[source,diff]
-----
-// backend/src/core/container.core.ts
-import { Container } from "inversify";
-import "../controllers/home.controller";
-+ import { DatabaseService } from "../services/database.service";
-import { Logger } from "../services/logger.service";
-import { TYPES } from "./types.core";
-
-export const container = new Container();
-container.bind(TYPES.Logger).to(Logger);
-+ container.bind(TYPES.DatabaseService).to(DatabaseService);
-----
-
-Et voilà.
-
-Nous pouvons maintenant créer notre premier modèle `User`. En utilisant le patern Data Mapper il va falloir créer deux classe :
-
-l'`entity`::
-  elle va définir les attributs des champs à sauvegarder dans la base de donnée. Dans notre cas, je vais simplement créer deux attributs: `email` et `password` (le mot de passe sera chifrée plus tards).
-le `repository`::
-  elle va ajouter certaines logiques pour sauvegarder nos entités.
-
-Afin de simplifier l'exemple, je vais mettre ces deux classes dans le même fichier mais vous pouvez très bien les séparer :
-
-[source,ts]
-----
-// backend/src/entities/user.entity.ts
-import {
-  Column,
-  Entity,
-  EntityRepository,
-  PrimaryGeneratedColumn,
-  Repository,
-} from "typeorm";
-
-@Entity()
-export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column({ unique: true })
-  email: string;
-
-  @Column()
-  password: string;
-}
-
-@EntityRepository(User)
-export class UserRepository extends Repository<User> {}
-----
-
-Et voilà. Le résultat est vraiment très simple gràce aux décorateurs `@columns` proposées par TypeORM. Ceux-ci peuvent aussi définir le type d'information a stocker (Tex te, date, etc..). L'implémentation de ce modèle est suffisante pour le moment.
-
-Pour l'instant notre travail n'est pas très visible mais tenez bon car vous allez voir le résultat dans la prochaine section.
-
-Nous pouvons commiter les changements effectuées jusqu'à maintenant:
-
-[source,bash]
-----
-$ git add .
-$ git commit -m "Setup TypeORM"
-----
-
-// -- current
-
-=== Création des actions CRUD
-
-==== Lister les utilisateurs
-
-Il ne nous reste plus que a ajouter notre controlleur pour les utilisateurs que nous allons remplir au fur et à mesure. Je vais néanmoins commencer par la méthode `index` qui est la plus simple.
-
-Comme nous l'avons vu plutôt, les controlleurs peuvent injecter nos services. Nous allons donc injecter le `DatabaseService` afin de pouvoir récupérer le `UserRepository`. Il suffira ensuite d'appeler la méthode `userRepository.find` afin de récuperer la liste de tous les utilisateus (qui est vide pour le moment).
-
-Voici l'implémentation de notre controlleur:
-
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-import { Request, Response } from "express";
-import { inject } from "inversify";
-import { controller, httpGet } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-
-@controller("/users")
-export class UsersController {
-  public constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {}
-
-  @httpGet("/")
-  public async index(req: Request, res: Response) {
-    const userRepository = await this.databaseService.getRepository(UserRepository);
-
-    const users = await userRepository.find();
-    return res.json(users);
-  }
-}
-----
-
-Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau controlleur dans le container :
-
-[source,diff]
-----
-// backend/src/core/container.core.ts
-import { Container } from "inversify";
-import "../controllers/home.controller";
-+ import "../controllers/users.controller";
-import { DatabaseService } from "../services/database.service";
-import { Logger } from "../services/logger.service";
+// <pre>An instance of User has failed the validation:<br> - property email has failed the following constraints: isDefined, isEmail <br></pre>
 // ...
-----
-
-Et voilà. Lancez la commande `npm run start:watch` pour démarrer le serveur si vous l'avez arrêté et testons la focntionalité avec `cURL` :
-
-[source,bash]
-----
-$ curl http://localhost:3000/users
-----
-
-Le retour de la commande nous indique un tableau vide: c'est normal car il n'y a pas encore d'utilisateur. En revanche, le terminal du serveur nous indique qu'il s'est passé beaucoup de chose:
-
-....
-query: BEGIN TRANSACTION
-query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" IN ('user')
-query: SELECT * FROM "sqlite_master" WHERE "type" = 'index' AND "tbl_name" IN ('user')
-query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" = 'typeorm_metadata'
-query: CREATE TABLE "user" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "email" varchar NOT NULL, "password" varchar NOT NULL)
-query: COMMIT
-2020-11-15T22:09:25.476Z - INFO - Connection established - {}
-query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User"
-....
-
-Il s'agit des logs de TypeORM. Ceux-ci nous indiquent que:
-
-. TypeORM a essayé de voir s'il existait une table nomée `user`
-. TypeORM a crée cette table puisqu'elle n'existait pas
-. la connexion a la base de données été établie
-. La requête SQL pour retrouver tous les utilisateurs a été executée
-
-Cela nous indique que tout fonctionne parfaitement ! Mais je vous sent un peu déçu car nous n'avons pas encore d'utilisateur. Passons à la suite !
-
-==== Create
-
-Maintenant que toute notre structure a été mise en place, la suite va aller beaucoup plus vite. Passons directement à l'implémentation et je fous explique le code ensuite
-
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-// ...
-import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
-// ...
-
-interface CreateUserBody {
-  email: string;
-  password: string;
-}
-
-@controller("/users")
-export class UsersController {
-  // ...
-
-  @httpPost("/")
-  public async create(@requestBody() body: CreateUserBody, req: Request, res: Response): Promise<User> {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    const user = new User();
-    user.email = body.email;
-    user.password = body.password;
-    return repository.save(user);
-}
-----
-
-Cela fait un peut de code mais pas de panique. `CreateUserBody` est une interface qui définie les paramètres HTTP qui peuvent être reçu. Nous prenons ces paramètres et nous les envoyons directement au `repository`.
-
-Testons que tout cela fonctionne :
-
-[source,bash]
-----
-$ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
-{"email":"test@test.fr","password":"test","id":1
-----
-
-Parfait. On voit que tout fonctionne correctement!
-
-Passons à la suite pour récupérer les information de cet utilisateur.
-
-==== Show
-
-La méthode `show` va s'occuper de retrouver les informations d'un utilisateur. Cette méthode va prendre l'identifiant de l'utilisateur. On va ensuite utiliser le `repository` pour récupérer l'utilisateur.
-
-Voici l'implémentation :
-
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-// ...
-
-@controller("/users")
-export class UsersController {
-  // ...
-  @httpGet("/:userId")
-  public async show(
-    @requestParam("userId") userId: number,
-    req: Request,
-    res: Response
-  ): Promise<User> {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    return repository.findOneOrFail(userId);
-  }
-}
-----
-
-L'implémentation est vraiment très simple. Il faut simplement retourner un objet et `inversify-express-utils` va s'occuper de convertir l'objet JavaScript en JSON.
-
-Essayons pour voir:
-
-[source,bash]
-----
-$ œcurl http://localhost:3000/users/1
-{"id":1,"email":"test@test.fr","password":"test"}
-----
-
-Et voilà. Tous fonctionne correctement. Essayons maintenant de modifier cet utilisateur.
-
-==== Update
-
-La méthode `update` va s'occuper de récupérer, modifier et enregistrer l'utilisateur. Comme pour la méthode précédente, TypeORM nous facilite beaucoup la tâche :
-
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-// ...
-interface UpdateUserBody {
-  email: string;
-  password: string;
-}
-
-@controller("/users")
-export class UsersController {
-  // ...
-  @httpPut("/:userId")
-  public async update(
-    @requestBody() body: UpdateUserBody,
-    @requestParam("userId") userId: number,
-    req: Request,
-    res: Response
-  ): Promise<User> {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    const user = await repository.findOneOrFail(userId);
-    user.email = body.email ?? user.email;
-    user.password = body.password ?? user.password;
-    return repository.save(user);
-  }
-  // ...
-}
-----
-
-Et voilà. Comme tout à l'heure, essayons de voir si cela fonctionne :
-
-[source,bash]
-----
-$ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
-{"id":1,"email":"foo@bar.com","password":"test"}
-----
-
-Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que Type ORM a effectué dans les logs du terminal
-
-[source,sql]
-----
-query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: [1]
-query: BEGIN TRANSACTION
-query: UPDATE "user" SET "email" = ? WHERE "id" IN (?) -- PARAMETERS: ["foo@bar.com",1]
-query: COMMIT
-----
-
-Passons maintenant à la dernière méthode du controlleur.
-
-==== Delete
-
-La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur et d'appeler la méthode `repository.delete`. Allez c'est parti :
-
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-// ...
-
-@controller("/users")
-export class UsersController {
-  // ...
-  @httpDelete("/:userId")
-  public async destroy(@requestParam("userId") userId: number) {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    const user = await repository.findOneOrFail(userId);
-    repository.delete(user);
-  }
-}
-----
-
-Et voilà. Nous pouvons aussi tester cette méthode :
-
-[source,bash]
-----
-$ curl -X DELETE  http://localhost:3000/users/1
-----
-
-Ici encore, nous pouvons vérifier que l'utilisateur a bien été supprimé en regardant les logs de TypeORM :
-
-[source,sql]
-----
-query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: ["1"]
-query: DELETE FROM "user" WHERE "id" = ? AND "email" = ? AND "password" = ? -- PARAMETERS: [1,"foo@bar.com","test"]
-----
-
-Et voilà. Maintenant que nous arrivons à la fin de de notre controlleur, nous pouvons commiter tous ces changements:
-
-[source,bash]
-----
-$ git commit -am "Implement CRUD actions on user"
-----
-
-=== Validation de nos utilisateurs
-
-Tout semble fonctionner mais il rest une problème: nous ne validons pas les données que nous insérons en base. Ainsi, il est possible de créer un utilisateur avec un email faux :
-
-....
-$ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
-....
-
-Encore une fois, nous allons avoir recours a une librairie toute faite: `class-validator`. Cette librairie va nous offrir https://github.com/typestack/class-validator/#table-of-contents[une tonne de décorateurs] pour vérifier très facilement notre instance `User`.
-
-Installons la avec NPM :
-
-....
-$ npm install class-validator --save
-....
-
-Et il suffit ensuite d'ajouter les décorateurs `@IsEmail` et `@IsDefined` comme ceci :
-
-[source,diff]
-----
-// backend/src/entities/user.entity.ts
-+ import { IsDefined, IsEmail, validateOrReject } from "class-validator";
-import {
-+  BeforeInsert,
-+  BeforeUpdate,
-  Column,
-  Entity,
-  EntityRepository,
-  PrimaryGeneratedColumn,
-  Repository,
-} from "typeorm";
-
-@Entity()
-export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-+  @IsDefined()
-+  @IsEmail()
-  @Column()
-  email: string;
-
-  // TODO: hash password
-+  @IsDefined()
-  @Column()
-  password: string;
-
-+  @BeforeInsert()
-+  @BeforeUpdate()
-+  async validate() {
-+    await validateOrReject(this);
-+  }
-}
-// ...
-----
-
-Il n'a pas fallu beaucoup de code a ajouter. La partie la plus intéressante est la méthode `validate`. Elle possède deux décorateurs `BeforeInsert` et `BeforeUpdate` qui vont permettre d'appeler automatiquement la méthode `validate` lorsqu'on utilise la méthode `save` d'un repository. C'est très pratique et il n'y a rien a faire. Essayons maintenant de créer le même utilisateur avec l'email erroné :
-
-[source,bash]
-----
-$ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
-...
-<pre>An instance of User has failed the validation:<br> - property email has failed the following constraints: isDefined, isEmail <br></pre>
-...
-----
-
-On voit que c'est beaucoup mieux. Cependant nous souhaiterions envoyer une erreur formatée en JSON avec le code d'erreur correspondant à la norme REST. Modifions donc le contrôleur :
-
-[source,diff]
-----
-// backend/src/controllers/home.controller.ts
-// ...
-
-@controller("/users")
-export class UsersController {
-  // ...
-
-  @httpPost("/")
-  public async create(
-    @requestBody() body: CreateUserBody,
-    req: Request,
-    res: Response
-  ): Promise<User | Response> {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    const user = new User();
-    user.email = body.email;
-    user.password = body.password;
-
-+     const errors = await validate(user);
-+
-+     if (errors.length !== 0) {
-+       return res.status(400).json({ errors });
-+     }
-
-    return repository.save(user);
-  }
-
-  // ...
-
-  @httpPut("/:id")
-  public async update(
-    @requestBody() body: UpdateUserBody,
-    @requestParam("id") id: number,
-    res: Response
-  ): Promise<User | Response> {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    const user = await repository.findOneOrFail(id);
-    user.email = body.email ?? user.email;
-    user.password = body.password ?? user.password;
-+     const errors = await validate(user);
-+
-+     if (errors.length !== 0) {
-+       return res.status(400).json({ errors });
-+     }
-    return repository.save(user);
-  }
-  // ...
-}
-----
-
-Essayons maintenant :
-
-[source,bash]
-----
-$ curl -X POST -d "test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
-{"errors":[{"target":{"password":"test"},"property":"email","children":[],"constraints":{"isDefined":"email should not be null or undefined","isEmail":"email must be an email"}}]}
-----
-
-Le résultat est vraiment complet et permettra a un utilisateur de l'API d'interpréter rapidement l'erreur.
-
-Commitons ces changements:
-
-[source,bash]
-----
-$ git commit -am "Validate user"
-----
-
-=== Factorisation
-
-Maintenant que nous avons un code qui fonctionne, il est temps de faire une passe pour *factoriser tout ça*.
-
-Pendant la mise en place, vous avez sans doute remarqué que la méthode `show`, `update` et `destroy` possédait un logique commune: elles récupèrent toute l'utilisateur.
-
-Pour factoriser ce code il y aurait deux solutions :
-
-. déplacer le bout de code dans un méthode privée et l'appeler
-. créer un *Middleware* qui va être exécuté avant le contrôleur
-
-J'ai choisi la deuxième option car elle permet de réduire le code et la responsabilité du contrôleur. De plus, avec `inversify-express-utils` c'est très facile. Laissez moi vous montrer :
-
-[source,ts]
-----
-import { NextFunction, Request, Response } from "express";
-import { inject, injectable } from "inversify";
-import { BaseMiddleware } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { User, UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-
-@injectable()
-export class FetchUserMiddleware extends BaseMiddleware {
-  constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {
-    super();
-  }
-
-  public async handler(
-    req: Request & { user: User },
-    res: Response,
-    next: NextFunction
-  ): Promise<void | Response> {
-    const userId = req.query.userId ?? req.params.userId;
-    const repository = await this.databaseService.getRepository(UserRepository);
-    req.user = await repository.findOne(Number(userId));
-
-    if (!req.user) {
-      return res.status(404).send("User not found");
-    }
-
-    next();
-  }
-}
-----
-
-Voici quelques explications sur ce code :
-
-. `inversify-express-utils` nous donne accès a une classe abstraite `BaseMiddleware`. Nous devons aussi ajouter le décorateur `@injectable` pour l'utiliser plus tard dans notre contrôleur
-. un middleware est une simple méthode `handle` qui prend en paramètre :
-+
-`req`::
-  la requête envoyée par l'utilisateur
-`res`::
-  la réponse HTTP à renvoyer.
-`next`::
-  un callback a appeler une fois que notre traitement est finit
-. la méthode `handle` s'occupe de récupérer l'utilisateur et de l'ajouter à l'objet `req` pour qu'il soit utilisé plus tard
-. si l'utilisateur n'existe pas, nous utilisons `res` pour renvoyer directement une réponse 404 sans même passer par l'utilisateur
-
-Vu que nous avons défini un nouvel injectable, il faut l'ajouter à notre container :
-
-[source,diff]
-----
-// backend/src/core/types.core.ts
-export const TYPES = {
-  Logger: Symbol.for("Logger"),
-  DatabaseService: Symbol.for("DatabaseService"),
-+   // Middlewares
-+   FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
-};
-----
-
-[source,diff]
-----
-// backend/src/core/container.core.ts
-// ...
-+ import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
-
-export const container = new Container();
-// services
-container.bind(TYPES.Logger).to(Logger);
-container.bind(TYPES.DatabaseService).to(DatabaseService);
-+ // middlewares
-+ container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
-----
-
-Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutant `TYPE.FetchUserMiddleware` au décorateur. Voici donc la modification :
-
-[source,ts]
-----
-// backend/src/controllers/home.controller.ts
-// ...
-
-@controller("/users")
-export class UsersController {
-  // ...
-
-  @httpGet("/:userId", TYPES.FetchUserMiddleware)
-  public async show(req: Request & { user: User }): Promise<User> {
-    return req.user;
-  }
-
-  @httpPut("/:userId", TYPES.FetchUserMiddleware)
-  public async update(
-    @requestBody() body: UpdateUserBody,
-    req: Request & { user: User },
-    res: Response
-  ): Promise<User | Response> {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    req.user.email = body.email ?? req.user.email;
-    req.user.password = body.password ?? req.user.password;
-
-    const errors = await validate(req.user);
-
-    if (errors.length !== 0) {
-      return res.status(400).json({ errors });
-    }
-    return repository.save(req.user);
-  }
-
-  @httpDelete("/:userId", TYPES.FetchUserMiddleware)
-  public async destroy(req: Request & { user: User }) {
-    const repository = await this.databaseService.getRepository(UserRepository);
-    await repository.delete(req.user);
-  }
-}
-----
-
-Pas mal non ? Commitons les modifications avant d'aller plus loin :
-
-[source,bash]
-----
-$ git add . && git commit -m "Factorise user controller with middleware"
-----
-
-=== Hashage du mot de passe
-
-==== La théorie
-
-Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto] .
-
-Voici un exemple d'une méthode pour hasher le mot de pass
-
-[source,ts]
-----
-import { createHash } from "crypto";
-
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
-
-console.log(hashPassword("$uper_u$er_p@ssw0rd"));
-// => 51e649c92c8edfbbd8e1c17032...
-----
-
-Et voilà! Pour savoir si le mot de passe correspond il suffit de vérifier si le hash correspond au précédent :
-
-[source,ts]
-----
-import { createHash } from "crypto";
-
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
-
-function isPasswordMatch(hash: string, password: string): boolean {
-  return hash === hashPassword(password);
-}
-
-const hash = hashPassword("$uper_u$er_p@ssw0rd");
-console.log(hash);
-// => 51e649c92c8edfbbd8e1c17032...
-
-console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
-// => true
-console.log(isPasswordMatch(hash, "wrong password"));
-// => false
-----
-
-Impeccable. Il y a néanmoins un petit problème avec ce type de méthode.
-
-Si vos mots de passe fuite, il sera assez facile à retrouver le mot de passe correspondant en construisant un *bibliothèque de hash*. Concrètement, le malveillant utiliserait les mots de passe courant, les hasherai un par avec le même algorithme et les comparerait aux notre. Pour corriger cela, il faut utiliser un sel de hashage.
-
-Le sel de hachage consiste a rajouter un texte définis à chaque mot de passe. Voici la modification :
-
-[source,ts]
-----
-import { createHash } from "crypto";
-
-const salt = "my private salt";
-
-function hashPassword(password: string, salt: string): string {
-  return createHash("sha256").update(`${password}_${salt}`).digest("hex");
-}
-
-function isPasswordMatch(hash: string, password: string): boolean {
-  return hash === hashPassword(password, salt);
-}
-
-const hash = hashPassword("$uper_u$er_p@ssw0rd", salt);
-console.log(hash);
-// => 3fdd2b9c934cd34c3150a72fb4c981b8530dab4152c6f8c5de119f74d9c36ef7
-
-console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
-// => true
-console.log(isPasswordMatch(hash, "wrong password"));
-// => false
-----
-
-Et voilà ! Le fonctionnement est le même mais notre application est plus sécurisée. Si quelqu'un accedait à notre base de données, il faudrait qu'il ait en possession le *sel de hachage* pour retrouver les mots de passe correspondant.
-
-==== L'implémentation
-
-Maintenant que nous avons vu la théorie, passons à la pratique. Nous allons utiliser les mêmes méthodes dans un fichier `password.utils.ts`. C'est parti:
-
-[source,ts]
-----
-// backend/src/utils/password.utils.ts
-import { createHash } from "crypto";
-
-const salt = "my private salt";
-
-export function hashPassword(password: string, salt: string): string {
-  return createHash("sha256").update(`${password}_${salt}`).digest("hex");
-}
-
-export function isPasswordMatch(hash: string, password: string): boolean {
-  return hash === hashPassword(password, salt);
-}
-----
-
-Nous allons maintenant utiliser la méthode `hashPassword` dans l'entité `User`. Avec TypeORM c'est très facile en utilisant les hooks comme nous l'avons fait avec la validation.
-
-[source,ts]
-----
-// backend/src/entities/user.entity.ts
-// ...
-import { hashPassword } from "../utils/password.utils";
-
-@Entity()
-export class User {
-  // ...
-  @IsDefined()
-  @Column()
-  hashedPassword: string;
-
-  set password(password) {
-    if (password) {
-      this.hashedPassword = hashPassword(password);
-    }
-  }  // ...
-}
-// ...
-----
-
-Quelques explications s'imposent :
-
-* nous avons crée un attribut `hashedPassword` qui contient le mot de passe de l'utilisateur hashé. Cette valeur sera sauvegardée en base car nous avons ajouté le décorateur `@column`. Nous en aurons besoin plus tard pour savoir si le mot de passe fournis par l'utilisateur correspond a celui qu'il avait définit
-* l'attribut `password` devient un *setter*. C'est comme un attribut virtuel qui va être appelé lors de l'assignation. Ainsi en faisant `user.password = 'toto'`, cette méthode sera appelé. C'est parfait car nous ne voulons plus le stocker le mot de passe au cas ou notre base de données fuite.
-
-Maintenant essayons de créer un utilisateur via l'API:
-
-[source,bash]
-----
-$ curl -X POST -d "email=test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
-{"email":"test@test.fr","password":"test","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
-----
-
-Tout semble parfaitement fonctionner car on voit que l'utilisateur possède bien un mot de passe hashé. Si on change le mot de passe, le hash change correctement :
-
-[source,bash]
-----
-$ curl -X PUT   -d "password=helloWorld" -H "Accept: application/json" http://localhost:3000/users/4
-{"id":4,"email":"test@test.fr","hashedPassword":"bdbe865951e5cd026bb82a299e3e1effb1e95ce8c8afe6814cecf8fa1e895d1f"}
-----
-
-Tout marche parfaitement bien. Faisons un commit avant d'aller plus loin.
-
-[source,bash]
-----
-$ git add . && git commit -m "Hash user password"
-----
-
-==== Mise en place d'un test unitaire
-
-Nous avons un code qui fonctionne et c'est cool. Si nous pouvons nous assurer qu'il fonctionne comme cela à chaque évolution c'est encore mieux. C'est donc ici qu'interviennent les *tests unitaires*.
-
-Le rôle du test unitaire est de s'assurer que notre méthode fonctionne toujours de la même façon que nous l'avons décidé. Nous allons donc ici mettre en place un test simpliste pour s'assurer que tout fonctionne bien.
-
-Il existe plusieurs librairie de tests en JavaScript. J'ai choisi `Mocha` car c'est une des librairie les plus populaire et elle se met très facilement en place. Nous installons aussi `ts-mocha` qui va transpiler le TypeScript à la volée :
-
-[source,bash]
-----
-$ npm install mocha ts-mocha @types/mocha --save-dev
-----
-
-Il faut aussi modifier un peut notre `tsconfig.json` pour ajouter les déclaration de de Mocha et spécifier à Typescript de ne pas compiler ces fichier :
-
-[source,diff]
-----
-{
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "module": "commonjs",
-    "types": [
-      "node",
-+      "mocha"
-    ],
-    "target": "es6",
-    "esModuleInterop": true,
-    "lib": [
-      "es6"
-    ],
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  },
-+   "exclude": ["./**/*.spec.ts"]
-}
-----
-
-Nous voici prêt à créer notre premier test :
-
-[source,ts]
-----
-// backend/src/entities/user.entity.spec.ts
-import assert from "assert";
-import { hashPassword } from "../utils/password.utils";
-import { User } from "./user.entity";
-
-describe("User", () => {
-  it("should hash password", () => {
-    const user = new User();
-    user.password = "toto";
-    const expected = hashPassword("toto");
-    assert.strictEqual(user.hashedPassword, expected);
-  });
-});
-----
-
-Comme je vous le disait, c'est un test vraiment très simple. Aoutons maintenant la commande qui va nous permettre de lancer ce test dans le `package.json` :
-
-[source,diff]
-----
-{
-  // ...
-  "scripts": {
-    "start": "tsc && node dist/main.js",
-    "start:watch": "nodemon",
-+     "test": "ts-mocha src/**/*.spec.ts",
-    "build": "tsc"
-  },
-  // ...
-}
-----
-
-Et voilà. Nous pouvons maintenant exécuter ce test :
-
-[source,bash]
-----
-$ npm test
-
-> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
-> ts-mocha src/**/*.spec.ts
-
-
-
-  User
-    V should hash password
-
-
-  1 passing (5ms)
-----
-
-Et tant qu'à faire, nous pouvons aussi ajouter un autre test unitaire sur la méthode de comparaison du mot de passe `isPasswordMatch` :
-
-[source,ts]
-----
-// backend/src/utils/password.utils.spec.ts
-import assert from "assert";
-import { hashPassword, isPasswordMatch } from "./password.utils";
-
-describe("isPasswordMatch", () => {
-  const hash = hashPassword("good");
-  it("should match", () => {
-    assert.strictEqual(isPasswordMatch(hash, "good"), true);
-  });
-  it("should not match", () => {
-    assert.strictEqual(isPasswordMatch(hash, "bad"), false);
-  });
-});
-----
-
-Encore une fois, ce genre de test peut vous sembler simpliste mais ils sont très rapide et permettent d'avoir une sécurité supplémentaire. Lançons les tests :
-
-[source,bash]
-----
-npm test
-
-> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
-> ts-mocha src/**/*.spec.ts
-
-
-
-  User
-    V should hash password
-
-  isPasswordMatch
-    V should match
-    V should not match
-
-
-  3 passing (6ms)
-----
-
-Maintenans que vous êtes échauffé, commitons et passons à la suite :
-
-[source,bash]
-----
-$ git add . && git commit -m "Add unit test about password hash"
-----
-
-==== Conclusions
+// ----
+
+// On voit que c'est beaucoup mieux. Cependant nous souhaiterions envoyer une erreur formatée en JSON avec le code d'erreur correspondant à la norme REST. Modifions donc le contrôleur :
+
+// [source,diff]
+// ----
+// // backend/src/controllers/home.controller.ts
+// // ...
+
+// @controller("/users")
+// export class UsersController {
+//   // ...
+
+//   @httpPost("/")
+//   public async create(
+//     @requestBody() body: CreateUserBody,
+//     req: Request,
+//     res: Response
+//   ): Promise<User | Response> {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     const user = new User();
+//     user.email = body.email;
+//     user.password = body.password;
+
+// +     const errors = await validate(user);
+// +
+// +     if (errors.length !== 0) {
+// +       return res.status(400).json({ errors });
+// +     }
+
+//     return repository.save(user);
+//   }
+
+//   // ...
+
+//   @httpPut("/:id")
+//   public async update(
+//     @requestBody() body: UpdateUserBody,
+//     @requestParam("id") id: number,
+//     res: Response
+//   ): Promise<User | Response> {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     const user = await repository.findOneOrFail(id);
+//     user.email = body.email ?? user.email;
+//     user.password = body.password ?? user.password;
+// +     const errors = await validate(user);
+// +
+// +     if (errors.length !== 0) {
+// +       return res.status(400).json({ errors });
+// +     }
+//     return repository.save(user);
+//   }
+//   // ...
+// }
+// ----
+
+// Essayons maintenant :
+
+// [source,bash]
+// ----
+// $ curl -X POST -d "test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+// {"errors":[{"target":{"password":"test"},"property":"email","children":[],"constraints":{"isDefined":"email should not be null or undefined","isEmail":"email must be an email"}}]}
+// ----
+
+// Le résultat est vraiment complet et permettra a un utilisateur de l'API d'interpréter rapidement l'erreur.
+
+// Commitons ces changements:
+
+// [source,bash]
+// ----
+// $ git commit -am "Validate user"
+// ----
+
+// === Factorisation
+
+// Maintenant que nous avons un code qui fonctionne, il est temps de faire une passe pour *factoriser tout ça*.
+
+// Pendant la mise en place, vous avez sans doute remarqué que la méthode `show`, `update` et `destroy` possédait un logique commune: elles récupèrent toute l'utilisateur.
+
+// Pour factoriser ce code il y aurait deux solutions :
+
+// . déplacer le bout de code dans un méthode privée et l'appeler
+// . créer un *Middleware* qui va être exécuté avant le contrôleur
+
+// J'ai choisi la deuxième option car elle permet de réduire le code et la responsabilité du contrôleur. De plus, avec `inversify-express-utils` c'est très facile. Laissez moi vous montrer :
+
+// [source,ts]
+// ----
+// import { NextFunction, Request, Response } from "express";
+// import { inject, injectable } from "inversify";
+// import { BaseMiddleware } from "inversify-express-utils";
+// import { TYPES } from "../core/types.core";
+// import { User, UserRepository } from "../entities/user.entity";
+// import { DatabaseService } from "../services/database.service";
+
+// @injectable()
+// export class FetchUserMiddleware extends BaseMiddleware {
+//   constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {
+//     super();
+//   }
+
+//   public async handler(
+//     req: Request & { user: User },
+//     res: Response,
+//     next: NextFunction
+//   ): Promise<void | Response> {
+//     const userId = req.query.userId ?? req.params.userId;
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     req.user = await repository.findOne(Number(userId));
+
+//     if (!req.user) {
+//       return res.status(404).send("User not found");
+//     }
+
+//     next();
+//   }
+// }
+// ----
+
+// Voici quelques explications sur ce code :
+
+// . `inversify-express-utils` nous donne accès a une classe abstraite `BaseMiddleware`. Nous devons aussi ajouter le décorateur `@injectable` pour l'utiliser plus tard dans notre contrôleur
+// . un middleware est une simple méthode `handle` qui prend en paramètre :
+// +
+// `req`::
+//   la requête envoyée par l'utilisateur
+// `res`::
+//   la réponse HTTP à renvoyer.
+// `next`::
+//   un callback a appeler une fois que notre traitement est finit
+// . la méthode `handle` s'occupe de récupérer l'utilisateur et de l'ajouter à l'objet `req` pour qu'il soit utilisé plus tard
+// . si l'utilisateur n'existe pas, nous utilisons `res` pour renvoyer directement une réponse 404 sans même passer par l'utilisateur
+
+// Vu que nous avons défini un nouvel injectable, il faut l'ajouter à notre container :
+
+// [source,diff]
+// ----
+// // backend/src/core/types.core.ts
+// export const TYPES = {
+//   Logger: Symbol.for("Logger"),
+//   DatabaseService: Symbol.for("DatabaseService"),
+// +   // Middlewares
+// +   FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
+// };
+// ----
+
+// [source,diff]
+// ----
+// // backend/src/core/container.core.ts
+// // ...
+// + import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
+
+// export const container = new Container();
+// // services
+// container.bind(TYPES.Logger).to(Logger);
+// container.bind(TYPES.DatabaseService).to(DatabaseService);
+// + // middlewares
+// + container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
+// ----
+
+// Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutant `TYPE.FetchUserMiddleware` au décorateur. Voici donc la modification :
+
+// [source,ts]
+// ----
+// // backend/src/controllers/home.controller.ts
+// // ...
+
+// @controller("/users")
+// export class UsersController {
+//   // ...
+
+//   @httpGet("/:userId", TYPES.FetchUserMiddleware)
+//   public async show(req: Request & { user: User }): Promise<User> {
+//     return req.user;
+//   }
+
+//   @httpPut("/:userId", TYPES.FetchUserMiddleware)
+//   public async update(
+//     @requestBody() body: UpdateUserBody,
+//     req: Request & { user: User },
+//     res: Response
+//   ): Promise<User | Response> {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     req.user.email = body.email ?? req.user.email;
+//     req.user.password = body.password ?? req.user.password;
+
+//     const errors = await validate(req.user);
+
+//     if (errors.length !== 0) {
+//       return res.status(400).json({ errors });
+//     }
+//     return repository.save(req.user);
+//   }
+
+//   @httpDelete("/:userId", TYPES.FetchUserMiddleware)
+//   public async destroy(req: Request & { user: User }) {
+//     const repository = await this.databaseService.getRepository(UserRepository);
+//     await repository.delete(req.user);
+//   }
+// }
+// ----
+
+// Pas mal non ? Commitons les modifications avant d'aller plus loin :
+
+// [source,bash]
+// ----
+// $ git add . && git commit -m "Factorise user controller with middleware"
+// ----
+
+// === Hashage du mot de passe
+
+// ==== La théorie
+
+// Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto] .
+
+// Voici un exemple d'une méthode pour hasher le mot de pass
+
+// [source,ts]
+// ----
+// import { createHash } from "crypto";
+
+// function hashPassword(password: string): string {
+//   return createHash("sha256").update(password).digest("hex");
+// }
+
+// console.log(hashPassword("$uper_u$er_p@ssw0rd"));
+// // => 51e649c92c8edfbbd8e1c17032...
+// ----
+
+// Et voilà! Pour savoir si le mot de passe correspond il suffit de vérifier si le hash correspond au précédent :
+
+// [source,ts]
+// ----
+// import { createHash } from "crypto";
+
+// function hashPassword(password: string): string {
+//   return createHash("sha256").update(password).digest("hex");
+// }
+
+// function isPasswordMatch(hash: string, password: string): boolean {
+//   return hash === hashPassword(password);
+// }
+
+// const hash = hashPassword("$uper_u$er_p@ssw0rd");
+// console.log(hash);
+// // => 51e649c92c8edfbbd8e1c17032...
+
+// console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
+// // => true
+// console.log(isPasswordMatch(hash, "wrong password"));
+// // => false
+// ----
+
+// Impeccable. Il y a néanmoins un petit problème avec ce type de méthode.
+
+// Si vos mots de passe fuite, il sera assez facile à retrouver le mot de passe correspondant en construisant un *bibliothèque de hash*. Concrètement, le malveillant utiliserait les mots de passe courant, les hasherai un par avec le même algorithme et les comparerait aux notre. Pour corriger cela, il faut utiliser un sel de hashage.
+
+// Le sel de hachage consiste a rajouter un texte définis à chaque mot de passe. Voici la modification :
+
+// [source,ts]
+// ----
+// import { createHash } from "crypto";
+
+// const salt = "my private salt";
+
+// function hashPassword(password: string, salt: string): string {
+//   return createHash("sha256").update(`${password}_${salt}`).digest("hex");
+// }
+
+// function isPasswordMatch(hash: string, password: string): boolean {
+//   return hash === hashPassword(password, salt);
+// }
+
+// const hash = hashPassword("$uper_u$er_p@ssw0rd", salt);
+// console.log(hash);
+// // => 3fdd2b9c934cd34c3150a72fb4c981b8530dab4152c6f8c5de119f74d9c36ef7
+
+// console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
+// // => true
+// console.log(isPasswordMatch(hash, "wrong password"));
+// // => false
+// ----
+
+// Et voilà ! Le fonctionnement est le même mais notre application est plus sécurisée. Si quelqu'un accedait à notre base de données, il faudrait qu'il ait en possession le *sel de hachage* pour retrouver les mots de passe correspondant.
+
+// ==== L'implémentation
+
+// Maintenant que nous avons vu la théorie, passons à la pratique. Nous allons utiliser les mêmes méthodes dans un fichier `password.utils.ts`. C'est parti:
+
+// [source,ts]
+// ----
+// // backend/src/utils/password.utils.ts
+// import { createHash } from "crypto";
+
+// const salt = "my private salt";
+
+// export function hashPassword(password: string, salt: string): string {
+//   return createHash("sha256").update(`${password}_${salt}`).digest("hex");
+// }
+
+// export function isPasswordMatch(hash: string, password: string): boolean {
+//   return hash === hashPassword(password, salt);
+// }
+// ----
+
+// Nous allons maintenant utiliser la méthode `hashPassword` dans l'entité `User`. Avec TypeORM c'est très facile en utilisant les hooks comme nous l'avons fait avec la validation.
+
+// [source,ts]
+// ----
+// // backend/src/entities/user.entity.ts
+// // ...
+// import { hashPassword } from "../utils/password.utils";
+
+// @Entity()
+// export class User {
+//   // ...
+//   @IsDefined()
+//   @Column()
+//   hashedPassword: string;
+
+//   set password(password) {
+//     if (password) {
+//       this.hashedPassword = hashPassword(password);
+//     }
+//   }  // ...
+// }
+// // ...
+// ----
+
+// Quelques explications s'imposent :
+
+// * nous avons crée un attribut `hashedPassword` qui contient le mot de passe de l'utilisateur hashé. Cette valeur sera sauvegardée en base car nous avons ajouté le décorateur `@column`. Nous en aurons besoin plus tard pour savoir si le mot de passe fournis par l'utilisateur correspond a celui qu'il avait définit
+// * l'attribut `password` devient un *setter*. C'est comme un attribut virtuel qui va être appelé lors de l'assignation. Ainsi en faisant `user.password = 'toto'`, cette méthode sera appelé. C'est parfait car nous ne voulons plus le stocker le mot de passe au cas ou notre base de données fuite.
+
+// Maintenant essayons de créer un utilisateur via l'API:
+
+// [source,bash]
+// ----
+// $ curl -X POST -d "email=test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+// {"email":"test@test.fr","password":"test","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
+// ----
+
+// Tout semble parfaitement fonctionner car on voit que l'utilisateur possède bien un mot de passe hashé. Si on change le mot de passe, le hash change correctement :
+
+// [source,bash]
+// ----
+// $ curl -X PUT   -d "password=helloWorld" -H "Accept: application/json" http://localhost:3000/users/4
+// {"id":4,"email":"test@test.fr","hashedPassword":"bdbe865951e5cd026bb82a299e3e1effb1e95ce8c8afe6814cecf8fa1e895d1f"}
+// ----
+
+// Tout marche parfaitement bien. Faisons un commit avant d'aller plus loin.
+
+// [source,bash]
+// ----
+// $ git add . && git commit -m "Hash user password"
+// ----
+
+// ==== Mise en place d'un test unitaire
+
+// Nous avons un code qui fonctionne et c'est cool. Si nous pouvons nous assurer qu'il fonctionne comme cela à chaque évolution c'est encore mieux. C'est donc ici qu'interviennent les *tests unitaires*.
+
+// Le rôle du test unitaire est de s'assurer que notre méthode fonctionne toujours de la même façon que nous l'avons décidé. Nous allons donc ici mettre en place un test simpliste pour s'assurer que tout fonctionne bien.
+
+// Il existe plusieurs librairie de tests en JavaScript. J'ai choisi `Mocha` car c'est une des librairie les plus populaire et elle se met très facilement en place. Nous installons aussi `ts-mocha` qui va transpiler le TypeScript à la volée :
+
+// [source,bash]
+// ----
+// $ npm install mocha ts-mocha @types/mocha --save-dev
+// ----
+
+// Il faut aussi modifier un peut notre `tsconfig.json` pour ajouter les déclaration de de Mocha et spécifier à Typescript de ne pas compiler ces fichier :
+
+// [source,diff]
+// ----
+// {
+//   "compilerOptions": {
+//     "rootDir": "src",
+//     "outDir": "dist",
+//     "module": "commonjs",
+//     "types": [
+//       "node",
+// +      "mocha"
+//     ],
+//     "target": "es6",
+//     "esModuleInterop": true,
+//     "lib": [
+//       "es6"
+//     ],
+//     "moduleResolution": "node",
+//     "experimentalDecorators": true,
+//     "emitDecoratorMetadata": true
+//   },
+// +   "exclude": ["./**/*.spec.ts"]
+// }
+// ----
+
+// Nous voici prêt à créer notre premier test :
+
+// [source,ts]
+// ----
+// // backend/src/entities/user.entity.spec.ts
+// import assert from "assert";
+// import { hashPassword } from "../utils/password.utils";
+// import { User } from "./user.entity";
+
+// describe("User", () => {
+//   it("should hash password", () => {
+//     const user = new User();
+//     user.password = "toto";
+//     const expected = hashPassword("toto");
+//     assert.strictEqual(user.hashedPassword, expected);
+//   });
+// });
+// ----
+
+// Comme je vous le disait, c'est un test vraiment très simple. Aoutons maintenant la commande qui va nous permettre de lancer ce test dans le `package.json` :
+
+// [source,diff]
+// ----
+// {
+//   // ...
+//   "scripts": {
+//     "start": "tsc && node dist/main.js",
+//     "start:watch": "nodemon",
+// +     "test": "ts-mocha src/**/*.spec.ts",
+//     "build": "tsc"
+//   },
+//   // ...
+// }
+// ----
+
+// Et voilà. Nous pouvons maintenant exécuter ce test :
+
+// [source,bash]
+// ----
+// $ npm test
+
+// > backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
+// > ts-mocha src/**/*.spec.ts
+
+
+
+//   User
+//     V should hash password
+
+
+//   1 passing (5ms)
+// ----
+
+// Et tant qu'à faire, nous pouvons aussi ajouter un autre test unitaire sur la méthode de comparaison du mot de passe `isPasswordMatch` :
+
+// [source,ts]
+// ----
+// // backend/src/utils/password.utils.spec.ts
+// import assert from "assert";
+// import { hashPassword, isPasswordMatch } from "./password.utils";
+
+// describe("isPasswordMatch", () => {
+//   const hash = hashPassword("good");
+//   it("should match", () => {
+//     assert.strictEqual(isPasswordMatch(hash, "good"), true);
+//   });
+//   it("should not match", () => {
+//     assert.strictEqual(isPasswordMatch(hash, "bad"), false);
+//   });
+// });
+// ----
+
+// Encore une fois, ce genre de test peut vous sembler simpliste mais ils sont très rapide et permettent d'avoir une sécurité supplémentaire. Lançons les tests :
+
+// [source,bash]
+// ----
+// npm test
+
+// > backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
+// > ts-mocha src/**/*.spec.ts
+
+
+
+//   User
+//     V should hash password
+
+//   isPasswordMatch
+//     V should match
+//     V should not match
+
+
+//   3 passing (6ms)
+// ----
+
+// Maintenans que vous êtes échauffé, commitons et passons à la suite :
+
+// [source,bash]
+// ----
+// $ git add . && git commit -m "Add unit test about password hash"
+// ----
+
+// ==== Conclusions
 
 == Authentification des utilisateurs
 

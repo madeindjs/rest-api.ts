@@ -733,14 +733,10 @@ function isPasswordMatch(hash: string, password: string): boolean {
   return hash === hashPassword(password);
 }
 
-const hash = hashPassword("$uper_u$er_p@ssw0rd");
-console.log(hash);
-// => 51e649c92c8edfbbd8e1c17032...
+const hash = hashPassword("$uper_u$er_p@ssw0rd");// => 51e649c92c8edfbbd8e1c17032...
 
-console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
-// => true
-console.log(isPasswordMatch(hash, "wrong password"));
-// => false
+isPasswordMatch(hash, "$uper_u$er_p@ssw0rd");// => true
+isPasswordMatch(hash, "wrong password");// => false
 ----
 
 Impeccable. Il y a néanmoins un petit problème avec ce type de méthode.
@@ -763,14 +759,10 @@ function isPasswordMatch(hash: string, password: string): boolean {
   return hash === hashPassword(password, salt);
 }
 
-const hash = hashPassword("$uper_u$er_p@ssw0rd", salt);
-console.log(hash);
-// => 3fdd2b9c934cd34c3150a72fb4c981b8530dab4152c6f8c5de119f74d9c36ef7
+const hash = hashPassword("$uper_u$er_p@ssw0rd", salt);// => 3fdd2b9c934cd34c3150a72fb4c98...
 
-console.log(isPasswordMatch(hash, "$uper_u$er_p@ssw0rd"));
-// => true
-console.log(isPasswordMatch(hash, "wrong password"));
-// => false
+isPasswordMatch(hash, "$uper_u$er_p@ssw0rd");// => true
+isPasswordMatch(hash, "wrong password");// => false
 ----
 
 Et voilà ! Le fonctionnement est le même mais notre application est plus sécurisée. Si quelqu'un accedait à notre base de données, il faudrait qu'il ait en possession le *sel de hachage* pour retrouver les mots de passe correspondant.
@@ -866,21 +858,12 @@ Il faut aussi modifier un peut notre `tsconfig.json` pour ajouter les déclarati
 ----
 {
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "module": "commonjs",
+    // ..
     "types": [
       "node",
 +      "mocha"
     ],
-    "target": "es6",
-    "esModuleInterop": true,
-    "lib": [
-      "es6"
-    ],
-    "moduleResolution": "node",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    // ...
   },
 +   "exclude": ["./**/*.spec.ts"]
 }
@@ -905,7 +888,7 @@ describe("User", () => {
 });
 ----
 
-Comme je vous le disait, c'est un test vraiment très simple. Aoutons maintenant la commande qui va nous permettre de lancer ce test dans le `package.json` :
+Comme je vous le disait, c'est un test vraiment très simple. Ajoutons maintenant la commande qui va nous permettre de lancer ce test dans le `package.json` :
 
 [source,diff]
 ----
@@ -914,12 +897,31 @@ Comme je vous le disait, c'est un test vraiment très simple. Aoutons maintenant
   "scripts": {
     "start": "tsc && node dist/main.js",
     "start:watch": "nodemon",
-+     "test": "ts-mocha src/**/*.spec.ts",
++     "test": "ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts dotenv_config_path=.test.env",
     "build": "tsc"
   },
   // ...
 }
 ----
+
+Quelques explications sur cette commande:
+
+* `-r reflect-metadata` charge la librairie `reflect-metadata` et nous évite de l'importer
+* `-r dotenv/config` charge la librairie `dotenv` pour ainsi avoir les variables d'environnement de TypeORM
+* `dotenv_config_path` va charger un fichier `.env` particulier que nous allons voir juste après
+
+Lorsque nous testons notre application, nous ne voulons pas polluer notre database avec des données que nous utilisons pour des tests. C'est donc une bonne pratique de créer une base dédiée. Dans notre cas, nous allons utiliser une base SQlite _in memory_. C'est a dire qu'elle n'est pas stockée sur lke disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
+
+[source,env]
+----
+TYPEORM_CONNECTION=sqlite
+TYPEORM_DATABASE=:memory:
+TYPEORM_LOGGING=true
+TYPEORM_SYNCHRONIZE=true
+TYPEORM_ENTITIES=src/entities/*.entity.ts
+----
+
+NOTE: La directive `TYPEORM_ENTITIES` pointe aussi les fichier Typescript car `ts-mocha` transpile et execute directement ces fichiers.
 
 Et voilà. Nous pouvons maintenant exécuter ce test :
 
@@ -933,7 +935,7 @@ $ npm test
 
 
   User
-    V should hash password
+    ✓ should hash password
 
 
   1 passing (5ms)
@@ -989,8 +991,111 @@ $ git add . && git commit -m "Add unit test about password hash"
 
 == Ajout des tests fonctionnels
 
-// TODO
+Maintenant que nous avons mis en place des tests unitaires, il est temps de mettre en place les *tests fonctionnels*. Ce type de test va plutôt tester des portions de code.
+
+Une bonne pratique que j'ai appris en développant avec Ruby on Rails est de tester le comportement des contrôleur. C'est très facile car il suffit d'appeler une route avec des paramètres donné et nous pouvons savoir à l'avance le résultat. Ainsi par exemple, si j'envoie une requête de Type `GET` sur la route `/users` je dois m'attendre à recevoir une liste d'utilisateur. Nous n'avons pas besoin de démarrer complètement le serveur pour pour ça, une librairie existe: https://www.npmjs.com/package/supertest[supertest].
+
+Installons donc cette librairie:
+
+.Installation de Supertest
+[source,bash]
+----
+$ npm install supertest @types/supertest --save-dev
+----
+
+Maintenant créons notre agent qui sera utilisé dans tous nos tests:
+
+.Création d'un `supertest` agent
+[source,ts]
+----
+// backend/src/tests/supertest.utils.ts
+import supertest, { SuperTest, Test } from "supertest";
+import { server } from "../core/server";
+
+export const agent: SuperTest<Test> = supertest(server.build());
+----
+
+Et maintenant commençons pas créer notre premier test pour la méthode `index` par exemple:
+
+.Test de l'_endpoint_ `UsersController.index`
+[source,ts]
+----
+// backend/src/controllers/users.controller.spec.ts
+import { container } from "../core/container.core";
+import { TYPES } from "../core/types.core";
+import { UserRepository } from "../entities/user.entity";
+import { agent } from "../tests/supertest.utils";
+
+describe("UsersController", () => {
+  let userRepository: UserRepository;
+
+  describe("index", () => {
+    it("should respond 200", (done) => {
+      agent.get("/users").expect(200, done);
+    });
+  });
+});
+----
+
+Le test est vraiment très simple et la syntaxe de `supertest` rend le test très lisible. Traduis dans la langue de Molière, ce test veut dire "envoie une requête HTTP de type `Get` et attends toi à recevoir une réponse de type `200`". Essayons de lancer les tests
+
+
+[source,sh]
+----
+$ npm test
+...
+  UsersController
+    index
+      ✓ should respond 200
+...
+----
+
+NOTE: les requêtes SQL de TypeORM sont peut être loggé chez vous car nous avons laissé la directive `TYPEORM_LOGGING=true`. Vous pouvez la passer à `false` pour ne plus les voir.
+
+Maintenant voici le même tests pour `create`. Celui-ci est différent car il envoie des paramètres HTTP.
+
+
+.Test de l'_endpoint_ `UsersController.index`
+[source,ts]
+----
+// backend/src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  let userRepository: UserRepository;
+  // ..
+  describe("create", () => {
+    it("should create user", (done) => {
+      const email = `${new Date().getTime()}@test.io`;
+      agent.post("/users").send({ email, password: "toto" }).expect(200, done);
+    });
+
+    it("should not create user with missing email", (done) => {
+      const email = `${new Date().getTime()}@test.io`;
+      agent.post("/users").send({ email }).expect(400, done);
+    });
+  });
+});
+----
+
+NOTE: `new Date().getTime()` renvoie un `Number` du nombre de millisecondes écoulées depuis le 01/01/1970. Je l'utilise afin d'avoir un nombre unique. Nous verrons plus loins comment améliorer cela.
+
+Ici nous testons deux choses:
+
+1. si l'on envoie les bonnes informations, on doit avoir un retour de type `200`
+2. si l'on ne spécifie pas de mot de passe, on doit avoir un retour de type `400`
+
+Ce test est très simple et vous pouvez en rajouter d'autres comme _"should not create user with invalid email"_ par exemple. Ces tests sont faciles à mettre en place et *valident un comportement global*.
+
+
+Vous pouvez maintenant commiter les changements:
+
+[source,sh]
+----
+$ git add && git commit -m "Add functional tests"
+----
 
 == Conclusion
 
-Oh vous êtes là! Bien joué! Je sais que c’était probablement long mais n’abandonnez pas! Assurez-vous que vous comprenez chaque morceau de code, les choses vont s’améliorer, dans le prochain chapitre, nous remanierons nos tests pour rendre le code plus lisible et plus maintenable. Alors restez avec moi!
+Oh vous êtes là! Bien joué! Je sais que c’était probablement le chapitre le plus long mais n’abandonnez pas!
+
+Si vous n'avez pas l'habitude d'utiliser des tests, nous verrons dans le chapitre comment les utiliser pour définir à l'avance le comportement que nous souhaitons avant même de coder les fonctionnalité. Nous mettrons donc en place les tests pour les méthodes `show`, `update` et `destroy` qui auront besoin d'une authentification. En d'autres termes, nous commencerons à faire du développement dirigé par les tests _Test Driven Development_. Il s'agit très certainement de la partie la plus importante du livre!
