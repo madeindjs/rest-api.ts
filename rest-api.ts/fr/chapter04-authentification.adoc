@@ -107,31 +107,26 @@ export class JsonWebTokenService {
 
 L'implémentation est très simple. Une méthode encode un payload, l'autre le décode. Comme ce service est injecatble, nous devont l'enregistrer dans le container.
 
-[source,diff]
+.Ajout du `Symbol` pour le service `JsonWebTokenService`
+[source,ts]
 ----
 // backend/src/core/types.core.ts
 export const TYPES = {
-  Logger: Symbol.for("Logger"),
-  DatabaseService: Symbol.for("DatabaseService"),
-+   JsonWebTokenService: Symbol.for("JsonWebTokenService"),
-  // Middlewares
-  FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
+  // ...
+  JsonWebTokenService: Symbol.for("JsonWebTokenService"),
 };
 ----
 
-[source,diff]
+.Ajout du service `JsonWebTokenService` dans le _container_
+[source,ts]
 ----
 // backend/src/core/container.core.ts
 // ...
-+ import { JsonWebTokenService } from "../services/jsonWebToken.service";
+import { JsonWebTokenService } from "../services/jsonWebToken.service";
 
 export const container = new Container();
-// services
-container.bind(TYPES.Logger).to(Logger);
-container.bind(TYPES.DatabaseService).to(DatabaseService);
-+ container.bind(TYPES.JsonWebTokenService).to(JsonWebTokenService);
-// middlewares
-container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
+// ...
+container.bind(TYPES.JsonWebTokenService).to(JsonWebTokenService);
 ----
 
 Et voilà. Nous pouvons même ajouter un petit test rapide qui va encoder et décoder un _payload_ et vérifier que nous retrouvons bien le contenu:
@@ -159,31 +154,17 @@ describe("JsonWebTokenService", () => {
 });
 ----
 
-Ce test est un peu plus long que les autres car nous devons récupérer une instance de `=JsonWebTokenService` via la `container`. Pour ce faire, nous utiliser la méthode `before` qui va être exécutée avant notre batterie de test.
+Ce test est un peu plus long que les autres car nous devons *récupérer une instance* de `JsonWebTokenService` via la `container`. Pour ce faire, nous utiliser la méthode `before` qui va être exécutée avant notre batterie de test.
 
 Voyons maintenant si tous nos tests passent :
 
 [source,bash]
 ----
-npm test
-
-> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
-> ts-mocha src/**/*.spec.ts
-
-
-
-  User
-    V should hash password
-
+$ npm test
+...
   JsonWebTokenService
-    V should encode and decode payload
-
-  isPasswordMatch
-    V should match
-    V should not match
-
-
-  4 passing (11ms)
+    ✓ should encode and decode payload
+...
 ----
 
 C'est parfait. Commitons et passons à la suite :
@@ -195,34 +176,167 @@ $ git add . && git commit -m "Create JsonWebTokenService"
 
 == Le contrôleur de jetons
 
+Nous avons donc mis en place le système de génération d'un jeton JWT. Il est maintenant temps de créer une route qui va générer ce jeton. Les actions que nous allons implémenter seront gérées en tant que services _RESTful_: la connexion sera gérée par une demande `POST` à l’action `create`.
+
+Avant de passer à l'implémentation, nous allons essayer d'écrire un test complet.
+
 === Mise en place du tests fonctionnel
+
+Ici nous allons tester l'_endpoint_ que nous alloons créer juste après. Cet _endpoint_ prendra en paramètre l'email et le mot de passe de l'utilisateur. Nous pouvons donc tester trois choses:
+
+1. l'utilisateur a envoyé les bonnes informations donc on renvoie un token
+2. le mot de passe est erroné donc on renvoie une erreur `400 - Bad request`
+3. l'utilisateur n'existe pas donc on renvoie une erreur `400 - Bad request`
+
+NOTE: Nous renvoyons un code `400` sans donner plus d'explications. En effet, nous ne voulons pas indiquer à l'utilisateur que cet email n'est pas présent en base. C'est une bonne pratique qui compliquerai un peu plus une attaque par force-brute sur un utilisateur.
+
+Forcément, le test va commencer par créer un utilisateur. C'est ce qu'on va faire dans la méthode `before`
+
+.Création d'une partie du test fonctionnel de `TokensController`
+[source,ts]
+----
+// backend/src/controllers/tokens.controller.spec.ts
+import { container } from "../core/container.core";
+import { TYPES } from "../core/types.core";
+import { User, UserRepository } from "../entities/user.entity";
+import { DatabaseService } from "../services/database.service";
+
+describe("TokensController", () => {
+  let user: User;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    const userRepository = await databaseService.getRepository(UserRepository);
+
+    const newUser = new User();
+    newUser.email = `${new Date().getTime()}@test.io`;
+    newUser.password = "p@ssw0rd";
+    user = await userRepository.save(newUser);
+  });
+});
+----
+
+NOTE: on stock la variable `user` en dehors de la méthode `before` afin de pouvoir l'utiliser plus tard.
+
+
+Maintenant nous n'avons plus qu'a écrire nos tests
+
+
+.Création du test fonctionnel de `TokensController`
+[source,ts]
+----
+// backend/src/controllers/tokens.controller.spec.ts
+import { container } from "../core/container.core";
+import { TYPES } from "../core/types.core";
+import { User, UserRepository } from "../entities/user.entity";
+import { DatabaseService } from "../services/database.service";
+import { agent } from "../tests/supertest.utils";
+
+describe("TokensController", () => {
+  // ...
+  describe("create", () => {
+    it("should get token", (done) => {
+      agent
+        .post("/tokens")
+        .send({ email: user.email, password: "p@ssw0rd" })
+        .expect(200, done);
+    });
+
+    it("should not get token user with bad password", (done) => {
+      agent
+        .post("/tokens")
+        .send({ email: user.email, password: "bad password" })
+        .expect(400, done);
+    });
+
+    it("should not create token with nonexisting email", (done) => {
+      agent
+        .post("/tokens")
+        .send({ email: user.email, password: "bad password" })
+        .expect(400, done);
+    });
+  });
+});
+----
+
+Et voilà. Comme nous travaillons en développement dirigé par les tests, a ce moment nos tests ne passent pas :
+
+
+[source,bash]
+----
+$ npm test
+...
+  1) TokensController
+       create
+         should get token:
+     Error: expected 200 "OK", got 404 "Not Found"
+...
+  2) TokensController
+       create
+         should not get token user with bad password:
+     Error: expected 400 "Bad Request", got 404 "Not Found"
+...
+  3) TokensController
+       create
+         should not create token with nonexisting email:
+     Error: expected 400 "Bad Request", got 404 "Not Found"
+...
+----
+
+Notre but dans la prochaine section sera de faire passer ces tests.
 
 === Implémentation
 
-Nous avons donc mis en place le système de génération d'un jeton JWT. Il est maintenant temps de créer une route qui va générer ce jeton. Les actions que nous allons implémenter seront gérées en tant que services _RESTful_: la connexion sera gérée par une demande POST à l’action `create`.
 
-Nous allons donc créer le contrôleur `TokenControler` :
+Nous allons donc créer le contrôleur `TokenController`. Commençons par créer le contôleur avec les dépendances nécessaire:
 
+1. `DatabaseService` pour récupérer l'utilisateur qui correspond à l'email
+2. `JsonWebTokenService` pour créer un jeton JWT
+
+.Création du contrôleur `TokensController` avec les dépendances nécessaire
 [source,ts]
 ----
 // backend/src/controllers/tokens.controller.ts
-import { Request, Response } from "express";
 import { inject } from "inversify";
-import { controller, httpPost, requestBody } from "inversify-express-utils";
+import { controller } from "inversify-express-utils";
 import { TYPES } from "../core/types.core";
 import { UserRepository } from "../entities/user.entity";
 import { DatabaseService } from "../services/database.service";
 import { JsonWebTokenService } from "../services/jsonWebToken.service";
-import { isPasswordMatch } from "../utils/password.utils";
 
 @controller("/tokens")
 export class TokensController {
   public constructor(
-    @inject(TYPES.JsonWebTokenService)
-    private readonly jsonWebTokenService: JsonWebTokenService,
-    @inject(TYPES.DatabaseService)
-    private readonly databaseService: DatabaseService
+    @inject(TYPES.JsonWebTokenService) private readonly jsonWebTokenService: JsonWebTokenService,
+    @inject(TYPES.DatabaseService) private readonly database: DatabaseService
   ) {}
+}
+----
+
+Et on ajoute maintenant ce contrôleur à container afin qu'il soit chargé:
+
+
+[source,ts]
+----
+// backend/src/core/container.core.ts
+// ...
+import "../controllers/tokens.controller";
+// ...
+----
+
+Maintenant il ne nous reste plus qu'à ce concentrer sur la méthode `create` de notre contrôleur
+
+[source,ts]
+----
+// backend/src/controllers/tokens.controller.ts
+// ...
+import { Request, Response } from "express";
+import { controller, httpPost, requestBody } from "inversify-express-utils";
+import { isPasswordMatch } from "../utils/password.utils";
+
+@controller("/tokens")
+export class TokensController {
+  // ...
 
   @httpPost("")
   public async create(
@@ -252,19 +366,22 @@ export class TokensController {
 
 Oula! Ce ce code à l'air compliqué mais il est en fait très simple :
 
-. on récupère nos services `DatabaseService` et `JsonWebTokenService` dans le constructeur
 . on crée une méthode `create` dans le contrôleur qui va s'occuper de créer un token pour l'utilisateur demandé
-. cette méthode utilise le `userRepository` pour récupérer l'utilisateur à partir de l'email donné. Si nous ne trouvons pas l'utilisateur, nous renvoyons un code `400` sans donner plus d'explications. En effet, nous ne voulons pas indiquer à l'utilisateur que cet email n'est pas présent en base
-. nos utilisont la méthode `isPasswordMatch` pour vérifier si le mot de passe correspond au hash que nous avons stoqué. Si c'est le cas, nous créons et renvoyont un jeton avec la méthode `jsonWebTokenService.encode`
+. cette méthode utilise le `userRepository` pour récupérer l'utilisateur à partir de l'email donné. Si nous ne trouvons pas l'utilisateur, nous renvoyons une erreur `400 - Bad request`
+. nos utilisons la méthode `isPasswordMatch` pour vérifier si le mot de passe correspond au hash que nous avons stoqué. Si c'est le cas, nous créons et renvoyons un jeton avec la méthode `jsonWebTokenService.encode`
 
-Toulours là ? Tenez bon, il ne bous reste plus qu'à ajouter le contrôleur dans le container :
+Toujours là ? Essayons de lancer les tests pour voir si notre code fonctionne:
 
-[source,diff]
+[source,bash]
 ----
-// backend/src/core/container.core.ts
-// ...
-+ import "../controllers/tokens.controller";
-// ...
+$ npm test
+...
+  TokensController
+    create
+      ✓ should get token (41ms)
+      ✓ should not get token user with bad password
+      ✓ should not create token with nonexisting email
+
 ----
 
 Essayons la logique dans le terminal. Créons un utilisateur (si ce n'est pas déja fait) :
@@ -300,6 +417,7 @@ Comittons et passons à la suite :
 $ git add . && git commit -m "Create token controller"
 ----
 
+
 == Utilisateur connecté
 
 Nous avons donc mis en place la logique suivante: l’API retourne un jeton d’authentification si les paramètres passés d'authentification sont corrects.
@@ -308,14 +426,11 @@ Nous allons maintenant implémenter la logique suivante: A chaque fois que ce cl
 
 Dans notre cas, nous utiliserons l’en-tête HTTP `Authorization` qui est souvent utilisé pour ça. Personnellement, je trouve que c’est la meilleure manière parce que cela donne un contexte à la requête sans polluer l’URL avec des paramètres supplémentaires.
 
+=== Création du _middleware_
+
 Nous allons donc créer un _Middleware_ `FetchLoggerUserMiddleware` pour répondre à nos besoins. C’est-à-dire retrouver l’utilisateur grâce à son jeton d’authentification qui est envoyé sur chaque requête.
 
-=== Mise en place du test fonctionnel
-
-// TODO
-
-=== Implémentation
-
+// -- current
 Le principe est assez identique au précédent _middleware_ que nous avons crée plus tôt donc je passe directement à l'implémentation :
 
 [source,ts]
@@ -385,6 +500,12 @@ export const container = new Container();
 // ...
 container.bind(TYPES.FetchLoggedUserMiddleware).to(FetchLoggedUserMiddleware);
 ----
+
+=== Mise en place du test fonctionnel
+
+// TODO
+
+=== Utilisation du middleware
 
 Et maintenant il ne nous reste plus qu'à utiliser le [.underline]#middleware# dans le `UsersController` . Voici par exemple pour la méthode `show` :
 
