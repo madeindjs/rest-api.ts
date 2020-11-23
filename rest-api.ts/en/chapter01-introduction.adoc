@@ -9,7 +9,7 @@ The purpose of this book is not only to teach you how to build an API with Rails
 
 - Use Git for version control
 - Building JSON responses
-- Test your end-points with unit and functional tests
+- Test your end-points with units and functional tests
 - Set up authentication with JSON Web Tokens (JWT)
 - Use JSON:API specification
 - Optimize and cache the API

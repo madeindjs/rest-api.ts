@@ -426,17 +426,194 @@ Nous allons maintenant implémenter la logique suivante: A chaque fois que ce cl
 
 Dans notre cas, nous utiliserons l’en-tête HTTP `Authorization` qui est souvent utilisé pour ça. Personnellement, je trouve que c’est la meilleure manière parce que cela donne un contexte à la requête sans polluer l’URL avec des paramètres supplémentaires.
 
+Cette action sera centrale à notre application et sera utilisée un peu partout. Il est donc assez logique de créer un _middleware_ dédié. Comme nous l'avons plus tôt. Mais avant de passer au code, nous allons définir le comportement que nous souhaitons.
+
+=== Mise en place du test fonctionnel
+
+Le fonctionnement que nous souhaitons mettre en place est le suivant:
+
+- il n'y a pas besoin de jeton pour créer un utilisateur car c'est l'étape d'inscription
+- il faut un jeton d'authentification pour consulter ou modifier un utilisateur
+
+Maintenant qu nous avons définis cela, nous pouvons créer notre test fonctionnel.
+
+Nous reprenons le test `users.controller.spec.ts` et nous allons efin implémenter les tests pour `show`, `update` et `destroy`.
+
+Ces trois tests nécessitent qu'on ai déjà un utilisateur en base. Nous allons créer un méthode `utils` qui va générer un utilisateur aléatoire:
+
+
+[source,ts]
+----
+// backend/src/utils/faker.utils.ts
+import { randomBytes } from "crypto";
+import { User } from "../entities/user.entity";
+
+export function randomString(size: number = 8): string {
+  return randomBytes(size).toString("hex");
+}
+
+export function generateUser(user?: User): User {
+  const newUser = new User();
+  newUser.email = user?.email ?? `${this.randomString()}@random.io`;
+  newUser.password = newUser.email;
+
+  return newUser;
+}
+----
+
+Cette méthode est très simple et va juste s'appuyer sur `randomBytes` du https://nodejs.org/docs/latest-v14.x/api/crypto.html[module `crypto`] pour génerer une adresse email totalement aléatoire.
+
+NOTE: il existe des librairies comme https://github.com/marak/Faker.js/[Faker.js] qui permettent de faire ça mais ici je préfère m'en passer pour simplifier l'exemple.
+
+
+Maintenant nous pouvons revenir à notre test et créer un utilisateur dans la méthode `before`:
+
+.Création d'un user pour le test `show`
+[source,ts]
+----
+// backend/src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  let userRepository: UserRepository;
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+  });
+  // ...
+  describe("show", () => {
+    let user: User;
+
+    before(async () => {
+      user = await userRepository.save(generateUser());
+    });
+  });
+});
+----
+
+Maintenant il ne nous reste plus qu'à essayer d'accéder à cette utilisateur via `GET /users/1` avec et sans jeton JWT:
+
+.Tests fonctionnels de la méthode `UsersController.show`
+[source,ts]
+----
+// backend/src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  let jsonWebTokenService: JsonWebTokenService;
+  before(async () => {
+    // ...
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
+  });
+  // ...
+  describe("show", () => {
+    let user: User;
+    // ...
+    it("should not show user other user", (done) => {
+      agent.get(`/users/${user.id}`).expect(403, done);
+    });
+
+    it("should show my profile", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent
+        .get(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(200, done);
+    });
+  });
+});
+----
+
+Comme vous le voyez les tests restent vraiment très simple. On vérifie simplement le code du status HTTP de la réponse.
+
+Le principe est exactement le même pour la méthode `update` et `destroy`:
+
+
+.Tests fonctionnels de la méthode `UsersController.show`
+[source,ts]
+----
+// backend/src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  // ...
+  describe("update", () => {
+    // ... create user on `before`
+    it("should not update other user", (done) => {
+      agent.put(`/users/${user.id}`)
+        .send({ password: "test" })
+        .expect(403, done);
+    });
+
+    it("should update my profile", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent.put(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .send({ password: "test" })
+        .expect(200, done);
+    });
+  });
+
+  describe("destroy", () => {
+    // ... create user on `before`
+    it("should not destroy other user", (done) => {
+      agent.delete(`/users/${user.id}`).expect(403, done);
+    });
+
+    it("should delete my profile", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent.delete(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(204, done);
+    });
+  });
+});
+----
+
+Et voilà. SI vous executez les tests à ce moment précis vous allez avoir un paquet d'erreurs:
+
+[source, bash]
+----
+$ npm test
+// ...
+UsersController
+    index
+      ✓ should respond 200
+    show
+      1) should not show user other user
+      2) should show my profile
+    create
+      ✓ should create user
+      ✓ should not create user with missing email
+    update
+      3) should not update other user
+      4) should update my profile
+    destroy
+      5) should not destroy other user
+      6) should delete my profile
+// ...
+  10 passing (226ms)
+  6 failing
+----
+
+C'est tout à fait normal car nous n'avons pas encore implémenté la suite. Passons maintenant à l'implémentation.
+
 === Création du _middleware_
 
 Nous allons donc créer un _Middleware_ `FetchLoggerUserMiddleware` pour répondre à nos besoins. C’est-à-dire retrouver l’utilisateur grâce à son jeton d’authentification qui est envoyé sur chaque requête.
 
 // -- current
-Le principe est assez identique au précédent _middleware_ que nous avons crée plus tôt donc je passe directement à l'implémentation :
+Le principe est assez identique au précédent _middleware_ que nous avons crée plus tôt donc je passe directement à l'implémentation. De la même manière que le `TokenController`, on lui injecte
+
+- le `jsonWebTokenService` pour décoder le jeton JWT
+- le `databaseService` pour récupérer l'utilisateur associé au token
+
 
 [source,ts]
 ----
 // backend/src/middlewares/fetchLoggedUser.middleware.ts
-// ...
+import { inject, injectable } from "inversify";
+import { BaseMiddleware } from "inversify-express-utils";
+import { TYPES } from "../core/types.core";
+import { DatabaseService } from "../services/database.service";
+import { JsonWebTokenService } from "../services/jsonWebToken.service";
 
 @injectable()
 export class FetchLoggedUserMiddleware extends BaseMiddleware {
@@ -448,7 +625,22 @@ export class FetchLoggedUserMiddleware extends BaseMiddleware {
   ) {
     super();
   }
+}
+----
 
+Et maintenant voici l'implémentation de la méthode `handler`
+
+.Implémentation de la méthode `handle` du `FetchLoggedUserMiddleware`
+[source,ts]
+----
+// backend/src/middlewares/fetchLoggedUser.middleware.ts
+// ...
+import { NextFunction, Request, Response } from "express";
+import { User, UserRepository } from "../entities/user.entity";
+
+@injectable()
+export class FetchLoggedUserMiddleware extends BaseMiddleware {
+  // ...
   public async handler(
     req: Request & { user: User },
     res: Response,
@@ -477,10 +669,11 @@ Encore une fois le code paraît long mais il est en fait très simple :
 
 . on extrais le jeton JWT dans le _header_ `Authorization`. S'il n'est pas définis, on renvoie une erreur `403 - Forbidden` avec une brève explication
 . on décode le jeton JWT et on récupère l'utilisateur associé. Si une erreur survient (le jeton ne peut pas être décodé ou l'utilisateur n'existe pas), on renvoie une erreur `403` aussi
-. on passe à la suite
+. on injecte l'utilisateur dans la requête afin qu'on puisse l'utiliser dans le contrôleur
 
 Bien entendu, nous n'oublions pas d'ajouter ce _middleware_ à notre conatiner :
 
+.Ajout du symbole `FetchLoggedUserMiddleware`
 [source,ts]
 ----
 // backend/src/core/types.core.ts
@@ -490,6 +683,7 @@ export const TYPES = {
 };
 ----
 
+.Ajout du middleware `FetchLoggedUserMiddleware` dans le container
 [source,ts]
 ----
 // backend/src/core/container.core.ts
@@ -501,13 +695,11 @@ export const container = new Container();
 container.bind(TYPES.FetchLoggedUserMiddleware).to(FetchLoggedUserMiddleware);
 ----
 
-=== Mise en place du test fonctionnel
-
-// TODO
+ET voilà notre _middleware_ est prêt à être utilisé.
 
 === Utilisation du middleware
 
-Et maintenant il ne nous reste plus qu'à utiliser le [.underline]#middleware# dans le `UsersController` . Voici par exemple pour la méthode `show` :
+Et maintenant il ne nous reste plus qu'à utiliser le _middleware_ dans le `UsersController` . Voici par exemple pour la méthode `show` :
 
 [source,diff]
 ----
@@ -541,7 +733,6 @@ Le principe est exactement le même pour la méthode `update` et `destroy`.
 @controller("/users")
 export class UsersController {
   // ...
-
 -   @httpGet("/:userId", TYPES.FetchUserMiddleware)
 +   @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
   public async show(/* ... */)> {
@@ -573,7 +764,51 @@ export class UsersController {
 }
 ----
 
-Il est temps d'essayer que notre logique fonctionne. Récupérons un jetons et essayons de voir que tout fonctionne :
+Si tout ce passe bien. Nos tests devraient passer:
+
+[source,bash]
+----
+$ npm test
+
+  TokensController
+    create
+      ✓ should get token (41ms)
+      ✓ should not get token user with bad password
+      ✓ should not create token with nonexisting email
+
+  UsersController
+    index
+      ✓ should respond 200
+    show
+      ✓ should not show user other user
+      ✓ should show my profile
+    create
+      ✓ should create user
+      ✓ should not create user with missing email
+    update
+      ✓ should not update other user
+      ✓ should update my profile
+    destroy
+      ✓ should not destroy other user
+      ✓ should delete my profile
+
+  User
+    ✓ should hash password
+
+  JsonWebTokenService
+    ✓ should encode and decode payload
+
+  isPasswordMatch
+    ✓ should match
+    ✓ should not match
+
+
+  16 passing (201ms)
+----
+
+C'est beau tout ce vert n'est-ce pas?
+
+Essayons de faire la même chose avec `cURL`:
 
 [source,bash]
 ----
