@@ -5,7 +5,7 @@ Dans le chapitre précédent, nous avons implémenté le mécanisme d’authenti
 
 Pour l’instant nous avons une implémentation très simple du modèle `User` mais le moment de vérité est venu. Nous allons personnaliser la sortie JSON et ajouter une deuxième ressource: les produits de l’utilisateur. Ce sont les éléments que l’utilisateur vendra dans l’application.
 
-Si vous êtes familier avec Rails, vous savez peut-être déjà de quoi je parle. Mais pour ceux qui ne le savent pas, nous allons associer le modèle `User` au modèle `Product` en utilisant les méthodes `has_many` et `belongs_to` de _Active Record_.
+Si vous êtes familier avec un ORM, vous savez peut-être déjà de quoi je parle. Mais pour ceux qui ne le savent pas, nous allons associer le modèle `User` au modèle `Product` en utilisant les décorateurs `@ManyToOne` et `@OneToMany` de _TypeORM_.
 
 Dans ce chapitre, nous allons construire le modèle de `Product` à partir de zéro, l’associer à l’utilisateur et créer les entrées nécessaires pour que tout client puisse accéder aux informations.
 
@@ -31,109 +31,90 @@ Nous commencerons d’abord par créer un modèle de `Product` puis nous y ajout
 
 === Les fondements du produit
 
-Le modèle `Product` aura besoin de plusieurs champs: un attribut `price` pour le prix du produit, un booléen `published` pour savoir si le produit est prêt à être vendu ou non, un `title` pour définir un titre de produit sexy, et enfin et surtout un `user_id` pour associer ce produit particulier à un utilisateur. Comme vous le savez peut-être déjà, nous le générons avec la commande `rails generate`:
+Le modèle `Product` aura besoin de plusieurs champs: un attribut `price` pour le prix du produit, un booléen `published` pour savoir si le produit est prêt à être vendu ou non, un `title` pour définir un titre de produit sexy, et enfin et surtout un `userId` pour associer ce produit particulier à un utilisateur:
 
-[source,bash]
+Passons directement à l'implémentation
+
+.Création de l'entité `Product`
+[source,ts]
 ----
-$ rails generate model Product title:string price:decimal published:boolean user:belongs_to
-Running via Spring preloader in process 1476
-      invoke  active_record
-      create    db/migrate/20190608205942_create_products.rb
-      create    app/models/product.rb
-      invoke    test_unit
-      create      test/models/product_test.rb
-      create      test/fixtures/products.yml
+// backend/src/entities/product.entity.ts
+import { validateOrReject } from "class-validator";
+import { BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn, } from "typeorm"; import { User } from "./user.entity";
+
+@Entity()
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "text" })
+  title: string;
+
+  @Column({ type: "float" })
+  price: number;
+
+  @Column({ type: "boolean" })
+  published: boolean;
+
+  @Index()
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {}
 ----
 
+Comme vous le voyez cela est très lisible. La seule chose nouvelle ici est l'apparition de la relation `ManyToOne`. Ceci est un décorateur qui va créer une colonne `userId` de type `int`. Il prend trois paramètres:
 
-Comme vous pouvez le remarquer, nous avons utilisé le type `belongs_to` pour l’attribut. Ceci est un raccourci qui va créer une colonne `user_id` de type `int` et aussi ajouter une clé étrangère sur le champ `users.id`.
+1. une fonction qui renvoie la classe correspondant à l'association
+2. une fonction qui définie comment est spécifié la liaison dans l'autre sens
+3. un object contenant diverses paramètres
 
-De plus, `user_id` sera aussi défini comme un `index`. C’est une bonne pratique pour les clés d’associations car cela optimise les requêtes de la base de données. Ce n’est pas obligatoire, mais je vous le recommande vivement.
+NOTE: J'ai aussi rajouté un décorateur `@Index` pour que cette colonne soit indexée. C’est une bonne pratique pour les clés d’associations car cela optimise les requêtes de la base de données. Ce n’est pas obligatoire, mais je vous le recommande vivement.
+
+Avant de passer à la suite, nous devons aussi définir l'association `OneToMany` dans l'entité `User`
 
 Le fichier de migration devrait ressembler à ceci:
 
-[source,ruby]
-.db/migrate/20190608205942_create_products.rb
+[source,ts]
 ----
-class CreateProducts < ActiveRecord::Migration[6.0]
-  def change
-    create_table :products do |t|
-      t.string :title
-      t.decimal :price
-      t.boolean :published
-      t.belongs_to :user, null: false, foreign_key: true
-
-      t.timestamps
-    end
-  end
-end
+// backend/src/entities/user.entity.ts
+// ...
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+  // ...
+}
+// ...
 ----
 
-Il suffit ensuite de lancer les migrations:
+Et voilà. Notre association est faite et si vous démarrez le serveur avec les logs des requêtes de TypeORM vous devriez voir la requête SQL qui crée la table:
 
-[source,bash]
+.Logs du serveur dans le terminal
+[source,sql]
 ----
-$ rake db:migrate
-----
-
-A ce moment si vous lancez les tests, un test doit échouer:
-
-[source,bash]
-----
-$ rake test
-....E
-
-Error:
-Api::V1::UsersControllerTest#test_should_destroy_user:
-ActiveRecord::InvalidForeignKey: SQLite3::ConstraintException: FOREIGN KEY constraint failed
-
-rails test test/controllers/api/v1/users_controller_test.rb:43
-----
-
-"Quoi?! Mais je n'ai pas touché aux utilisateurs!" dites-vous très certainement. Ce que j’ai vu dans le code d’autres développeurs, lorsqu’ils travaillent avec des associations, c’est qu’ils oublient la destruction des dépendances entre les modèles. Ce que je veux dire par là, c’est que si un utilisateur est supprimé, les produits de l’utilisateur devraient l’être aussi.
-
-Donc pour tester cette interaction entre les modèles, nous avons besoin d’un utilisateur avec un des produits. Puis, nous supprimerons cet utilisateur en espérant que les produits disparaissent avec lui. Rails à déjà généré cela pour nous. Jetez un coup d'œil à la _fixture_ des produits:
-
-.test/fixtures/products.yml
-[source,yaml]
-----
-one:
-  title: MyString
-  price: 9.99
-  published: false
-  user: one
-# ...
-----
-
-Vous pouvez voir que cette _fixture_ n'utilise pas l'attribut `user_id` mais `user`. Cela signifie que le produit `one` aura un attribut `user_id` correspondant à l’identifiant de l'utilisateur `one`.
-
-Il faut donc spécifier une suppression en cascade afin de supprimer le produit `one` lorsque l'utilisateur `one` est supprimé. Commençons par le test unitaire:
-
-
-.test/models/user_test.rb
-[source,ruby]
-----
-# ...
-class UserTest < ActiveSupport::TestCase
-  # ...
-  test 'destroy user should destroy linked product' do
-    assert_difference('Product.count', -1) do
-      users(:one).destroy
-    end
-  end
-end
-----
-
-Il suffit de modifier le modèle `User` et lui spécifier la relation `has_many` avec l’option `dependent: :destroy`. Nous verrons plus tard ce que cette méthode fait plus en détails.
-
-.test/models/user_test.rb
-[source,ruby]
-----
-# ...
-class User < ApplicationRecord
-  # ...
-  has_many :products, dependent: :destroy
-end
+...
+query: BEGIN TRANSACTION
+...
+query: CREATE TABLE "product" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "title" text NOT NULL, "price" float NOT NULL, "published" boolean NOT NULL, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer)
+...
+query: CREATE INDEX "IDX_329b8ae12068b23da547d3b479" ON "product" ("userId")
+query: COMMIT
 ----
 
 Et voilà. Faisons un _commit_:
@@ -144,6 +125,8 @@ $ git add . && git commit -m "Generate product model"
 ----
 
 === Validations des produits
+
+// current
 
 Comme nous l’avons vu avec l’utilisateur, les validations sont une partie importante lors de la construction de tout type d’application. Cela nous permet d’empêcher toute donnée indésirable d’être enregistrée dans la base de données. Pour le produit, nous devons nous assurer, par exemple, que le prix est un nombre et qu’il n’est pas négatif.
 
