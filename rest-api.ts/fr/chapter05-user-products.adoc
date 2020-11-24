@@ -126,44 +126,44 @@ $ git add . && git commit -m "Generate product model"
 
 === Validations des produits
 
-// current
 
 Comme nous l’avons vu avec l’utilisateur, les validations sont une partie importante lors de la construction de tout type d’application. Cela nous permet d’empêcher toute donnée indésirable d’être enregistrée dans la base de données. Pour le produit, nous devons nous assurer, par exemple, que le prix est un nombre et qu’il n’est pas négatif.
 
-Voici donc notre premier test pour le modèle des produits:
 
-[source,ruby]
+Pour cette partie là, nous n'avons pas besoin de mettre en place des tests car tout est déjà disponible et testé par la librairie https://github.com/typestack/class-validator/[`class-validator`]. Il nous suffit de simplement ajouter les décorateurs correspondants. Voici donc le résultat:
+
+[source,ts]
 .test/models/product_test.rb
 ----
-# ...
-class ProductTest < ActiveSupport::TestCase
-  test "Should have a positive price" do
-    product = products(:one)
-    product.price = -1
-    assert_not product.valid?
-  end
-end
+// backend/src/entities/product.entity.ts
+import { IsDefined, IsPositive, validateOrReject } from "class-validator";
+// ...
+@Entity()
+export class Product {
+  // ...
+  @IsDefined()
+  @Column({ type: "text", nullable: false })
+  title: string;
+
+  @IsPositive()
+  @IsDefined()
+  @Column({ type: "float", nullable: false })
+  price: number;
+
+  @Column({ type: "boolean", default: false })
+  published: boolean;
+
+  @Index()
+  @IsDefined()
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+  // ...
+}
+// ...
 ----
 
-Il nous faut maintenant ajouter l’implémentation pour faire passer le test:
+Les décorateurs documente le code et il n'y a pas grand chose à ajouter ici. Notez simplement que j'ai ajouté la propriété `nullable: false` qui va modifier le schéma de la base de donnée et ajouter une contrainte `NOT NULL`.
 
-[source,ruby]
-.app/models/product.rb
-----
-class Product < ApplicationRecord
-  validates :title, :user_id, presence: true
-  validates :price, numericality: { greater_than_or_equal_to: 0 }, presence: true
-  belongs_to :user
-end
-----
-
-Les tests passent désormais:
-
-[source,bash]
-----
-$ rake test
-................
-----
 
 _Commitons_ ces changements et continuons d’avancer:
 
@@ -175,19 +175,10 @@ $ git commit -am "Adds some validations to products"
 
 == Point d’entrée pour nos produits
 
-Il est maintenant temps de commencer à construire les points d’entrée des produits. Pour l’instant, nous allons juste construire cinq actions REST. Dans le prochain chapitre, nous allons personnaliser la sortie JSON en implémentant la gemme https://github.com/Netflix/fast_jsonapi[fast_jsonapi].
+Il est maintenant temps de commencer à construire les points d’entrée des produits. Pour l’instant, nous allons juste construire cinq actions REST.
 
-Nous devons d’abord créer le `products_controller`, et nous pouvons facilement y parvenir avec la commande ci-dessous:
+Nous devons d’abord créer le `ProductsController`.
 
-[source,bash]
-----
-$ rails generate controller api::v1::products
-      create  app/controllers/api/v1/products_controller.rb
-      invoke  test_unit
-      create    test/controllers/api/v1/products_controller_test.rb
-----
-
-La commande ci-dessus va générer pas mal de fichiers qui vont nous permettre de commencer à travailler rapidement. Ce que je veux dire par là, c’est qu’il va générer le contrôleur et les fichiers de test déjà _scopés_ à la version 1 de l’API.
 
 En guise d’échauffement, nous allons commencer par construire l’action du `show` pour le produit.
 

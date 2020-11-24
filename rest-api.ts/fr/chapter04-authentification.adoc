@@ -454,7 +454,7 @@ export function randomString(size: number = 8): string {
 
 export function generateUser(user?: User): User {
   const newUser = new User();
-  newUser.email = user?.email ?? `${this.randomString()}@random.io`;
+  newUser.email = user?.email ?? `${randomString()}@random.io`;
   newUser.password = newUser.email;
 
   return newUser;
