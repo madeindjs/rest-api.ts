@@ -177,329 +177,497 @@ $ git commit -am "Adds some validations to products"
 
 Il est maintenant temps de commencer à construire les points d’entrée des produits. Pour l’instant, nous allons juste construire cinq actions REST.
 
-Nous devons d’abord créer le `ProductsController`.
-
-
-En guise d’échauffement, nous allons commencer par construire l’action du `show` pour le produit.
+Nous devons d’abord créer le `ProductsController`. En guise d’échauffement, nous allons commencer par construire l’action du `show` pour le produit.
 
 === Action d’affichage d’un produit
 
-Comme d’habitude, nous commençons par ajouter quelques test du contrôleur des produits. La stratégie ici est très simple, il suffit de créer un seul produit et de s’assurer que la réponse du serveur est celle que nous attendons.
+==== Tests
 
-[source,ruby]
-.test/controllers/api/v1/products_controller_test.rb
+Comme d’habitude, nous commençons par ajouter quelques test du contrôleur des produits. Le but ici est très simple. Il suffit d'afficher un seul produit et de s’assurer que la réponse du serveur est celle que nous attendons.
+
+Mais pour cela, nous allons tout d'abord créer un produit et un utilisateur dans la méthode `before`. Nous allons donc peaufiner notre utilitaire pour créer des modèles en ajoutant `generateProduct`:
+
+.Création de la méthode `generateProduct`
+[source,ts]
 ----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  setup do
-    @product = products(:one)
-  end
+// backend/src/utils/faker.utils.ts
+// ...
+import { Product } from "../entities/product.entity";
 
-  test "should show product" do
-    get api_v1_product_url(@product), as: :json
-    assert_response :success
+export function randomString(size: number = 8): string {
+  return randomBytes(size).toString("hex");
+}
+// ...
+export function generateProduct(product?: Partial<Product>): Product {
+  const newProduct = new Product();
+  newProduct.price = product?.price ?? Math.random() * 100;
+  newProduct.published = product?.published ?? randomBoolean();
+  newProduct.title = product?.title ?? randomString();
+  newProduct.user = product?.user ?? generateUser();
 
-    json_response = JSON.parse(self.response.body)
-    assert_equal @product.title, json_response['title']
-  end
-end
-----
-
-Nous ajoutons ensuite le code pour faire passer le test:
-
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
-----
-class Api::V1::ProductsController < ApplicationController
-  def show
-    render json: Product.find(params[:id])
-  end
-end
+  return newProduct;
+}
 ----
 
-Attendez! N’exécutez pas encore les tests. N’oubliez pas que nous devons ajouter la route au fichier `routes.rb`:
 
-[source,ruby]
-.config/routes.rb
+Nous allons donc maintenant utiliser cette méthode dans le `before` du nouveau tests ci-dessous:
+
+[source,ts]
 ----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      resources :users, only: %i[show create update destroy]
-      resources :tokens, only: [:create]
-      resources :products, only: [:show]
-    end
-  end
-end
+// backend/src/controllers/products.controller.spec.ts
+import { container } from "../core/container.core";
+import { TYPES } from "../core/types.core";
+import { Product, ProductRepository } from "../entities/product.entity";
+import { User, UserRepository } from "../entities/user.entity";
+import { DatabaseService } from "../services/database.service";
+import { JsonWebTokenService } from "../services/jsonWebToken.service";
+import { generateProduct, generateUser } from "../tests/faker.utils";
+import { agent } from "../tests/supertest.utils";
+
+describe("ProductsController", () => {
+  let productRepository: ProductRepository;
+  let product: Product;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>( TYPES.DatabaseService);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    product = await productRepository.save(generateProduct({ user }));
+  });
+});
+----
+
+
+Et maintenant nous pouvons utiliser ce produit et pour tester s'il est consultable:
+
+.Test fonctionnel de la méthode `ProductsController.show`
+[source, ts]
+----
+// backend/src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("show", () => {
+    it("should show product", (done) => {
+      agent.get(`/products/${product.id}`).expect(200, done);
+    });
+  });
+  // ...
+});
+----
+
+==== Implémentation
+
+Maintenant que notre test est en place, il est temps de faire passer le test.
+
+Tout comme nous l'avons fait avec les utilisateurs, nous allons créer un _middleware_ `FetchProductMiddleware`. Il s'occupera juste de récupérer le produit en fonction du paramètre `productId` et de l'injecter dans la requête:
+
+[source,ts]
+----
+// backend/src/middlewares/fetchUser.middleware.ts
+// ...
+@injectable()
+export class FetchProductMiddleware extends BaseMiddleware {
+  constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {
+    super();
+  }
+
+  public async handler(
+    req: Request & { product: Product },
+    res: Response,
+    next: NextFunction
+  ): Promise<void | Response> {
+    const productId = req.query.productId ?? req.params.productId;
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    req.product = await repository.findOne(Number(productId), { relations: ["user"] });
+
+    if (!req.product) {
+      return res.status(404).send("product not found");
+    }
+
+    next();
+  }
+}
+----
+
+La petite nouveauté ici est l'apparition du paramètre `relation` de la méthode `findOne`. Ce paramètre permet de récupérer aussi l'utilisateur associé au produit et de remplir la propriété `product.user` qui nous servira un peu plus loin.
+
+Nous pouvons maintenant passer au contrôleur:
+
+.Implémentaion de la méthode `ProductController.show`
+[source,ts]
+----
+// backend/src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  public constructor(
+    @inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService
+  ) {}
+
+  // ...
+
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(req: Request & { product: Product }) {
+    return req.product;
+  }
+}
+----
+
+Attendez! N’exécutez pas encore les tests. N’oubliez pas que nous devons ajouter la route au container:
+
+
+[source,ts]
+----
+// backend/src/core/types.core.ts
+export const TYPES = {
+  // ...
+  FetchProductMiddleware: Symbol.for("FetchProductMiddleware"),
+};
+----
+
+[source,ts]
+----
+// backend/src/core/container.core.ts
+import "../controllers/products.controller";
+// ...
+
+export const container = new Container();
+// ...
+container.bind(TYPES.FetchProductMiddleware).to(FetchProductMiddleware);
 ----
 
 Maintenant, nous nous assurons que les tests passent:
 
 [source,bash]
 ----
-$ rake test
-.................
+$ npm test
+...
+  ProductsController
+    show
+      ✓ should show product
+...
 ----
 
-Comme vous pouvez déjà le constater, les tests et l’implémentation sont très simples. En fait, cela ressemble beaucoup à ce que nous avons fait pour les utilisateurs.
+
+Parfait, nous pouvons maintenant passer à la suite.
+
+
+[source,bash]
+----
+$ git add . && git commit -m "Add logic to show product"
+----
 
 === Liste des produits
 
 Il est maintenant temps de créer une entrée pour une liste de produits qui pourrait permettre d’afficher le catalogue de produits d’un marché par exemple. Pour ce point d’accès, nous n’exigeons pas que l’utilisateur soit connecté. Comme d’habitude, nous allons commencer à écrire quelques tests:
 
-[source,ruby]
-.test/controllers/api/v1/products_controller_test.rb
+[source,ts]
 ----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  setup do
-    @product = products(:one)
-  end
+// backend/src/controllers/products.controller.spec.ts
+// ...
 
-  test "should show products" do
-    get api_v1_products_url(), as: :json
-    assert_response :success
-  end
-
-  test "should show product" do
-    get api_v1_product_url(@product), as: :json
-    assert_response :success
-
-    json_response = JSON.parse(self.response.body)
-    assert_equal @product.title, json_response['title']
-  end
-end
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    it("should respond 200", (done) => {
+      agent.get("/products").expect(200, done);
+    });
+  });
+});
 ----
-
 
 Passons maintenant à la mise en œuvre, qui, pour l’instant, va être une petite méthode:
 
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
+[source,ts]
 ----
-class Api::V1::ProductsController < ApplicationController
-  def index
-    render json: Product.all
-  end
-  #...
-end
-----
+// backend/src/controllers/home.controller.ts
+// ...
 
-Et n’oubliez pas, vous devez ajouter la route correspondante dans le fichier `config/routes.rb`:
+@controller("/products")
+export class ProductController {
+  // ...
 
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      # ....
-      resources :products, only: %i[show index]
-    end
-  end
-end
+  @httpGet("/")
+  public async index(req: Request, res: Response) {
+    const repository = await this.databaseService.getRepository(
+      ProductRepository
+    );
+    const users = await repository.find();
+    return res.json(users);
+  }
+}
 ----
 
 Dans les chapitres suivants, nous allons améliorer ce point d’entré et donner la possibilité de recevoir des paramètres pour les filtrer. _Commitons_ ces changements et continuons d’avancer:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Finishes modeling the product model along with user associations"
+$ git add . && git commit -m "Add logic to list product"
 ----
 
 === Création des produits
 
 Créer des produits est un peu plus délicat parce que nous aurons besoin d’une configuration supplémentaire. La stratégie que nous suivrons est d’attribuer le produit créé à l'utilisateur propriétaire du jeton JWT fourni d'en l'en-tête HTTP `Authorization`.
 
-Notre premier arrêt sera donc le fichier `products_controller_test.rb`.
+==== Tests
 
-[source,ruby]
-.test/controllers/api/v1/products_controller_test.rb
+Notre premier arrêt sera donc le fichier `products.controller.spec.ts`. Nous allons tout d'abord créer un utilisateur spécifique dans le `before` et récupérer son jeton JWT:
+
+
+[source,ts]
 ----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  # ...
+// backend/src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  let userRepository: UserRepository;
+  let productRepository: ProductRepository;
+  let jsonWebTokenService: JsonWebTokenService;
+  let user: User;
+  let jwt: string;
+  let product: Product;
 
-  test 'should create product' do
-    assert_difference('Product.count') do
-      post api_v1_products_url,
-           params: { product: { title: @product.title, price: @product.price, published: @product.published } },
-           headers: { Authorization: JsonWebToken.encode(user_id: @product.user_id) },
-           as: :json
-    end
-    assert_response :created
-  end
+  before(async () => {
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
 
-  test 'should forbid create product' do
-    assert_no_difference('Product.count') do
-      post api_v1_products_url,
-           params: { product: { title: @product.title, price: @product.price, published: @product.published } },
-           as: :json
-    end
-    assert_response :forbidden
-  end
-end
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    product = await productRepository.save(generateProduct({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
+  // ...
+});
+----
+
+
+Nous allons maintenant créer trois tests:
+
+. le cas ou on crée un produit avec un utilisateur
+. le cas ou on ne peut pas créer de produit car il est incomplet
+. le cas ou on ne fournis pas de jeton JWT et nous ne pouvons créer le produit
+
+C'est partit:
+
+[source,ts]
+----
+// backend/src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("create", () => {
+    it("should create product", (done) => {
+      const { title, price, published } = generateProduct();
+      agent
+        .post("/products")
+        .set("Authorization", jwt)
+        .send({ title, price, published })
+        .expect(200, done);
+    });
+
+    it("should not create product without auth", (done) => {
+      const { title, price, published } = generateProduct();
+      agent
+        .post("/products")
+        .send({ title, price, published })
+        .expect(403, done);
+    });
+
+    it("should not create user with missing title", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .post("/products")
+        .set("Authorization", jwt)
+        .send({ price, published })
+        .expect(400, done);
+    });
+  });
+  // ...
+});
 ----
 
 Wow! Nous avons ajouté beaucoup de code. Si vous vous souvenez, les tests sont en fait les mêmes que ceux de la création de l’utilisateur excepté quelques changements mineurs.
 
-De cette façon, nous pouvons voir l’utilisateur et lui créer un produit qui lui est associé. Mais attendez il y a mieux. Si nous adoptons cette approche, nous pouvons augmenter la portée de notre mécanisme d’autorisation. Dans ce cas, si vous vous souvenez, nous avons construit la logique pour obtenir l’utilisateur à partir de l’en-tête `Authorization` et lui avons assigné une méthode `current_user`. C’est donc assez facile à mettre en place en ajoutant simplement l’en-tête d’autorisation dans la requête et en récupérant l’utilisateur à partir de celui-ci. Alors faisons-le:
+==== Implémentation
 
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
+Il est donc temps de faire passer le test. L'implémentation est encore une fois très similaire à celle précédente dans le contrôleur des utilisateur. A la différence près que ici nous allons récupérer l'utilisateur associé au jeton JWT et l'assigner au produit que nous somme en train de créer:
+
+[source,ts]
 ----
-class Api::V1::ProductsController < ApplicationController
-  before_action :check_login, only: %i[create]
-  # ...
+// backend/src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpPost("/", TYPES.FetchLoggedUserMiddleware)
+  public async create(
+    @requestBody() body: Partial<Product>,
+    req: Request & { user: User },
+    res: Response
+  ) {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    const product = new Product();
+    product.title = body.title;
+    product.published = body.published;
+    product.price = body.price;
+    product.user = req.user;
 
-  def create
-    product = current_user.products.build(product_params)
-    if product.save
-      render json: product, status: :created
-    else
-      render json: { errors: product.errors }, status: :unprocessable_entity
-    end
-  end
+    const errors = await validate(product);
 
-  private
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
 
-  def product_params
-    params.require(:product).permit(:title, :price, :published)
-  end
-end
-----
-
-Comme vous pouvez le voir, nous protégeons l’action de création avec la méthode `check_login`, et sur l’action `create` nous construisons le produit en associant l’utilisateur courant. J'ai ajouté cette méthode très simpliste au _concern_ `authenticable.rb`:
-
-[source,ruby]
-.app/controllers/concerns/authenticable.rb
-----
-module Authenticable
-  # ...
-  protected
-
-  def check_login
-    head :forbidden unless self.current_user
-  end
-end
+    return repository.save(product);
+  }
+}
 ----
 
-Une dernière chose avant de faire vos tests: la route nécessaire:
+Et voilà. Si vous faites les tests maintenant, ils devraient tous passer:
 
-[source,ruby]
-.config/routes.rb
+[source,bash]
 ----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      # ...
-      resources :products, only: %i[show index create]
-    end
-  end
-end
-
+$ npm test
+...
+  ProductsController
+    index
+      ✓ should respond 200
+    show
+      ✓ should show product
+    create
+      ✓ should create product
+      ✓ should not create product without auth
+      ✓ should not create user with missing title
+...
 ----
-
-Si vous faites les tests maintenant, ils devraient tous passer:
-
-....
-$ rake test
-....................
-....
 
 === Mise à jour des produits
 
 J’espère que maintenant vous comprenez la logique pour construire les actions à venir. Dans cette section, nous nous concentrerons sur l’action de mise à jour qui fonctionnera de manière similaire à celle de création. Nous avons juste besoin d’aller chercher le produit dans la base de données et de le mettre à jour.
 
-Nous ajoutons d’abord l’action aux routes pour ne pas oublier plus tard:
+Avant de commencer à coder certains tests je veux juste préciser que, de la même manière que pour l’action `create`, nous allons délimiter le produit à l’utilisateur courant. Nous voulons nous assurer que le produit que nous mettons à jour appartient bien à l’utilisateur. Nous allons donc chercher ce produit dans l’association `product.user`.
 
-[source,ruby]
-.config/routes.rb
+// TODO
+
+Tout d’abord, nous ajoutons quelques tests. Ici nous allons tester trois choses:
+
+. le cas ou l'utilisateur possède effectivement le produit
+. le cas ou l'utilisateur ne possède pas le produit et reçoit donc une réponse `403 - Forbidden`
+. le cas sans authentification
+
+Afin de mettre en place ces tests, nous allons créer un `product`, un `user` qui possède le produit et un utilisateur `stranger` qui sera un utilisateur qui n'est pas associé au produit:
+
+[source,ts]
 ----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      # ...
-      resources :products, only: %i[show index create update]
-    end
-  end
-end
-----
+// backend/src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  let user: User;
+  let stranger: User;
+  let jwt: string;
+  let strangerJwt: string;
+  let product: Product;
 
-Avant de commencer à coder certains tests je veux juste préciser que, de la même manière que pour l’action `create`, nous allons délimiter le produit à l’utilisateur courant. Nous voulons nous assurer que le produit que nous mettons à jour appartient bien à l’utilisateur. Nous allons donc chercher ce produit dans l’association `user.products` fournie par _Active Record_.
+  before(async () => {
+    // ...
+    stranger = await userRepository.save(generateUser());
+    strangerJwt = jsonWebTokenService.encode({ userId: stranger.id });
+  });
 
-Tout d’abord, nous ajoutons quelques tests:
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    product = await productRepository.save(generateProduct({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
 
-[source,ruby]
-.test/controllers/api/v1/products_controller_test.rb
-----
-require 'test_helper'
-
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  # ...
-
-  test 'should update product' do
-    patch api_v1_product_url(@product),
-          params: { product: { title: @product.title } },
-          headers: { Authorization: JsonWebToken.encode(user_id: @product.user_id) },
-          as: :json
-    assert_response :success
-  end
-
-  test 'should forbid update product' do
-    patch api_v1_product_url(@product),
-          params: { product: { title: @product.title } },
-          headers: { Authorization: JsonWebToken.encode(user_id: users(:two).id) },
-          as: :json
-    assert_response :forbidden
-  end
-end
+  // ...
+});
 ----
 
-NOTE: J'ai ajouté une _fixture_ correspondant à un deuxième utilisateur dans le but de vérifier que celui-ci ne peut pas modifier le produit du premier utilisateur.
+Cela peut parraitre abstrait mais regardez l'implémentation des tests qui vont utiliser ces variables:
+
+[source,ts]
+----
+// backend/src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("update", () => {
+    it("should update product", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .put(`/products/${product.id}`)
+        .set("Authorization", jwt)
+        .send({ price, published })
+        .expect(200, done);
+    });
+
+    it("should not update product of other users", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .put(`/products/${product.id}`)
+        .set("Authorization", strangerJwt)
+        .send({ price, published })
+        .expect(403, done);
+    });
+
+    it("should not update product without auth", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .put(`/products/${product.id}`)
+        .send({ price, published })
+        .expect(403, done);
+    });
+  });
+});
+----
 
 Les tests peuvent paraître complexes, mais en jetant un coup d’œil, ils sont presque identiques à ceux des utilisateurs.
 
 Maintenant implémentons le code pour faire passer nos tests avec succès:
 
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
+[source,ts]
 ----
-class Api::V1::ProductsController < ApplicationController
-  before_action :set_product, only: %i[show update]
-  before_action :check_login, only: %i[create]
-  before_action :check_owner, only: %i[update]
+// backend/src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
 
-  # ...
+  @httpPut("/:productId", TYPES.FetchLoggedUserMiddleware, TYPES.FetchProductMiddleware)
+  public async update(
+    @requestBody() body: Partial<Product>,
+    req: Request & { user: User; product: Product },
+    res: Response
+  ) {
+    if (!this.canEditProduct(req.user, req.product)) {
+      return res.sendStatus(403);
+    }
 
-  def create
-    product = current_user.products.build(product_params)
-    if product.save
-      render json: product, status: :created
-    else
-      render json: { errors: product.errors }, status: :unprocessable_entity
-    end
-  end
+    req.product.title = body.title;
+    req.product.published = body.published;
+    req.product.price = body.price;
 
-  def update
-    if @product.update(product_params)
-      render json: @product
-    else
-      render json: @product.errors, status: :unprocessable_entity
-    end
-  end
+    const errors = await validate(req.user);
 
-  private
-  # ...
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    return repository.save(req.product);
+  }
 
-  def check_owner
-    head :forbidden unless @product.user_id == current_user&.id
-  end
-
-  def set_product
-    @product = Product.find(params[:id])
-  end
-end
+  private canEditProduct(user: User, product: Product): boolean {
+    return user.id === product.user.id;
+  }
+}
 ----
 
 Comme vous pouvez le constater, l’implémentation est assez simple. Nous allons simplement récupérer le produit auprès de l’utilisateur connecté et nous le mettons simplement à jour. Nous avons également ajouté cette action au `before_action`, pour empêcher tout utilisateur non autorisé de mettre à jour un produit.
