@@ -209,7 +209,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/main.ts
+// // src/main.ts
 
 // function say(message: string): void {
 //     console.log(`I said: ${message}`);
@@ -287,7 +287,7 @@
 // * le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
 // * le dossier `dist` car il résulte de la transpilation de notre code
 
-// Afin de les ignorer, il suffit juste de créer un fichier `backend/.gitignore` avec le contenu suivant :
+// Afin de les ignorer, il suffit juste de créer un fichier `.gitignore` avec le contenu suivant :
 
 // ....
 // node_modules
@@ -349,7 +349,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/main.ts
+// // src/main.ts
 
 // function say(message: string): void {
 // -     console.log(`I said: ${message}`);
@@ -415,7 +415,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/main.ts
+// // src/main.ts
 // import express, { Request, Response } from "express";
 
 // const app = express();
@@ -509,7 +509,7 @@
 // +
 // [source,ts]
 // ----
-// // backend/src/core/types.core.ts
+// // src/core/types.core.ts
 // export const TYPES = {
 //   Logger: Symbol.for("Logger"),
 // };
@@ -519,7 +519,7 @@
 // +
 // [source,ts]
 // ----
-// // backend/src/core/container.core.ts
+// // src/core/container.core.ts
 // import { Container } from "inversify";
 // import { Logger } from "../services/logger.service";
 // import { TYPES } from "./types.core";
@@ -539,7 +539,7 @@
 // +
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // import { controller, httpGet } from "inversify-express-utils";
 // import { TYPES } from "../core/container.core";
 // import { Logger } from "../services/logger.service";
@@ -562,7 +562,7 @@
 // +
 // [source,diff]
 // ----
-// // backend/src/core/container.core.ts
+// // src/core/container.core.ts
 // import { Container } from "inversify";
 // + import "../controllers/home.controller";
 // import "../controllers/users.controller";
@@ -574,7 +574,7 @@
 // +
 // [source,ts]
 // ----
-// // backend/src/main.ts
+// // src/main.ts
 // import "reflect-metadata";
 
 // import { InversifyExpressServer } from "inversify-express-utils";
@@ -703,7 +703,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/services/database.service.ts
+// // src/services/database.service.ts
 // import { inject, injectable } from "inversify";
 // import { Connection, createConnection, ObjectType } from "typeorm";
 // import { TYPES } from "../core/types.core";
@@ -751,7 +751,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/core/types.core.ts
+// // src/core/types.core.ts
 // export const TYPES = {
 //   Logger: Symbol.for("Logger"),
 // +  DatabaseService: Symbol.for("DatabaseService"),
@@ -760,7 +760,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/core/container.core.ts
+// // src/core/container.core.ts
 // import { Container } from "inversify";
 // import "../controllers/home.controller";
 // + import { DatabaseService } from "../services/database.service";
@@ -785,7 +785,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/entities/user.entity.ts
+// // src/entities/user.entity.ts
 // import {
 //   Column,
 //   Entity,
@@ -836,7 +836,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // import { Request, Response } from "express";
 // import { inject } from "inversify";
 // import { controller, httpGet } from "inversify-express-utils";
@@ -862,7 +862,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/core/container.core.ts
+// // src/core/container.core.ts
 // import { Container } from "inversify";
 // import "../controllers/home.controller";
 // + import "../controllers/users.controller";
@@ -906,7 +906,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // // ...
 // import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
 // // ...
@@ -952,7 +952,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // // ...
 
 // @controller("/users")
@@ -988,7 +988,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // // ...
 // interface UpdateUserBody {
 //   email: string;
@@ -1041,7 +1041,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // // ...
 
 // @controller("/users")
@@ -1098,7 +1098,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/entities/user.entity.ts
+// // src/entities/user.entity.ts
 // + import { IsDefined, IsEmail, validateOrReject } from "class-validator";
 // import {
 // +  BeforeInsert,
@@ -1148,7 +1148,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // // ...
 
 // @controller("/users")
@@ -1202,7 +1202,7 @@
 
 // [source,bash]
 // ----
-// $ curl -X POST -d "test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+// $ curl -X POST -d "test@test.fr" -d "password=test"  http://localhost:3000/users
 // {"errors":[{"target":{"password":"test"},"property":"email","children":[],"constraints":{"isDefined":"email should not be null or undefined","isEmail":"email must be an email"}}]}
 // ----
 
@@ -1279,7 +1279,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/core/types.core.ts
+// // src/core/types.core.ts
 // export const TYPES = {
 //   Logger: Symbol.for("Logger"),
 //   DatabaseService: Symbol.for("DatabaseService"),
@@ -1290,7 +1290,7 @@
 
 // [source,diff]
 // ----
-// // backend/src/core/container.core.ts
+// // src/core/container.core.ts
 // // ...
 // + import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
 
@@ -1306,7 +1306,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/controllers/home.controller.ts
+// // src/controllers/home.controller.ts
 // // ...
 
 // @controller("/users")
@@ -1433,7 +1433,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/utils/password.utils.ts
+// // src/utils/password.utils.ts
 // import { createHash } from "crypto";
 
 // const salt = "my private salt";
@@ -1451,7 +1451,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/entities/user.entity.ts
+// // src/entities/user.entity.ts
 // // ...
 // import { hashPassword } from "../utils/password.utils";
 
@@ -1480,7 +1480,7 @@
 
 // [source,bash]
 // ----
-// $ curl -X POST -d "email=test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+// $ curl -X POST -d "email=test@test.fr" -d "password=test"  http://localhost:3000/users
 // {"email":"test@test.fr","password":"test","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
 // ----
 
@@ -1488,7 +1488,7 @@
 
 // [source,bash]
 // ----
-// $ curl -X PUT   -d "password=helloWorld" -H "Accept: application/json" http://localhost:3000/users/4
+// $ curl -X PUT   -d "password=helloWorld"  http://localhost:3000/users/4
 // {"id":4,"email":"test@test.fr","hashedPassword":"bdbe865951e5cd026bb82a299e3e1effb1e95ce8c8afe6814cecf8fa1e895d1f"}
 // ----
 
@@ -1542,7 +1542,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/entities/user.entity.spec.ts
+// // src/entities/user.entity.spec.ts
 // import assert from "assert";
 // import { hashPassword } from "../utils/password.utils";
 // import { User } from "./user.entity";
@@ -1595,7 +1595,7 @@
 
 // [source,ts]
 // ----
-// // backend/src/utils/password.utils.spec.ts
+// // src/utils/password.utils.spec.ts
 // import assert from "assert";
 // import { hashPassword, isPasswordMatch } from "./password.utils";
 
@@ -1751,7 +1751,7 @@ L'implémentation est très simple. Une méthode encode un payload, l'autre le d
 
 [source,diff]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   Logger: Symbol.for("Logger"),
   DatabaseService: Symbol.for("DatabaseService"),
@@ -1763,7 +1763,7 @@ export const TYPES = {
 
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 + import { JsonWebTokenService } from "../services/jsonWebToken.service";
 
@@ -1843,7 +1843,7 @@ Nous allons donc créer le contrôleur `TokenControler` :
 
 [source,ts]
 ----
-// backend/src/controllers/tokens.controller.ts
+// src/controllers/tokens.controller.ts
 import { Request, Response } from "express";
 import { inject } from "inversify";
 import { controller, httpPost, requestBody } from "inversify-express-utils";
@@ -1899,7 +1899,7 @@ Toulours là ? Tenez bon, il ne bous reste plus qu'à ajouter le contrôleur dan
 
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 + import "../controllers/tokens.controller";
 // ...
@@ -1952,7 +1952,7 @@ Le principe est assez identique au précédent _middleware_ que nous avons crée
 
 [source,ts]
 ----
-// backend/src/middlewares/fetchLoggedUser.middleware.ts
+// src/middlewares/fetchLoggedUser.middleware.ts
 // ...
 
 @injectable()
@@ -2000,7 +2000,7 @@ Bien entendu, nous n'oublions pas d'ajouter ce _middleware_ à notre conatiner :
 
 [source,diff]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   // ...
   // Middlewares
@@ -2011,7 +2011,7 @@ export const TYPES = {
 
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 + import { FetchLoggedUserMiddleware } from "../middlewares/fetchLoggedUser.middleware";
 
@@ -2025,7 +2025,7 @@ Et maintenant il ne nous reste plus qu'à utiliser le [.underline]#middleware# d
 
 [source,diff]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {
@@ -2054,7 +2054,7 @@ Le principe est exactement le même pour la méthode `update` et `destroy`.
 
 [source,diff]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {

@@ -90,7 +90,7 @@ Nous allons maintenant créer un service `DatabaseService` qu va s'occuper de co
 .Implémentation du service d'initialisation de TypeORM
 [source,ts]
 ----
-// backend/src/services/database.service.ts
+// src/services/database.service.ts
 import { inject, injectable } from "inversify";
 import { Connection, createConnection, ObjectType } from "typeorm";
 import { TYPES } from "../core/types.core";
@@ -137,7 +137,7 @@ Maintenant que notre service est créé, il faut l'ajouter à notre container :
 .Ajout du `Symbol` lié au service `DatabaseService`
 [source,diff]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   Logger: Symbol.for("Logger"),
 +  DatabaseService: Symbol.for("DatabaseService"),
@@ -147,7 +147,7 @@ export const TYPES = {
 .Enregistrement du service `DatabaseService` dans le container Inversify
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 import { Container } from "inversify";
 import "../controllers/home.controller";
 + import { DatabaseService } from "../services/database.service";
@@ -171,7 +171,7 @@ Afin de simplifier l'exemple, je vais mettre ces deux classes dans le même fich
 .Première implémentation de la classe `User`
 [source,ts]
 ----
-// backend/src/entities/user.entity.ts
+// src/entities/user.entity.ts
 import {
   Column,
   Entity,
@@ -223,7 +223,7 @@ Voici l'implémentation de notre contrôleur:
 .Création du `UserController` avec la méthode `index`
 [source,ts]
 ----
-// backend/src/controllers/users.controller.ts
+// src/controllers/users.controller.ts
 import { Request, Response } from "express";
 import { inject } from "inversify";
 import { controller, httpGet } from "inversify-express-utils";
@@ -249,7 +249,7 @@ Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau contrôleu
 
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 import { Container } from "inversify";
 import "../controllers/home.controller";
 + import "../controllers/users.controller";
@@ -294,7 +294,7 @@ Maintenant que toute notre structure a été mise en place, la suite va aller be
 .Ajout de la méthode `create` à la classe `UserRepository`
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
 // ...
@@ -342,7 +342,7 @@ Voici l'implémentation :
 .Ajout de la méthode `create` à la classe `UserRepository`
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {
@@ -373,7 +373,7 @@ La méthode `update` va s'occuper de récupérer, modifier et enregistrer l'util
 
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 interface UpdateUserBody {
   email: string;
@@ -424,7 +424,7 @@ La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur 
 
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 
 @controller("/users")
@@ -481,7 +481,7 @@ Et il suffit ensuite d'ajouter les décorateurs `@IsEmail` et `@IsDefined` comme
 
 [source,diff]
 ----
-// backend/src/entities/user.entity.ts
+// src/entities/user.entity.ts
 + import { IsDefined, IsEmail, validateOrReject } from "class-validator";
 - import { /* ... */ } from "typeorm";
 + import { BeforeInsert, BeforeUpdate, /* ... */ } from "typeorm";
@@ -522,7 +522,7 @@ On voit que c'est beaucoup mieux. Cependant nous souhaiterions envoyer une erreu
 .Ajout de la validation des utilisateur dans le `UserController`
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {
@@ -555,7 +555,7 @@ Essayons maintenant :
 
 [source,bash]
 ----
-$ curl -X POST -d "test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+$ curl -X POST -d "test@test.fr" -d "password=test"  http://localhost:3000/users
 {"errors":[{"target":{"password":"test"},"property":"email","children":[],"constraints":{"isDefined":"email should not be null or undefined","isEmail":"email must be an email"}}]}
 ----
 
@@ -632,7 +632,7 @@ Vu que nous avons défini un nouvel injectable, il faut l'ajouter à notre conta
 
 [source,diff]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   Logger: Symbol.for("Logger"),
   DatabaseService: Symbol.for("DatabaseService"),
@@ -643,7 +643,7 @@ export const TYPES = {
 
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 + import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
 
@@ -659,7 +659,7 @@ Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutan
 
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {
@@ -773,7 +773,7 @@ Maintenant que nous avons vu la théorie, passons à la pratique. Nous allons ut
 
 [source,ts]
 ----
-// backend/src/utils/password.utils.ts
+// src/utils/password.utils.ts
 import { createHash } from "crypto";
 
 const salt = "my private salt";
@@ -791,7 +791,7 @@ Nous allons maintenant utiliser la méthode `hashPassword` dans l'entité `User`
 
 [source,ts]
 ----
-// backend/src/entities/user.entity.ts
+// src/entities/user.entity.ts
 // ...
 import { hashPassword } from "../utils/password.utils";
 
@@ -820,7 +820,7 @@ Maintenant essayons de créer un utilisateur via l'API:
 
 [source,bash]
 ----
-$ curl -X POST -d "email=test@test.fr" -d "password=test" -H "Accept: application/json" http://localhost:3000/users
+$ curl -X POST -d "email=test@test.fr" -d "password=test"  http://localhost:3000/users
 {"email":"test@test.fr","password":"test","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
 ----
 
@@ -828,7 +828,7 @@ Tout semble parfaitement fonctionner car on voit que l'utilisateur possède bien
 
 [source,bash]
 ----
-$ curl -X PUT   -d "password=helloWorld" -H "Accept: application/json" http://localhost:3000/users/4
+$ curl -X PUT   -d "password=helloWorld"  http://localhost:3000/users/4
 {"id":4,"email":"test@test.fr","hashedPassword":"bdbe865951e5cd026bb82a299e3e1effb1e95ce8c8afe6814cecf8fa1e895d1f"}
 ----
 
@@ -873,7 +873,7 @@ Nous voici prêt à créer notre premier test :
 
 [source,ts]
 ----
-// backend/src/entities/user.entity.spec.ts
+// src/entities/user.entity.spec.ts
 import assert from "assert";
 import { hashPassword } from "../utils/password.utils";
 import { User } from "./user.entity";
@@ -945,7 +945,7 @@ Et tant qu'à faire, nous pouvons aussi ajouter un autre test unitaire sur la m�
 
 [source,ts]
 ----
-// backend/src/utils/password.utils.spec.ts
+// src/utils/password.utils.spec.ts
 import assert from "assert";
 import { hashPassword, isPasswordMatch } from "./password.utils";
 
@@ -1008,7 +1008,7 @@ Maintenant créons notre agent qui sera utilisé dans tous nos tests:
 .Création d'un `supertest` agent
 [source,ts]
 ----
-// backend/src/tests/supertest.utils.ts
+// src/tests/supertest.utils.ts
 import supertest, { SuperTest, Test } from "supertest";
 import { server } from "../core/server";
 
@@ -1020,7 +1020,7 @@ Et maintenant commençons pas créer notre premier test pour la méthode `index`
 .Test de l'_endpoint_ `UsersController.index`
 [source,ts]
 ----
-// backend/src/controllers/users.controller.spec.ts
+// src/controllers/users.controller.spec.ts
 import { container } from "../core/container.core";
 import { TYPES } from "../core/types.core";
 import { UserRepository } from "../entities/user.entity";
@@ -1058,7 +1058,7 @@ Maintenant voici le même tests pour `create`. Celui-ci est différent car il en
 .Test de l'_endpoint_ `UsersController.index`
 [source,ts]
 ----
-// backend/src/controllers/users.controller.spec.ts
+// src/controllers/users.controller.spec.ts
 // ...
 describe("UsersController", () => {
   let userRepository: UserRepository;

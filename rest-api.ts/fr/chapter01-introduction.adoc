@@ -239,7 +239,7 @@ Ajoutons donc notre premier fichier Typescript :
 
 [source,ts]
 ----
-// backend/src/main.ts
+// src/main.ts
 function say(message: string): void {
     console.log(`I said: ${message}`);
 }
@@ -317,7 +317,7 @@ Maintenant que tout fonctionne il est temps de versionner nos changement. N'ajou
 * le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
 * le dossier `dist` car il résulte de la transpilation de notre code
 
-Afin de les ignorer, il suffit juste de créer un fichier `backend/.gitignore` avec le contenu suivant :
+Afin de les ignorer, il suffit juste de créer un fichier `.gitignore` avec le contenu suivant :
 
 ....
 node_modules
@@ -379,7 +379,7 @@ Notre code a été transpilé et executé et on voit que Nodemon continue de s'�
 
 [source,diff]
 ----
-// backend/src/main.ts
+// src/main.ts
 function say(message: string): void {
 -     console.log(`I said: ${message}`);
 +     console.log(`Nodemon said: ${message}`);
@@ -443,7 +443,7 @@ Et maintenant nous pouvons instancier notre serveur dans le fichier `main.ts`
 
 [source,ts]
 ----
-// backend/src/main.ts
+// src/main.ts
 import express, { Request, Response } from "express";
 
 const app = express();

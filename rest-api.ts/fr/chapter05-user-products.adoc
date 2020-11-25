@@ -38,7 +38,7 @@ Passons directement à l'implémentation
 .Création de l'entité `Product`
 [source,ts]
 ----
-// backend/src/entities/product.entity.ts
+// src/entities/product.entity.ts
 import { validateOrReject } from "class-validator";
 import { BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn, } from "typeorm"; import { User } from "./user.entity";
 
@@ -91,7 +91,7 @@ Le fichier de migration devrait ressembler à ceci:
 
 [source,ts]
 ----
-// backend/src/entities/user.entity.ts
+// src/entities/user.entity.ts
 // ...
 @Entity()
 export class User {
@@ -135,7 +135,7 @@ Pour cette partie là, nous n'avons pas besoin de mettre en place des tests car 
 [source,ts]
 .test/models/product_test.rb
 ----
-// backend/src/entities/product.entity.ts
+// src/entities/product.entity.ts
 import { IsDefined, IsPositive, validateOrReject } from "class-validator";
 // ...
 @Entity()
@@ -190,7 +190,7 @@ Mais pour cela, nous allons tout d'abord créer un produit et un utilisateur dan
 .Création de la méthode `generateProduct`
 [source,ts]
 ----
-// backend/src/utils/faker.utils.ts
+// src/utils/faker.utils.ts
 // ...
 import { Product } from "../entities/product.entity";
 
@@ -214,7 +214,7 @@ Nous allons donc maintenant utiliser cette méthode dans le `before` du nouveau 
 
 [source,ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 import { container } from "../core/container.core";
 import { TYPES } from "../core/types.core";
 import { Product, ProductRepository } from "../entities/product.entity";
@@ -245,7 +245,7 @@ Et maintenant nous pouvons utiliser ce produit et pour tester s'il est consultab
 .Test fonctionnel de la méthode `ProductsController.show`
 [source, ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 // ...
 describe("ProductsController", () => {
   // ...
@@ -266,7 +266,7 @@ Tout comme nous l'avons fait avec les utilisateurs, nous allons créer un _middl
 
 [source,ts]
 ----
-// backend/src/middlewares/fetchUser.middleware.ts
+// src/middlewares/fetchUser.middleware.ts
 // ...
 @injectable()
 export class FetchProductMiddleware extends BaseMiddleware {
@@ -299,7 +299,7 @@ Nous pouvons maintenant passer au contrôleur:
 .Implémentaion de la méthode `ProductController.show`
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/products")
 export class ProductController {
@@ -321,7 +321,7 @@ Attendez! N’exécutez pas encore les tests. N’oubliez pas que nous devons aj
 
 [source,ts]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   // ...
   FetchProductMiddleware: Symbol.for("FetchProductMiddleware"),
@@ -330,7 +330,7 @@ export const TYPES = {
 
 [source,ts]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 import "../controllers/products.controller";
 // ...
 
@@ -366,7 +366,7 @@ Il est maintenant temps de créer une entrée pour une liste de produits qui pou
 
 [source,ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 // ...
 
 describe("ProductsController", () => {
@@ -383,7 +383,7 @@ Passons maintenant à la mise en œuvre, qui, pour l’instant, va être une pet
 
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 
 @controller("/products")
@@ -419,7 +419,7 @@ Notre premier arrêt sera donc le fichier `products.controller.spec.ts`. Nous al
 
 [source,ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 // ...
 describe("ProductsController", () => {
   let userRepository: UserRepository;
@@ -457,7 +457,7 @@ C'est partit:
 
 [source,ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 // ...
 describe("ProductsController", () => {
   // ...
@@ -500,7 +500,7 @@ Il est donc temps de faire passer le test. L'implémentation est encore une fois
 
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/products")
 export class ProductController {
@@ -553,7 +553,7 @@ J’espère que maintenant vous comprenez la logique pour construire les actions
 
 Avant de commencer à coder certains tests je veux juste préciser que, de la même manière que pour l’action `create`, nous allons délimiter le produit à l’utilisateur courant. Nous voulons nous assurer que le produit que nous mettons à jour appartient bien à l’utilisateur. Nous allons donc chercher ce produit dans l’association `product.user`.
 
-// TODO
+==== Tests
 
 Tout d’abord, nous ajoutons quelques tests. Ici nous allons tester trois choses:
 
@@ -565,7 +565,7 @@ Afin de mettre en place ces tests, nous allons créer un `product`, un `user` qu
 
 [source,ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 // ...
 describe("ProductsController", () => {
   // ...
@@ -595,17 +595,17 @@ Cela peut parraitre abstrait mais regardez l'implémentation des tests qui vont 
 
 [source,ts]
 ----
-// backend/src/controllers/products.controller.spec.ts
+// src/controllers/products.controller.spec.ts
 // ...
 describe("ProductsController", () => {
   // ...
   describe("update", () => {
     it("should update product", (done) => {
-      const { price, published } = generateProduct();
+      const { title, price, published } = generateProduct();
       agent
         .put(`/products/${product.id}`)
         .set("Authorization", jwt)
-        .send({ price, published })
+        .send({ title, price, published })
         .expect(200, done);
     });
 
@@ -631,11 +631,14 @@ describe("ProductsController", () => {
 
 Les tests peuvent paraître complexes, mais en jetant un coup d’œil, ils sont presque identiques à ceux des utilisateurs.
 
+==== Implémentation
+
 Maintenant implémentons le code pour faire passer nos tests avec succès:
 
+.Implémentation de la méthode `update`
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/products")
 export class ProductController {
@@ -655,7 +658,7 @@ export class ProductController {
     req.product.published = body.published;
     req.product.price = body.price;
 
-    const errors = await validate(req.user);
+    const errors = await validate(req.product);
 
     if (errors.length !== 0) {
       return res.status(400).json({ errors });
@@ -670,90 +673,108 @@ export class ProductController {
 }
 ----
 
-// -- current
+Comme vous pouvez le constater, l’implémentation est assez simple. Les _Middleware_ vont automatiquement récupérer le produit et l'utilisateur lié au jeton JWT. Il ne nous reste plus qu'à vérifier que l'utilisateur possède bien le produit. C'est ce que nous faisons avec la méthode `canEditProduct`. Ensuite nous mettons à jour le produit et nous le sauvegardons après avoir vérifié qu'il est valide bien sûr.
 
-Comme vous pouvez le constater, l’implémentation est assez simple. Nous allons simplement récupérer le produit auprès de l’utilisateur connecté et nous le mettons simplement à jour. Nous avons également ajouté cette action au `before_action`, pour empêcher tout utilisateur non autorisé de mettre à jour un produit.
 
 Si nous lançons les tests, ils devraient passer:
 
 [source,bash]
 ----
-$ rake test
-......................
+$ npm test
+...
+  ProductsController
+    index
+      ✓ should respond 200
+    show
+      ✓ should show product
+    create
+      ✓ should create product
+      ✓ should not create product without auth
+      ✓ should not create user with missing title
+    update
+      ✓ should update product
+      ✓ should not update product of other users
+      ✓ should not update product without auth
+...
 ----
 
 === Suppression des produits
 
-Notre dernier arrêt pour les route des produits, sera l’action `destroy`. Vous pouvez maintenant imaginer à quoi cela ressemblerait. La stratégie ici sera assez similaire à l’action de `create` et `update`. Ce qui signifie que nous allons récupérer l'utilisateur connecté puis récupérer le produit auprès de l’association `user.products` et enfin le supprimer en retournant un code 204.
+Notre dernier arrêt pour les route des produits, sera l’action `destroy`. Vous pouvez maintenant imaginer à quoi cela ressemblerait. La stratégie ici sera assez similaire à l’action de `create` et `update`. Ce qui signifie que nous allons récupérer l'utilisateur connecté puis vérifier que l'utilisateur possède bien le produit et enfin le supprimer en retournant un code 204.
 
-Recommençons par ajouter la route:
 
-[source,ruby]
-.config/routes.rb
+Commençons par ajouter quelques tests:
+
+[source,ts]
 ----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      resources :users, only: %i[show create update destroy]
-      resources :tokens, only: [:create]
-      resources :products
-    end
-  end
-end
-----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("destroy", () => {
+    it("should destroy product", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent
+        .delete(`/products/${product.id}`)
+        .set("Authorization", jwt)
+        .expect(204, done);
+    });
 
-Après cela, nous devons ajouter quelques tests:
+    it("should not destroy product without auth", (done) => {
+      agent.delete(`/products/${product.id}`).expect(403, done);
+    });
 
-[source,ruby]
-.test/controllers/api/v1/products_controller_test.rb
-----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  # ...
-
-  test "should destroy product" do
-    assert_difference('Product.count', -1) do
-      delete api_v1_product_url(@product), headers: { Authorization: JsonWebToken.encode(user_id: @product.user_id) }, as: :json
-    end
-    assert_response :no_content
-  end
-
-  test "should forbid destroy user" do
-    assert_no_difference('Product.count') do
-      delete api_v1_user_url(@product), headers: { Authorization: JsonWebToken.encode(user_id: users(:two).id) }, as: :json
-    end
-    assert_response :forbidden
-  end
-end
+    it("should not destroy of other users", (done) => {
+      agent
+        .delete(`/products/${product.id}`)
+        .set("Authorization", strangerJwt)
+        .expect(403, done);
+    });
+  });
+});
 ----
 
 Maintenant, ajoutons simplement le code nécessaire pour faire passer les tests:
 
-[source,ruby]
+[source,ts]
 .app/controllers/api/v1/products_controller.rb
 ----
-class Api::V1::ProductsController < ApplicationController
-  before_action :set_product, only: %i[show update destroy]
-  before_action :check_login, only: %i[create]
-  before_action :check_owner, only: %i[update destroy]
-
-  # ...
-
-  def destroy
-    @product.destroy
-    head 204
-  end
-
-  # ...
-end
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpDelete("/:productId", TYPES.FetchLoggedUserMiddleware, TYPES.FetchProductMiddleware)
+  public async destroy(
+    req: Request & { user: User; product: Product },
+    res: Response
+  ) {
+    if (!this.canEditProduct(req.user, req.product)) {
+      return res.sendStatus(403);
+    }
+    const repository = await this.databaseService.getRepository(
+      ProductRepository
+    );
+    await repository.delete(req.product);
+  }
+  // ...
+}
 ----
 
 Comme vous pouvez le voir, l’implémentation fait le travail en trois lignes. Nous pouvons lancer les tests pour nous assurer que tout est bon.
 
 [source,bash]
 ----
-$ rake test
-........................
+$ npm test
+...
+  ProductsController
+...
+    destroy
+      ✓ should destroy product
+      ✓ should not destroy product without auth
+      ✓ should not destroy of other users
+...
+  27 passing (344ms)
 ----
 
 Après cela, nous _commitons_ les changements.
@@ -763,110 +784,82 @@ Après cela, nous _commitons_ les changements.
 $ git commit -am "Adds the products create, update and destroy action"
 ----
 
-== Remplir la base de données
+== Essai avec cURL
 
-Avant de continuer avec plus de code, remplissons la base de données avec de fausses données. Pour faire cela, nous allons utiliser des _seeds_.
+Nos tests nous indiquent que tout va bien mais c'est toujours bien de s'en assurer. Nous allons donc créer un utilisateur puis un produit le mettre à jour et enfin le supprimer. C'est partit.
 
-Avec le fichier `db/seeds.rb`, Rails nous donne un moyen de fournir facilement et rapidement des valeurs par défaut à une nouvelle installation. C'est un simple fichier Ruby qui donne un accès complet à toutes les classes et méthodes de l'application. Vous n'avez donc pas besoin de tout saisir manuellement avec la console Rails mais vous pouvez simplement utiliser le fichier `db/seeds.rb` avec la commande `rake db:seed`.
+Démarrez votre serveur avec `npm start` si ce n'est déjà fait et commençons par créer un utilisateur:
 
-Commençons donc par créer un utilisateur:
-
-.db/seeds.rb
-[source,ruby]
+.Création de l'utilisateur
+[source,bash]
 ----
-User.delete_all
-user = User.create! email: 'toto@toto.fr', password: 'toto123'
-puts "Created a new user: #{user.email}"
+$ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/users
+{
+  "email": "test@test.io",
+  "hashedPassword": "8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b",
+  "id": 1,
+  "createdAt": "2020-11-25T20:37:20.000Z",
+  "updatedAt": "2020-11-25T20:37:20.000Z"
+}
 ----
 
-Et maintenant vous pouvez créer l'utilisateur en éxecutant simplement la commande suivante:
+Et maintenant obtenons un jeton JWT valide:
+
+.Obtention d'un jeton d'authentification
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/tokens
+{
+  "token": "eyJhbGciOiJ..."
+}
+----
+
+Notez ce jeton et sauvegardons le dans une variable Bash:
 
 [source,bash]
 ----
-$ rake db:seed
-Created a new user: toto@toto.fr
+$ export JWT="eyJhbGciOiJ..."
 ----
 
-Ca fonctionne. Je ne sais pas vous, mais moi j'aime bien avoir des données factices qui remplissent correctement ma base de données de test. Seulement je n'ai pas toujours l'inspiration pour donner du sens à mes _seed_ alors j'utilise la gemme https://github.com/stympy/faker[`faker`]. Installons là:
+Maintenant utilisons ce jetons pour créer un produit:
 
 [source,bash]
 ----
-$ bundle add faker
+$ curl -X POST  -H "Authorization: $JWT" -d "title=my first product" -d "price=1"  http://localhost:3000/products | jq
+{
+  "id": 1,
+  "title": "my first product",
+  "price": 1,
+...
+}
 ----
 
-Maintenant nous pouvons l'utiliser pour créer cinq utilisateurs d'un coup avec des email différent.
-
-.db/seeds.rb
-[source,ruby]
-----
-User.delete_all
-
-5.times do
-  user = User.create! email: Faker::Internet.email, password: 'locadex1234'
-  puts "Created a new user: #{user.email}"
-end
-----
-
-Et voyons le résultat:
+Nous pouvons le mettre à jour facilement avec le requête `PUT`:
 
 [source,bash]
 ----
-$ rake db:seed
-Created a new user: barbar@greenholt.io
-Created a new user: westonpaucek@ortizbotsford.net
-Created a new user: ricardo@schneider.com
-Created a new user: scott@moenerdman.biz
-Created a new user: chelsie@wiza.net
+$ curl -X PUT  -H "Authorization: $BASH" -d "title=my first product undated" -d "price=66"  http://localhost:3000/products/1 | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   372  100   333  100    39   4561    534 --:--:-- --:--:-- --:--:--  5095
+{
+  "id": 1,
+  "title": "my first product updated",
+  "price": 66,
+...
+}
 ----
 
-Et voilà. Mais nous pouvons aller plus loin en créant des produit associés à ces utilisateurs:
-
-.db/seeds.rb
-[source,ruby]
-----
-Product.delete_all
-User.delete_all
-
-3.times do
-  user = User.create! email: Faker::Internet.email, password: 'locadex1234'
-  puts "Created a new user: #{user.email}"
-
-  2.times do
-    product = Product.create!(
-      title: Faker::Commerce.product_name,
-      price: rand(1.0..100.0),
-      published: true,
-      user_id: user.id
-    )
-    puts "Created a brand new product: #{product.title}"
-  end
-end
-----
-
-Et voilà. Le résultat est bluffant. En une commande nous pouvons créer trois utilisateurs et six produits:
+Et enfin supprimer ce produit:
 
 [source,bash]
 ----
-$ rake db:seed
-Created a new user: tova@beatty.org
-Created a brand new product: Lightweight Steel Hat
-Created a brand new product: Ergonomic Aluminum Lamp
-Created a new user: tommyrunolfon@tremblay.biz
-Created a brand new product: Durable Plastic Car
-Created a brand new product: Ergonomic Leather Shirt
-Created a new user: jordon@torp.io
-Created a brand new product: Incredible Paper Hat
-Created a brand new product: Sleek Concrete Pants
+$ curl -X DELETE -H "Authorization: $JWT" http://localhost:3000/products/1
 ----
 
-_commitons_ les changements:
+C'est parfait.
 
-[source,bash]
-----
-$ git commit -am "Create a seed to populate database"
-----
-
-Et comme nous arrivons à la fin de notre chapitre, il est temps d'appliquer toutes nos modifications sur la branche master en faisant un _merge_:
+Il est donc temps de clôturer ce chapitre et de passer à la suite.
 
 [source,bash]
 ----
@@ -878,4 +871,5 @@ $ git merge chapter05
 
 J'espère que vous avez apprécié ce chapitre. C'est un long travail, mais le code que nous avons créé est une excellente base pour l'application principale.
 
+// TODO
 Dans le chapitre suivant, nous allons nous concentrer sur la personnalisation de la sortie des modèles utilisateur et produits à l’aide de la gemme https://github.com/Netflix/fast_jsonapi[fast_jsonapi]. Elle nous permettra de filtrer facilement les attributs à afficher et à gérer les associations comme des objets embarqués par exemple.

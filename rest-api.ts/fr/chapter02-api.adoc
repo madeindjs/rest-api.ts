@@ -242,7 +242,7 @@ Et voilà. Il ne nous reste plus qu'à créer le container qui va enregistrer ce
 
 [source,ts]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = { Logger: Symbol.for("Logger") };
 ----
 
@@ -252,7 +252,7 @@ Maintenant nous pouvons utiliser ce symbole pour enregistrer notre logger dans u
 
 [source,ts]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 import { Container } from "inversify";
 import { Logger } from "../services/logger.service";
 import { TYPES } from "./types.core";
@@ -284,7 +284,7 @@ Avant d'écrire notre premier contrôleur, il est nécessaire de faire quelques 
 .La définition de notre serveur HTTP avec `inversify-express-utils`
 [source,ts]
 ----
-// backend/src/core/server.ts
+// src/core/server.ts
 import * as bodyParser from "body-parser";
 import { InversifyExpressServer } from "inversify-express-utils";
 import { container } from "./container.core";
@@ -300,7 +300,7 @@ Comme vous pouvez le voir, nous utilisons maintenant une instance de `InversifyE
 
 [source,ts]
 ----
-// backend/src/main.ts
+// src/main.ts
 import "reflect-metadata";
 import { container } from "./core/container.core";
 import { server } from "./core/server";
@@ -323,7 +323,7 @@ Passons directement à l'implémentation afin que cela soit plus parlant:
 . Création du premier contrôleur avec une unique route
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 import { controller, httpGet } from "inversify-express-utils";
 
 @controller("/")
@@ -345,7 +345,7 @@ Maintenant essayons d'injecter le `Logger` afin d'afficher un message lorsque ce
 
 [source,ts]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 import { TYPES } from "../core/container.core";
 import { Logger } from "../services/logger.service";
@@ -370,7 +370,7 @@ La dernière étape est d'importer manuellement ce contrôleur dans le container
 
 [source,diff]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 import { Container } from "inversify";
 + import "../controllers/home.controller";
 import "../controllers/users.controller";

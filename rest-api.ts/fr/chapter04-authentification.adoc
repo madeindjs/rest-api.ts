@@ -110,7 +110,7 @@ L'implémentation est très simple. Une méthode encode un payload, l'autre le d
 .Ajout du `Symbol` pour le service `JsonWebTokenService`
 [source,ts]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   // ...
   JsonWebTokenService: Symbol.for("JsonWebTokenService"),
@@ -120,7 +120,7 @@ export const TYPES = {
 .Ajout du service `JsonWebTokenService` dans le _container_
 [source,ts]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 import { JsonWebTokenService } from "../services/jsonWebToken.service";
 
@@ -195,7 +195,7 @@ Forcément, le test va commencer par créer un utilisateur. C'est ce qu'on va fa
 .Création d'une partie du test fonctionnel de `TokensController`
 [source,ts]
 ----
-// backend/src/controllers/tokens.controller.spec.ts
+// src/controllers/tokens.controller.spec.ts
 import { container } from "../core/container.core";
 import { TYPES } from "../core/types.core";
 import { User, UserRepository } from "../entities/user.entity";
@@ -225,7 +225,7 @@ Maintenant nous n'avons plus qu'a écrire nos tests
 .Création du test fonctionnel de `TokensController`
 [source,ts]
 ----
-// backend/src/controllers/tokens.controller.spec.ts
+// src/controllers/tokens.controller.spec.ts
 import { container } from "../core/container.core";
 import { TYPES } from "../core/types.core";
 import { User, UserRepository } from "../entities/user.entity";
@@ -296,7 +296,7 @@ Nous allons donc créer le contrôleur `TokenController`. Commençons par créer
 .Création du contrôleur `TokensController` avec les dépendances nécessaire
 [source,ts]
 ----
-// backend/src/controllers/tokens.controller.ts
+// src/controllers/tokens.controller.ts
 import { inject } from "inversify";
 import { controller } from "inversify-express-utils";
 import { TYPES } from "../core/types.core";
@@ -318,7 +318,7 @@ Et on ajoute maintenant ce contrôleur à container afin qu'il soit chargé:
 
 [source,ts]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 import "../controllers/tokens.controller";
 // ...
@@ -328,7 +328,7 @@ Maintenant il ne nous reste plus qu'à ce concentrer sur la méthode `create` de
 
 [source,ts]
 ----
-// backend/src/controllers/tokens.controller.ts
+// src/controllers/tokens.controller.ts
 // ...
 import { Request, Response } from "express";
 import { controller, httpPost, requestBody } from "inversify-express-utils";
@@ -444,7 +444,7 @@ Ces trois tests nécessitent qu'on ai déjà un utilisateur en base. Nous allons
 
 [source,ts]
 ----
-// backend/src/utils/faker.utils.ts
+// src/utils/faker.utils.ts
 import { randomBytes } from "crypto";
 import { User } from "../entities/user.entity";
 
@@ -471,7 +471,7 @@ Maintenant nous pouvons revenir à notre test et créer un utilisateur dans la m
 .Création d'un user pour le test `show`
 [source,ts]
 ----
-// backend/src/controllers/users.controller.spec.ts
+// src/controllers/users.controller.spec.ts
 // ...
 describe("UsersController", () => {
   let userRepository: UserRepository;
@@ -495,7 +495,7 @@ Maintenant il ne nous reste plus qu'à essayer d'accéder à cette utilisateur v
 .Tests fonctionnels de la méthode `UsersController.show`
 [source,ts]
 ----
-// backend/src/controllers/users.controller.spec.ts
+// src/controllers/users.controller.spec.ts
 // ...
 describe("UsersController", () => {
   let jsonWebTokenService: JsonWebTokenService;
@@ -530,7 +530,7 @@ Le principe est exactement le même pour la méthode `update` et `destroy`:
 .Tests fonctionnels de la méthode `UsersController.show`
 [source,ts]
 ----
-// backend/src/controllers/users.controller.spec.ts
+// src/controllers/users.controller.spec.ts
 // ...
 describe("UsersController", () => {
   // ...
@@ -608,7 +608,7 @@ Le principe est assez identique au précédent _middleware_ que nous avons crée
 
 [source,ts]
 ----
-// backend/src/middlewares/fetchLoggedUser.middleware.ts
+// src/middlewares/fetchLoggedUser.middleware.ts
 import { inject, injectable } from "inversify";
 import { BaseMiddleware } from "inversify-express-utils";
 import { TYPES } from "../core/types.core";
@@ -633,7 +633,7 @@ Et maintenant voici l'implémentation de la méthode `handler`
 .Implémentation de la méthode `handle` du `FetchLoggedUserMiddleware`
 [source,ts]
 ----
-// backend/src/middlewares/fetchLoggedUser.middleware.ts
+// src/middlewares/fetchLoggedUser.middleware.ts
 // ...
 import { NextFunction, Request, Response } from "express";
 import { User, UserRepository } from "../entities/user.entity";
@@ -676,7 +676,7 @@ Bien entendu, nous n'oublions pas d'ajouter ce _middleware_ à notre conatiner :
 .Ajout du symbole `FetchLoggedUserMiddleware`
 [source,ts]
 ----
-// backend/src/core/types.core.ts
+// src/core/types.core.ts
 export const TYPES = {
   // ...
   FetchLoggedUserMiddleware: Symbol.for("FetchLoggedUserMiddleware"),
@@ -686,7 +686,7 @@ export const TYPES = {
 .Ajout du middleware `FetchLoggedUserMiddleware` dans le container
 [source,ts]
 ----
-// backend/src/core/container.core.ts
+// src/core/container.core.ts
 // ...
 import { FetchLoggedUserMiddleware } from "../middlewares/fetchLoggedUser.middleware";
 
@@ -703,7 +703,7 @@ Et maintenant il ne nous reste plus qu'à utiliser le _middleware_ dans le `User
 
 [source,diff]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {
@@ -728,7 +728,7 @@ Le principe est exactement le même pour la méthode `update` et `destroy`.
 
 [source,diff]
 ----
-// backend/src/controllers/home.controller.ts
+// src/controllers/home.controller.ts
 // ...
 @controller("/users")
 export class UsersController {
