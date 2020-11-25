@@ -670,6 +670,8 @@ export class ProductController {
 }
 ----
 
+// -- current
+
 Comme vous pouvez le constater, l’implémentation est assez simple. Nous allons simplement récupérer le produit auprès de l’utilisateur connecté et nous le mettons simplement à jour. Nous avons également ajouté cette action au `before_action`, pour empêcher tout utilisateur non autorisé de mettre à jour un produit.
 
 Si nous lançons les tests, ils devraient passer:
