@@ -391,12 +391,9 @@ export class ProductController {
   // ...
 
   @httpGet("/")
-  public async index(req: Request, res: Response) {
-    const repository = await this.databaseService.getRepository(
-      ProductRepository
-    );
-    const users = await repository.find();
-    return res.json(users);
+  public async index() {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    return repository.find();
   }
 }
 ----
@@ -468,7 +465,7 @@ describe("ProductsController", () => {
         .post("/products")
         .set("Authorization", jwt)
         .send({ title, price, published })
-        .expect(200, done);
+        .expect(201, done);
     });
 
     it("should not create product without auth", (done) => {
@@ -524,7 +521,8 @@ export class ProductController {
       return res.status(400).json({ errors });
     }
 
-    return repository.save(product);
+    await repository.save(product);
+    return res.sendStatus(201);
   }
 }
 ----
@@ -606,7 +604,7 @@ describe("ProductsController", () => {
         .put(`/products/${product.id}`)
         .set("Authorization", jwt)
         .send({ title, price, published })
-        .expect(200, done);
+        .expect(204, done);
     });
 
     it("should not update product of other users", (done) => {
@@ -664,7 +662,8 @@ export class ProductController {
       return res.status(400).json({ errors });
     }
     const repository = await this.databaseService.getRepository(ProductRepository);
-    return repository.save(req.product);
+    await repository.save(req.product);
+    return res.sendStatus(204);
   }
 
   private canEditProduct(user: User, product: Product): boolean {
@@ -756,6 +755,7 @@ export class ProductController {
       ProductRepository
     );
     await repository.delete(req.product);
+    return res.sendStatus(204);
   }
   // ...
 }
@@ -825,7 +825,7 @@ Maintenant utilisons ce jetons pour créer un produit:
 
 [source,bash]
 ----
-$ curl -X POST  -H "Authorization: $JWT" -d "title=my first product" -d "price=1"  http://localhost:3000/products | jq
+$ curl -X POST  -H "Authorization: $JWT" -d "title=my first product" -d "price=1"  http://localhost:3000/products
 {
   "id": 1,
   "title": "my first product",
@@ -838,16 +838,7 @@ Nous pouvons le mettre à jour facilement avec le requête `PUT`:
 
 [source,bash]
 ----
-$ curl -X PUT  -H "Authorization: $BASH" -d "title=my first product undated" -d "price=66"  http://localhost:3000/products/1 | jq
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-100   372  100   333  100    39   4561    534 --:--:-- --:--:-- --:--:--  5095
-{
-  "id": 1,
-  "title": "my first product updated",
-  "price": 66,
-...
-}
+$ curl -X PUT  -H "Authorization: $BASH" -d "title=my first product undated" -d "price=66"  http://localhost:3000/products/1
 ----
 
 Et enfin supprimer ce produit:

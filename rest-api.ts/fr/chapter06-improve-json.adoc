@@ -7,19 +7,17 @@ Maintenant, vous devriez être satisfaits de tout ce travail. Mais nous avons en
 
 [source,json]
 ----
-{
-  "products": [
-      {
-          "id": 1,
-          "title": "Tag Case",
-          "price": "98.7761933800815",
-          "published": false,
-          "user_id": 1,
-          "created_at": "2018-12-20T12:47:26.686Z",
-          "updated_at": "2018-12-20T12:47:26.686Z"
-      },
-    ]
-}
+[
+  {
+    "id": 1,
+    "title": "Tag Case",
+    "price": "98.7761933800815",
+    "published": false,
+    "user_id": 1,
+    "created_at": "2018-12-20T12:47:26.686Z",
+    "updated_at": "2018-12-20T12:47:26.686Z"
+  },
+]
 ----
 
 Or nous voulons une sortie qui ne contienne pas les champs `user_id`, `created_at` et `updated_at`.
@@ -59,16 +57,19 @@ Le contenu de la clé `data` est lui aussi assez strict:
 * les propriétés de l’objet doivent être placées dans une clé `attributes` et les _undescore_ (`_`) sont remplacés par des tirets (`-`)
 * les liaisons de l’objets doivent être placées dans une clé `relationships`
 
-Dans ce chapitre, nous allons personnaliser la sortie JSON en utilisant la gemme https://github.com/Netflix/fast_jsonapi[fast_jsonapi] de Netflix qui respecte toutes les normes https://jsonapi.org/[JSON:API].
+Dans ce chapitre, nous allons personnaliser la sortie JSON en utilisant la gemme https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] qui respecte toutes les normes https://jsonapi.org/[JSON:API].
 
-Installons donc la gemme `fast_jsonapi`:
+Installons donc cette dépendance:
 
 [source,bash]
 ----
-$ bundle add fast_jsonapi
+$ npm install jsonapi-serializer
+$ npm install @types/jsonapi-serializer --save-dev
 ----
 
 Vous devriez être prêts à continuer avec ce tutoriel.
+
+// => current
 
 == Sérialiser l’utilisateur
 

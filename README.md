@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="rails6/fr/img/logo.svg" alt="Api on Rails 6" />
+  <img src="rest-api.ts/fr/img/logo.svg" alt="REST.api.ts" />
 </h1>
 
 Learn **best practices** to build an **API** using **Ruby on Rails** 5/6. The intention with this book it’s not only to teach you how to build an API with Rails. The purpose is also to teach you how to build **scalable** and **maintainable** API with Rails which means **improve** your current Rails knowledge. In this book you will learn to:
@@ -29,23 +29,23 @@ Or you can support me with Liberapay: <noscript><a href="https://liberapay.com/a
 
 ## Build book
 
-~~~bash
+```bash
 $ git clone https://github.com/madeindjs/api_on_rails/
 $ cd api_on_rails
 $ bundle install
 $ rake "build:pdf[6,fr]"
-~~~
+```
 
 You can see all build available with `rake -T`
 
-~~~bash
+```bash
 $ rake -T
 rake "build:all[version,lang]"   # Build all versions
 rake "build:epub[version,lang]"  # Build an EPUB version
 rake "build:html[version,lang]"  # Build an HTML version
 rake "build:mobi[version,lang]"  # Build a MOBI version
 rake "build:pdf[version,lang]"   # Build a PDF version
-~~~
+```
 
 ## License
 

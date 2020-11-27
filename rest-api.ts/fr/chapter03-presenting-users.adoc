@@ -308,12 +308,13 @@ interface CreateUserBody {
 export class UsersController {
   // ...
   @httpPost("/")
-  public async create(@requestBody() body: CreateUserBody, req: Request, res: Response): Promise<User> {
+  public async create(@requestBody() body: CreateUserBody, req: Request, res: Response) {
     const repository = await this.database.getRepository(UserRepository);
     const user = new User();
     user.email = body.email;
     user.password = body.password;
-    return repository.save(user);
+    repository.save(user);
+    return res.sendStatus(201);
   }
 }
 ----
@@ -326,7 +327,6 @@ Testons que tout cela fonctionne:
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
-{"email":"test@test.fr","password":"test","id":1
 ----
 
 Parfait. On voit que tout fonctionne correctement!
@@ -387,12 +387,15 @@ export class UsersController {
   public async update(
     @requestBody() body: UpdateUserBody,
     @requestParam("userId") userId: number,
+    req: Request,
+    res: Response
   ) {
     const repository = await this.database.getRepository(UserRepository);
     const user = await repository.findOneOrFail(userId);
     user.email = body.email ?? user.email;
     user.password = body.password ?? user.password;
-    return repository.save(user);
+    await repository.save(user);
+    return res.sendStatus(204);
   }
   // ...
 }
@@ -403,7 +406,6 @@ Et voilà. Comme tout à l'heure, essayons de voir si cela fonctionne :
 [source,bash]
 ----
 $ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
-{"id":1,"email":"foo@bar.com","password":"test"}
 ----
 
 Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que Type ORM a effectué dans les logs du terminal
@@ -431,10 +433,11 @@ La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur 
 export class UsersController {
   // ...
   @httpDelete("/:userId")
-  public async destroy(@requestParam("userId") userId: number) {
+  public async destroy(@requestParam("userId") userId: number, req: Request, res: Response) {
     const repository = await this.database.getRepository(UserRepository);
     const user = await repository.findOneOrFail(userId);
     await repository.delete(user);
+    return res.sendStatus(204);
   }
 }
 ----
@@ -664,30 +667,24 @@ Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutan
 @controller("/users")
 export class UsersController {
   // ...
-
   @httpGet("/:userId", TYPES.FetchUserMiddleware)
-  public async show(req: Request & { user: User }): Promise<User> {
+  public async show(/* ... */) {
     return req.user;
   }
 
   @httpPut("/:userId", TYPES.FetchUserMiddleware)
-  public async update(
-    @requestBody() body: UpdateUserBody,
-    req: Request & { user: User },
-    res: Response
-  ): Promise<User | Response> {
-    const repository = await this.database.getRepository(UserRepository);
+  public async update(/* ... */) {
+    // ...
     req.user.email = body.email ?? req.user.email;
     req.user.password = body.password ?? req.user.password;
-
     // ...
-    return repository.save(req.user);
   }
 
   @httpDelete("/:userId", TYPES.FetchUserMiddleware)
-  public async destroy(req: Request & { user: User }) {
-    const repository = await this.database.getRepository(UserRepository);
+  public async destroy(/* ... */) {
+    // ...
     await repository.delete(req.user);
+    // ...
   }
 }
 ----
@@ -929,11 +926,6 @@ Et voilà. Nous pouvons maintenant exécuter ce test :
 ----
 $ npm test
 
-> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
-> ts-mocha src/**/*.spec.ts
-
-
-
   User
     ✓ should hash password
 
@@ -964,13 +956,8 @@ Encore une fois, ce genre de test peut vous sembler simpliste mais ils sont trè
 
 [source,bash]
 ----
-npm test
-
-> backend@1.0.0 test /home/alexandre/github/madeindjs/node_market_place/backend
-> ts-mocha src/**/*.spec.ts
-
-
-
+$ npm test
+...
   User
     ✓ should hash password
 
@@ -1066,7 +1053,7 @@ describe("UsersController", () => {
   describe("create", () => {
     it("should create user", (done) => {
       const email = `${new Date().getTime()}@test.io`;
-      agent.post("/users").send({ email, password: "toto" }).expect(200, done);
+      agent.post("/users").send({ email, password: "toto" }).expect(201, done);
     });
 
     it("should not create user with missing email", (done) => {
