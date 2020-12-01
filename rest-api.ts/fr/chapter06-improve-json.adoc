@@ -1,7 +1,7 @@
 [#chapter06-improve-json]
 = Modélisation du JSON
 
-Dans le chapitre précédent, nous avons ajouté les produits à l’application et construit toutes les routes nécessaires. Nous avons également associé un produit à un utilisateur et restreint certaines des actions de `products_controller`.
+Dans le chapitre précédent, nous avons ajouté les produits à l’application et construit toutes les routes nécessaires. Nous avons également associé un produit à un utilisateur et restreint certaines des actions de `ProductsController`.
 
 Maintenant, vous devriez être satisfaits de tout ce travail. Mais nous avons encore du pain sur la planche. Actuellement, nous avons une sortie JSON qui n’est pas parfaite. La sortie JSON ressemble à celle-ci:
 
@@ -24,7 +24,6 @@ Or nous voulons une sortie qui ne contienne pas les champs `user_id`, `created_a
 
 De plus, une partie importante et difficile lors de la création de votre API est de décider le format de sortie. Heureusement, certaines organisations ont déjà fait face à ce genre de problème et elles ont ainsi établi certaines conventions que vous allez découvrir dans ce chapitre.
 
-
 Vous pouvez clôner le projet jusqu’à ce point avec:
 
 [source,bash]
@@ -41,13 +40,13 @@ $ git checkout -b chapter06
 
 == Présentation de https://jsonapi.org/[JSON:API]
 
-Une partie importante et difficile lors de la création de votre API est de décider le format de sortie. Heureusement, certaines conventions existent déjà.
+Comme je le disais plus tôt, une partie importante et difficile lors de la création de votre API est de décider le format de sortie. Heureusement, certaines conventions existent déjà.
 
 L'une d'elles, certainement la plus utilisée est https://jsonapi.org/[JSON:API]. La https://jsonapi.org/format/#document-structure[documentation de JSON:API] nous donne quelques règles à suivre concernant le formatage du document JSON.
 
 Ainsi, notre document *doit* contenir ces clefs:
 
-* `data`: qui doit contenir les données que nous renvoyons
+* `data` qui doit contenir les données que nous renvoyons
 * `errors` qui doit contenir un tableau des erreurs qui sont survenues.
 * `meta` qui contient un https://jsonapi.org/format/#document-meta[objet meta]
 
@@ -57,7 +56,7 @@ Le contenu de la clé `data` est lui aussi assez strict:
 * les propriétés de l’objet doivent être placées dans une clé `attributes` et les _undescore_ (`_`) sont remplacés par des tirets (`-`)
 * les liaisons de l’objets doivent être placées dans une clé `relationships`
 
-Dans ce chapitre, nous allons personnaliser la sortie JSON en utilisant la gemme https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] qui respecte toutes les normes https://jsonapi.org/[JSON:API].
+Dans ce chapitre, nous allons personnaliser la sortie JSON en utilisant la librairie https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] qui respecte toutes les normes https://jsonapi.org/[JSON:API].
 
 Installons donc cette dépendance:
 
@@ -73,106 +72,78 @@ Vous devriez être prêts à continuer avec ce tutoriel.
 
 == Sérialiser l’utilisateur
 
-FastJSON API utilise des *sérialiseurs*. Les sérialiseurs représentent des classes Ruby qui seront responsables de convertir un modèle en un `Hash` ou un JSON.
+`jsonapi-serializer` utilise des *sérialiseurs*. Les sérialiseurs représentent des méthodes qui seront responsables de convertir un objet en un autre objet respectant la norme JSON:API.
 
-Nous devons d’abord ajouter un fichier `user_serializer.rb`. Nous pouvons le faire manuellement, mais la gemme fournit une interface en ligne de commande pour le faire:
+Nous devons d’abord ajouter un fichier `serializers.utils.ts` qui contiendra tous les sérialseurs. Et dans la foulée, je commence directement par l'implémentation de `userSerializer`:
 
-[source,bash]
+.Création du sérialseur `userSerializer`
+[source,ts]
 ----
-$ rails generate serializer User email
-      create  app/serializers/user_serializer.rb
-----
+// src/utils/serializers.utils.ts
+import { Serializer, SerializerOptions } from "jsonapi-serializer";
 
-Ceci a créé un fichier appelé `user_serializer.rb` sous le répertoire `app/serializers`, qui devrait ressembler au fichier suivant:
+const userSerializerOptions: SerializerOptions = {
+  attributes: ["email"],
+  dataLinks: {
+    self: (user) => `/users/${user.id}`,
+  },
+};
 
-[source,ruby]
-.app/serializers/user_serializer.rb
-----
-class UserSerializer
-  include FastJsonapi::ObjectSerializer
-  attributes :email
-end
-----
-
-Ce _serializer_ va nous permettre de convertir notre objet `User` en JSON qui implémente correctement la norme JSON:API. Nous avons spécifié l'attribut `email` afin qu'il soit présent dans le tableau `data`.
-
-Essayons tout cela dans la console Rails avec `rails console`:
-
-[source,ruby]
-----
-2.6.3 :001 > UserSerializer.new( User.first ).serializable_hash
-=> {:data=>{:id=>"25", :type=>:user, :attributes=>{:email=>"tova@beatty.org"}}}
+export const userSerializer = new Serializer("users", userSerializerOptions);
 ----
 
-Et voilà. Comme vous le voyez, tout se fait très facilement. Nous pouvons donc utiliser notre nouveau _serializer_ dans notre _controller_:
+Ce _serializer_ va nous permettre de convertir notre objet `User` en JSON qui implémente correctement la norme JSON:API. Nous avons spécifié l'attribut `email` afin qu'il soit présent dans le tableau `data`. En listant les champs que nous voulons voir apparaître, cette librairie nous corrige le problème de l'attribut `hashedPassword` qui était envoyé par notre API.
 
-.app/controllers/api/v1/users_controller.rb
-[source,ruby]
+
+Il ne nous reste plus qu'à utiliser cette instance dans notre contrôleur:
+
+
+[source,ts]
 ----
-class Api::V1::UsersController < ApplicationController
-  # ...
-  def show
-    render json: UserSerializer.new(@user).serializable_hash
-  end
+// src/controllers/home.controller.ts
+// ...
+import { userSerializer } from "../utils/serializers.utils";
 
-  def update
-    if @user.update(user_params)
-      render json: UserSerializer.new(@user).serializable_hash
-    else
-      # ...
-    end
-  end
-
-  def create
-    # ...
-    if @user.save
-      render json: UserSerializer.new(@user).serializable_hash, status: :created
-    else
-      # ...
-    end
-  end
-
-  # ...
-end
+@controller("/users")
+export class UsersController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return userSerializer.serialize(users);
+  }
+  // ...
+  @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
+  public async show(/* ... */) {
+    // ...
+    return userSerializer.serialize(req.user);
+  }
+  // ...
+}
 ----
 
-Assez facile, non? Cependant nous devrions avoir un test qui échoue. Essayez par vous même:
+Comme vous pouvez le constater, cela ne change pas grand chose! Nous important simplement notre sérialiseur et nous utilisons sa méthode `serialize`.
 
-[source,bash]
+Essayons tout cela avec `cURL`:
+
+[source,sh]
 ----
-$ rake test
-
-Failure:
-Expected: "one@one.org"
-  Actual: nil
+$ curl http://localhost:3000/users
 ----
-
-
-Vous pouvez voir que pour une raison quelconque, la réponse n’est pas tout à fait ce que nous attendions. C’est parce que la gemme modifie la réponse que nous avions précédemment définie. Donc pour faire passer les tests, il suffit de mettre à jour notre test:
-
-[source,ruby]
-.test/controllers/api/v1/users_controller_test.rb
+.Sortie JSON des utilisateurs
+[source,json]
 ----
-# ...
-class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test "should show user" do
-    # ...
-    assert_equal @user.email, json_response['data']['attributes']['email']
-  end
-  # ...
-end
-----
-
-Si vous faites les tests maintenant, ils devraient passer:
-
-[source,bash]
-----
-$ rake test
-
-# Running:
-
-........................
+{
+  "data": [
+    {
+      "type": "users",
+      "id": "1",
+      "attributes": {
+        "email": "test@test.io"
+      }
+    }
+  ]
+}
 ----
 
 _Commitons_ ces changements et continuons d’avancer:
@@ -187,73 +158,43 @@ $ git commit -am "Adds user serializer for customizing the json output"
 
 Maintenant que nous comprenons comment fonctionne la gemme de sérialisation, il est temps de personnaliser la sortie des produits. La première étape est identique à celle pour l’utilisateur, nous avons besoin d’un sérialiseur de produit, alors faisons-le:
 
-[source,bash]
+[source,ts]
 ----
-$ rails generate serializer Product title price published
-      create  app/serializers/product_serializer.rb
-----
+// src/utils/serializers.utils.ts
+import { Serializer, SerializerOptions } from "jsonapi-serializer";
+// ...
+const productSerializerOptions: SerializerOptions = {
+  attributes: ["title", "price", "published", "user"],
+};
 
-Ajoutons maintenant les attributs à sérialiser pour le produit, comme nous l’avons fait avec l’utilisateur dans la section précédente:
-
-[source,ruby]
-.app/serializers/product_serializer.rb
-----
-class ProductSerializer
-  include FastJsonapi::ObjectSerializer
-  attributes :title, :price, :published
-end
+export const productsSerializer = new Serializer("products", {
+  ...productSerializerOptions,
+});
 ----
 
 Et voilà. Ce n’est pas plus compliqué que cela. Modifions un petit peu notre contrôleur.
 
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
+[source,ts]
 ----
-class Api::V1::ProductsController < ApplicationController
-  # ...
-  def index
-    @products = Product.all
-    render json: ProductSerializer.new(@products).serializable_hash
-  end
+// src/controllers/home.controller.ts
+// ...
+import { productsSerializer } from "../utils/serializers.utils";
 
-  def show
-    render json: ProductSerializer.new(@product).serializable_hash
-  end
-
-  def create
-    product = current_user.products.build(product_params)
-    if product.save
-      render json: ProductSerializer.new(product).serializable_hash, status: :created
-    else
-      # ...
-    end
-  end
-
-  def update
-    if @product.update(product_params)
-      render json: ProductSerializer.new(@product).serializable_hash
-    else
-      # ...
-    end
-  end
-  # ...
-end
-----
-
-Et nous mettons à jour notre test fonctionnel:
-
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
-----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test 'should show product' do
-    # ...
-    assert_equal @product.title, json_response['data']['attributes']['title']
-  end
-  # ...
-end
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return productsSerializer.serialize(products);
+  }
+  // ...
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(req: Request & { product: Product }) {
+    return productsSerializer.serialize(req.product);
+  }
+  // ...
+}
 ----
 
 Vous pouvez lancer les tests pour vérifier mais ils devraient encore être bons. _Commitons_ ces petits changements:
@@ -272,23 +213,35 @@ Nous n'avons pas à nous soucier de ce problème dans notre cas, la norme JSON:A
 
 Pour résumer, nous avons une association de type `has_many` entre l’utilisateur et le modèle de produit.
 
-[source,ruby]
-.app/models/user.rb
+[source,ts]
 ----
-class User < ApplicationRecord
-  has_many :products, dependent: :destroy
-  # ...
-end
+// src/entities/user.entity.ts
+// ...
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+  // ...
+}
+// ...
 ----
 
-[source,ruby]
-.app/models/product.rb
+[source,ts]
 ----
-class Product < ApplicationRecord
-  belongs_to :user
-  # ...
-end
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+  // ...
+}
+// ...
 ----
+
+// -- current
 
 C’est une bonne idée d’intégrer les utilisateurs dans les sortie JSON des produits. Cela rendra la sortie plus lourde mais ça évitera au client de l'API d'éxecuter d'autres requêtes pour récupérer les informations des utilisateurs liées aux produits. Cette méthode peut vraiment vous éviter un énorme goulet d'étranglement.
 
