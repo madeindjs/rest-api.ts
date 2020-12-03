@@ -68,7 +68,6 @@ $ npm install @types/jsonapi-serializer --save-dev
 
 Vous devriez être prêts à continuer avec ce tutoriel.
 
-// => current
 
 == Sérialiser l’utilisateur
 
@@ -80,16 +79,14 @@ Nous devons d’abord ajouter un fichier `serializers.utils.ts` qui contiendra t
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
-import { Serializer, SerializerOptions } from "jsonapi-serializer";
+import { Serializer } from "jsonapi-serializer";
 
-const userSerializerOptions: SerializerOptions = {
+export const userSerializer = new Serializer("users", {
   attributes: ["email"],
   dataLinks: {
     self: (user) => `/users/${user.id}`,
   },
-};
-
-export const userSerializer = new Serializer("users", userSerializerOptions);
+});
 ----
 
 Ce _serializer_ va nous permettre de convertir notre objet `User` en JSON qui implémente correctement la norme JSON:API. Nous avons spécifié l'attribut `email` afin qu'il soit présent dans le tableau `data`. En listant les champs que nous voulons voir apparaître, cette librairie nous corrige le problème de l'attribut `hashedPassword` qui était envoyé par notre API.
@@ -161,14 +158,9 @@ Maintenant que nous comprenons comment fonctionne la gemme de sérialisation, il
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
-import { Serializer, SerializerOptions } from "jsonapi-serializer";
 // ...
-const productSerializerOptions: SerializerOptions = {
-  attributes: ["title", "price", "published", "user"],
-};
-
 export const productsSerializer = new Serializer("products", {
-  ...productSerializerOptions,
+  attributes: ["title", "price", "published", "user"],
 });
 ----
 
@@ -241,8 +233,6 @@ export class Product {
 // ...
 ----
 
-// -- current
-
 C’est une bonne idée d’intégrer les utilisateurs dans les sortie JSON des produits. Cela rendra la sortie plus lourde mais ça évitera au client de l'API d'éxecuter d'autres requêtes pour récupérer les informations des utilisateurs liées aux produits. Cette méthode peut vraiment vous éviter un énorme goulet d'étranglement.
 
 == Théorie de l'injection des relations
@@ -255,7 +245,7 @@ Face à ce problème, il y a plusieurs alternatives possibles.
 
 === Intégrer dans un attribut meta
 
-Une bonne solution à mon avis est d’intégrer les identifiants des utilisateurs liés aux produits dans un attribut meta, donc nous avons une sortie JSON comme:
+Une bonne solution à mon avis est d’intégrer les identifiants des utilisateurs liés aux produits dans un attribut meta, donc nous aurions une sortie JSON comme:
 
 
 [source,json]
@@ -417,47 +407,77 @@ Nous allons donc incorporer l’objet utilisateur dans le produit. Commençons p
 
 Nous allons simplement modifier le test `Products#show` afin de vérifier que nous récupérons:
 
-
-[source,ruby]
+.Ajout d'un test pour controller l'ajout du `include` dans la sortie JSON
+[source,ts]
 .test/controllers/api/v1/products_controller_test.rb
 ----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test 'should show product' do
-    get api_v1_product_url(@product), as: :json
-    assert_response :success
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  // ...
+  let productRepository: ProductRepository;
 
-    json_response = JSON.parse(response.body, symbolize_names: true)
-    assert_equal @product.title, json_response.dig(:data, :attributes, :title)
-    assert_equal @product.user.id.to_s, json_response.dig(:data, :relationships, :user, :data, :id)
-    assert_equal @product.user.email, json_response.dig(:included, 0, :attributes, :email)
-  end
-  # ...
-end
+  before(async () => {
+    // ...
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    const product = await productRepository.save(generateProduct({ user }));
+    user.products = [product];
+    // ...
+  });
+
+  // ...
+
+  describe("show", () => {
+    // ...
+    it("should show my profile", () => {
+      return agent
+        .get(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(200)
+        .then((response) => {
+          assert.strictEqual(response.body.data.attributes.email, user.email);
+          assert.strictEqual(response.body.included[0].attributes.title, user.products[0].title);
+        });
+    });
+  });
+// ...
+});
 ----
 
-Nous vérifions maintenant trois choses sur le JSON qui est retourné:
+Nous vérifions maintenant deux choses sur le JSON qui est retourné:
 
 . il contient le titre du produit
-. il contient l’identifiant de l’utilisateur lié au produit
 . les données de l'utilisateur sont incluses dans la clé `include`
 
-NOTE: Vous avez sûrement remarqué que j'ai choisi d'utiliser la méthode https://ruby-doc.org/core-2.6.3/Hash.html#method-i-dig[`Hash#dig`]. C'est une méthode Ruby qui permet de récupérer des éléments dans un _Hash_ imbriqué en évitant les erreurs si un élément n'est pas présent.
+Vous pouvez aussi remarquer que j'ai créer et lier un produit à l'utilisateur sauvegardé dans la méthode `beforeEach`.
+
 
 Pour faire passer ce test nous allons commencer par inclure la relation dans le _serializer_:
 
-[source,ruby]
+[source,ts]
 .app/serializers/product_serializer.rb
 ----
-class ProductSerializer
-  include FastJsonapi::ObjectSerializer
-  attributes :title, :price, :published
-  belongs_to :user
-end
+// src/utils/serializers.utils.ts
+// ...
+export const userSerializer = new Serializer("users", {
+  attributes: ["email", "products"],
+  included: true,
+  products: {
+    ref: "id",
+    attributes: ["title", "price", "published"],
+    included: true,
+  },
+} as any);
+// ...
 ----
 
-Cet ajout aura pour effet de rajouter une clé `relatioship` contenant l’identifiant de l'utilisateur:
+// -- current
+
+Cet ajout aura pour effet de rajouter une clé `relationship` contenant l’identifiant de l'utilisateur:
 
 [source,json]
 ----
