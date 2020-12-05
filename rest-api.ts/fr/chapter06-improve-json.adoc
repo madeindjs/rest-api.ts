@@ -923,90 +923,131 @@ Super. La dernière étape est de l'intégrer à notre contrôleur.
 
 === Intégration dans le contrôleur
 
-Comme d'habitude, nous allons commencer par les tests. Cela va nous aider à definir l'implémentation de notre _endpoint_.
+Comme d'habitude, nous allons commencer par les tests. Cela va nous aider à définir l'implémentation de notre _endpoint_.
 
+Comme pour les tests précedents, nous allons créer deux produits spécifiques que nous allons ensuite rechercher via les différents filtres que nous venons d'implémenter. Le test risque donc de vous sembler très familier.
 
-// -- current
+Nous allons définir un nouveau `describe` qui va regrouper nos deux tests. Commençons par le `beforeEach`:
 
-Maintenant que nous avons la base pour le moteur de recherche que nous utiliserons dans l’application, il est temps de mettre en œuvre une méthode de recherche simple mais puissante. Elle s’occupera de gérer toute la logique pour récupérer les enregistrements des produits.
-
-La méthode consistera à enchaîner tous les `scope` que nous avons construits précédemment et à retourner le résultat. Commençons par ajouter quelques tests:
-
-
-[source,ruby]
-.test/models/product_test.rb
+[source,ts]
 ----
-# ...
-class ProductTest < ActiveSupport::TestCase
-  # ...
-  test 'search should not find "videogame" and "100" as min price' do
-    search_hash = { keyword: 'videogame', min_price: 100 }
-    assert Product.search(search_hash).empty?
-  end
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    // ...
+    describe("search", () => {
+      let computer: Product;
+      let tvCheap: Product;
 
-  test 'search should fin cheap TV' do
-    search_hash = { keyword: 'tv', min_price: 50, max_price: 150 }
-    assert_equal [products(:another_tv)], Product.search(search_hash)
-  end
-
-  test 'should get all product when no parameters' do
-    assert_equal Product.all.to_a, Product.search({})
-  end
-
-  test 'search should filter by product ids' do
-    search_hash = { product_ids: [products(:one).id] }
-    assert_equal [products(:one)], Product.search(search_hash)
-  end
-end
-----
-
-Nous avons ajouté un tas de code mais je vous assure que l’implémentation est très facile. Vous pouvez aller plus loin et ajouter quelques tests supplémentaires mais, dans mon cas, je n’ai pas trouvé cela nécessaire.
-
-[source,ruby]
-.app/models/product.rb
-----
-class Product < ApplicationRecord
-  # ...
-  def self.search(params = {})
-    products = params[:product_ids].present? ? Product.find(params[:product_ids]) : Product.all
-
-    products = products.filter_by_title(params[:keyword]) if params[:keyword]
-    products = products.above_or_equal_to_price(params[:min_price].to_f) if params[:min_price]
-    products = products.below_or_equal_to_price(params[:max_price].to_f) if params[:max_price]
-    products = products.recent(params[:recent]) if params[:recent].present?
-
-    products
-  end
-end
+      before(async () => {
+        computer = await productRepository.save(
+          generateProduct({
+            title: "Azos Zeenbok",
+            price: 499.99,
+            published: true,
+          })
+        );
+        tvCheap = await productRepository.save(
+          generateProduct({
+            title: "Cheap TV",
+            price: 99.99,
+            published: true,
+          })
+        );
+      });
+    // ...
+    });
+  });
+  // ...
+});
 ----
 
+Maintenant passons aux tests en eux-même:
 
-Il est important de noter que nous retournons les produits en tant qu’objet https://api.rubyonrails.org/classes/ActiveRecord/Relation.html[`ActiveRecord::Relation`] afin de pouvoir enchaîner d’autres méthodes en cas de besoin ou les paginer comme nous allons le voir dans les derniers chapitres. Il suffit de mettre à jour l’action `Product#index` pour récupérer les produits à partir de la méthode de recherche:
-
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
+[source,ts]
 ----
-class Api::V1::ProductsController < ApplicationController
-  # ...
-  def index
-    @products = Product.search(params)
-    render json: ProductSerializer.new(@products).serializable_hash
-  end
-  # ...
-end
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    // ...
+    describe("search", () => {
+      // ...
+      it("should find cheap TV", () => {
+        const params = new URLSearchParams();
+        params.append("title", "tv");
+        params.append("priceMin", "50");
+        params.append("priceMax", "150");
+
+        return agent
+          .get(`/products?${params.toString()}`)
+          .expect(200)
+          .then((response) => assert.ok(response.body.data.some((row) => row.id === String(tvCheap.id))));
+      });
+
+      it("should find computer", () => {
+        const params = new URLSearchParams();
+        params.append("title", "azos");
+        params.append("priceMax", "500");
+
+        return agent
+          .get(`/products?${params.toString()}`)
+          .expect(200)
+          .then((response) => {
+            assert.ok(
+              response.body.data.some((row) => row.id === String(computer.id)),
+              response.body
+            );
+          });
+      });
+    });
+  });
+  // ...
+});
+----
+
+NOTE: nous construisons les paramètres avec la classe https://developer.mozilla.org/fr/docs/Web/API/URLSearchParams[`URLSearchParams`]. Il suffit ensuite d'utiliser la méthode `toString` qui va construire les paramètres `GET`.
+
+Lorsque nous recevons la réponse, nous vérifions que le produit recherché est présent dans la réponse. Tout simplement.
+
+L'implémentation dans la contrôleur est simplissime. Il suffit d'utiliser notre nouvelle méthode.
+
+[source,ts]
+----
+// src/controllers/products.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index(req: Request) {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    const products = await repository.search(req.query);
+    return productsSerializer.serialize(products);
+  }
+  // ...
+}
 ----
 
 Nous pouvons exécuter l’ensemble de la suite de tests, pour nous assurer que l’application est en bonne santé jusqu’ici:
 
 [source,bash]
 ----
-$ rake test
-
-.................................
-33 runs, 49 assertions, 0 failures, 0 errors, 0 skips
+$ npm test
+  ProductsController
+    index
+      ✓ should respond 200 (47ms)
+      search
+        ✓ should find cheap TV
+        ✓ should find computer
+...
+  33 passing (786ms)
 ----
 
-_Commitons_ ces changements:
+Super! _Commitons_ ces changements:
 
 [source,bash]
 ----
@@ -1023,4 +1064,4 @@ $ git merge chapter06
 
 == Conclusion
 
-Jusqu’à présent, et grâce à la gemme https://github.com/Netflix/fast_jsonapi[fast_jsonapi], c’était facile. Sur les chapitres à venir, nous allons commencer à construire le modèle `Order` qui associera les utilisateurs aux produits.
+Jusqu’à présent, et grâce à la librairie https://github.com/SeyZ/jsonapi-serializer/[jsonapi-serializer], c’était facile. Sur les chapitres à venir, nous allons commencer à construire le modèle `Order` qui associera les utilisateurs aux produits.
