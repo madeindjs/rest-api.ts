@@ -655,205 +655,278 @@ Nous filtrerons donc les produits selon les critères suivants:
 
 Cela peut sembler court et facile, mais croyez-moi, cela vous donnera mal à la tête si vous ne le planifiez pas.
 
+Nous allons donc ajouter une méthode `search` au `ProductRepository` qui prendra en paramètre les filtres que je viens d'énumérer plus haut:
+
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  // need to be implemented
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): Promise<Product[]> {
+    // need to be implemented
+  }
+}
+----
+
+Vous voyez un peu comment nous allons nous y prendre? Commençons par le premier filtre.
+
+
+=== Les produits publiés
+
+Comme depuis le début de ce livre, nous allons commencer par écrire le test qui va tester notre nouvelle méthode. Voici la structure de base de notre test qui doit vous sembler familière:
+
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+import { container } from "../core/container.core";
+import { TYPES } from "../core/types.core";
+import { ProductRepository } from "../entities/product.entity";
+import { DatabaseService } from "../services/database.service";
+
+describe("ProductRepository", () => {
+  let productRepository: ProductRepository;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  describe("search", () => {
+    // will be implemented
+  });
+});
+----
+
+Ce tests aura besoin de plusieurs produits déja existants en base de données que nous allons créer à la main. Voici donc la structure de notre test:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+import { Product, ProductRepository } from "../entities/product.entity";
+import { generateProduct } from "../tests/faker.utils";
+
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    let tvPlosmo: Product;
+    let computer: Product;
+    let tvCheap: Product;
+    let unpublishedProduct: Product;
+
+    before(async () => {
+      tvPlosmo = await productRepository.save(generateProduct({
+        title: "TV Plosmo Philopp",
+        price: 9999.99,
+        published: true,
+      }));
+      computer = await productRepository.save(generateProduct({
+        title: "Azos Zeenbok",
+        price: 499.99,
+        published: true,
+      }));
+      tvCheap = await productRepository.save(generateProduct({
+        title: "Cheap TV",
+        price: 99.99,
+        published: true,
+      }));
+      unpublishedProduct = await productRepository.save(generateProduct({
+        published: false,
+      }));
+    });
+    // ...
+  });
+});
+----
+
+Comme vous pouvez le voir, nous avons inséré en base 4 produits diverses. Dans notre premier test nous allons appeler notre méthode `ProductReposiroty.search` sans paramètre et nous allons vérifier que aucun produit non publié ne nous est retourné. Voici le test:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should not include unpublished products", async () => {
+      const products = await productRepository.search({});
+      assert.ok(products.every((p) => p.published));
+    });
+  });
+});
+----
+
+Et commençon donc par définir notre méthode pour faire passer ce test:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters { }
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): Promise<Product[]> {
+    const query = this.createQueryBuilder()
+                      .where("published = TRUE")
+                      .orderBy("updatedAt", "DESC");
+
+    return query.getMany();
+  }
+}
+----
+
+Et voilà. Le test devrait passer. Passons à notre premier filtre.j
+
 === Le mot-clé by
 
-// -- current
+Maintenant que la structure de nos tests et de l'implémentation est en place, tout va aller plus vite. Voici le test pour le filtre qui ressemble beaucoup au précédent:
 
-Nous allons créer un _scope_ pour trouver les enregistrements qui correspondent à un motif particulier de caractère. Appelons-le `filter_by_title`.
-
-Nous allons commencer par ajouter quelques _fixtures_ avec différents produits afin de tester:
-
-[source,yaml]
-.test/fixtures/products.yml
+[source,ts]
 ----
-one:
-  title: TV Plosmo Philopps
-  price: 9999.99
-  published: false
-  user: one
-
-two:
-  title: Azos Zeenbok
-  price: 499.99
-  published: false
-  user: two
-
-another_tv:
-  title: Cheap TV
-  price: 99.99
-  published: false
-  user: two
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should filter products by title", async () => {
+      const products = await productRepository.search({ title: "tv" });
+      assert.ok(products.some((p) => p.id === tvPlosmo.id));
+      assert.ok(products.some((p) => p.id === computer.id) === false);
+    });
+  });
+});
 ----
 
-Et maintenant nous pouvons construire les tests:
+Les tests suivants s'assurent que la méthode va rechercher correctement les produits en fonction de leurs titres. Nous utilisons le terme `tv` en minuscule afin de s'assurer que notre recherche ne sera pas sensible à la casse.
 
-[source,ruby]
-.test/models/product_test.rb
+L'implémentation est très simple:
+
+[source,ts]
 ----
-# ...
-class ProductTest < ActiveSupport::TestCase
-  # ...
-  test "should filter products by name" do
-    assert_equal 2, Product.filter_by_title('tv').count
-  end
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  title?: string;
+}
 
-  test 'should filter products by name and sort them' do
-    assert_equal [products(:another_tv), products(:one)], Product.filter_by_title('tv').sort
-  end
-end
-----
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): Promise<Product[]> {
+    // ...
+    if (filters.title !== undefined) {
+      query.andWhere("lower(title) LIKE :title", { title: `%${filters.title}%` });
+    }
 
-Les tests suivants s'assurent que la méthode `Product.filter_by_title` va rechercher correctement les produits en fonction de leurs titres. Nous utilisons le terme `tv` en minuscule afin de s'assurer que notre recherche ne sera pas sensible à la casse.
-
-L'implémentation est très simple en utilisant un *scope*.
-
-[source,ruby]
-.app/models/product.rb
-----
-class Product < ApplicationRecord
-  # ...
-  scope :filter_by_title, lambda { |keyword|
-    where('lower(title) LIKE ?', "%#{keyword.downcase}%")
+    return query.getMany();
   }
-end
-----
+}
 
-NOTE: Le _scoping_ vous permet de spécifier des requêtes couramment utilisées qui peuvent être référencées comme des appels de méthode sur les modèles. Avec ces __scopes__ vous pouvez aussi chaîner avec les méthodes d'Active Record comme `where`, `joins` et `includes` car un _scope_ retourne toujours un  objet https://api.rubyonrails.org/classes/ActiveRecord/Relation.html[`ActiveRecord::Relation`]. Je vous invite à jeter un œil à la https://guides.rubyonrails.org/active_record_querying.html#scopes[documentation de Rails]
+----
 
 L’implémentation est suffisante pour que nos tests passent:
 
 [source,bash]
 ----
-$ rake test
-..........................
+$ npm test
+....
+  ProductRepository
+    search
+      ✓ should not include unpublished products
+      ✓ should filter products by title
+....
 ----
 
 === Par prix
 
-Pour filtrer par prix, les choses peuvent devenir un peu plus délicates. Nous allons briser la logique de filtrer par prix en deux méthodes différentes: l’une qui va chercher les produits plus grands que le prix reçu et l’autre qui va chercher ceux qui sont sous ce prix. De cette façon, nous garderons une certaine flexibilité et nous pouvons facilement tester les _scope_.
+Pour filtrer par prix, les choses peuvent devenir un peu plus délicates. Nous allons séparer la logique de filtrer par prix en deux méthodes différentes: l’une qui va chercher les produits plus grands que le prix reçu et l’autre qui va chercher ceux qui sont sous ce prix. De cette façon, nous garderons une certaine flexibilité et nous pouvons facilement tester les _scope_.
 
-Commençons par construire les tests du _scope_ `above_or_equal_to_price`:
+Commençons par construire les tests:
 
-[source,ruby]
-.test/models/product_test.rb
+[source,ts]
 ----
-# ...
-class ProductTest < ActiveSupport::TestCase
-  # ...
-  test 'should filter products by price and sort them' do
-    assert_equal [products(:two), products(:one)], Product.above_or_equal_to_price(200).sort
-  end
-end
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should filter products by priceMax", async () => {
+      const products = await productRepository.search({ priceMax: 100 });
+      assert.ok(products.some((p) => p.id === tvCheap.id));
+      assert.ok(products.some((p) => p.id === tvPlosmo.id) === false);
+    });
+
+    it("should filter products by priceMin", async () => {
+      const products = await productRepository.search({ priceMin: 500 });
+      assert.ok(products.some((p) => p.id === tvPlosmo.id));
+      assert.ok(products.some((p) => p.id === tvCheap.id) === false);
+    });
+  });
+});
 ----
 
 L’implémentation est très très simple:
 
-[source,ruby]
-.app/models/product.rb
+[source,ts]
 ----
-class Product < ApplicationRecord
-  # ...
-  scope :above_or_equal_to_price, lambda { |price|
-    where('price >= ?', price)
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  title?: string;
+  priceMin?: number;
+  priceMax?: number;
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): Promise<Product[]> {
+    // ...
+    if (filters.priceMin !== undefined) {
+      query.andWhere("price >= :priceMin", { priceMin: filters.priceMin });
+    }
+
+    if (filters.priceMax !== undefined) {
+      query.andWhere("price <= :priceMax", { priceMax: filters.priceMax });
+    }
+
+    return query.getMany();
   }
-end
+}
 ----
 
-L’implémentation est suffisante pour que nos tests passent:
+C'est suffisant pour que nos tests passent:
 
 [source,bash]
 ----
-$ rake test
-...........................
+$ npm test
+...
+  ProductRepository
+    search
+      ✓ should not include unpublished products
+      ✓ should filter products by title
+      ✓ should filter products by priceMax
+      ✓ should filter products by priceMin
+...
 ----
 
-Vous pouvez maintenant imaginer le comportement de la méthode opposée. Voici les tests:
+Super. La dernière étape est de l'intégrer à notre contrôleur.
 
-[source,ruby]
-.test/models/product_test.rb
-----
-# ...
-class ProductTest < ActiveSupport::TestCase
-  # ...
-  test 'should filter products by price lower and sort them' do
-    assert_equal [products(:another_tv)], Product.below_or_equal_to_price(200).sort
-  end
-end
-----
+=== Intégration dans le contrôleur
 
-Et l’implémentation:
-
-[source,ruby]
-.app/models/product.rb
-----
-class Product < ApplicationRecord
-  # ...
-  scope :below_or_equal_to_price, lambda { |price|
-    where('price <= ?', price)
-  }
-end
-----
-
-Pour notre bien, faisons les tests et vérifions que tout est beau et vert:
-
-[source,bash]
-----
-$ rake test
-............................
-----
-
-Comme vous pouvez le voir, nous n’avons pas eu beaucoup de problèmes. Ajoutons simplement une autre _scope_ pour trier les enregistrements par date de dernière mise à jour. Dans le cas où le propriétaire des produits décide de mettre à jour certaines données il voudra sûrement trier ses produits par date de création.
-
-=== Tri par date de création
-
-Ce _scope_ est très facile. Ajoutons d’abord quelques tests:
-
-[source,ruby]
-.test/models/product_test.rb
-----
-# ...
-class ProductTest < ActiveSupport::TestCase
-  # ...
-  test 'should sort product by most recent' do
-    # we will touch some products to update them
-    products(:two).touch
-    products(:one)
-
-    assert_equal [products(:another_tv), products(:one), products(:two)], Product.recent.to_a
-  end
-end
-----
-
-Et l’implémentation:
-
-[source,ruby]
-.app/models/product.rb
-----
-class Product < ApplicationRecord
-  # ...
-  scope :recent, lambda {
-    order(:updated_at)
-  }
-end
-----
-
-Tous nos tests devraient passer:
-
-[source,bash]
-----
-$ rake test
-.............................
-----
-
-_Commitons_ nos changements:
-
-[source,bash]
-----
-$ git commit -am "Adds search scopes on the product model"
-----
+Comme d'habitude, nous allons commencer par les tests. Cela va nous aider à definir l'implémentation de notre _endpoint_.
 
 
-=== Moteur de recherche
+// -- current
 
 Maintenant que nous avons la base pour le moteur de recherche que nous utiliserons dans l’application, il est temps de mettre en œuvre une méthode de recherche simple mais puissante. Elle s’occupera de gérer toute la logique pour récupérer les enregistrements des produits.
 
