@@ -1,7 +1,7 @@
 [#chapter07-placing-orders]
 = Création des commandes
 
-Dans les chapitres précédents nous avons traité les associations entre les produits et les modèles utilisateurs. Nous avons aussi vu comment bien les sérialiser en les optimisant afin de pouvoir _scaler_, (c'est-à-dire s'adapter facilement à une forte demande sur notre application). Maintenant, il est temps de commencer à passer des commandes. Cela va être une situation plus complexe parce que nous allons gérer les associations entre les trois modèles. Nous devons être assez malins pour gérer la sortie JSON que nous fournissons.
+Dans les chapitres précédents nous avons traité les associations entre les produits et les utilisateurs. Nous avons aussi vu comment bien les sérialiser en les optimisant afin de pouvoir _scaler_, (c'est-à-dire s'adapter facilement à une forte demande sur notre application). Maintenant, il est temps de commencer à passer des commandes. Cela va être une situation plus complexe parce que nous allons gérer les associations entre les trois modèles. Nous devons être assez malins pour gérer la sortie JSON que nous fournissons.
 
 Dans ce chapitre, nous allons faire plusieurs choses:
 
@@ -27,70 +27,68 @@ $ git checkout -b chapter07
 
 Si vous vous souvenez des associations entre les modèles, vous devez vous souvenir que le modèle `Order` est associé aux modèles `User` et `Product`. C’est en fait très simple de gérer cela avec Rails. La partie délicate est lors de la sérialisation de ces objets. J’en parlerai plus en détail plus tard.
 
-Commençons par créer le modèle de la commande:
+Commençons par créer le modèle de la commande. Celui possédera deux relations `ManyToOne`: `User` et `Product`. Il aura aussi une colonne `total` pour le coût total de la commande et ensuite les colonnes classiques `createdAt` et `updatedAt`. Voici l'implémentation complète.
 
-[source,bash]
+[source,ts]
 ----
-$ rails generate model order user:belongs_to total:decimal
-----
+// src/entities/order.entity.ts
+import { IsDefined, IsPositive, validateOrReject } from "class-validator";
+import {/* ... */} from "typeorm";
+import { Product } from "./product.entity";
+import { User } from "./user.entity";
 
-La commande ci-dessus va générer le modèle `Order`. Je profite de la méthode des `belongs_to` pour créer la clé étrangère correspondante pour que la commande appartienne à un utilisateur. Elle ajoute aussi la directive `belongs_to` dans le modèle des commandes. Migrons la base de données:
+@Entity()
+export class Order {
+  @PrimaryGeneratedColumn()
+  id: number;
 
-[source,bash]
-----
-$ rake db:migrate
-----
+  @IsDefined()
+  @ManyToOne(() => User, (user) => user.orders)
+  user: User;
 
-Il est maintenant temps de créer quelques tests dans le fichier `order_test.rb`:
+  @IsPositive()
+  @Column({ type: "number", unsigned: true })
+  total: number;
 
-[source,ruby]
-.test/models/order_test.rb
-----
-# ...
-class OrderTest < ActiveSupport::TestCase
-  test 'Should have a positive total' do
-    order = orders(:one)
-    order.total = -1
-    assert_not order.valid?
-  end
-end
-----
+  @CreateDateColumn()
+  createdAt: Date;
 
-L’implémentation est assez simple:
+  @UpdateDateColumn()
+  updatedAt: Date;
 
-[source,ruby]
-.app/models/order.rb
-----
-class Order < ApplicationRecord
-  belongs_to :user
-  validates :total, numericality: { greater_than_or_equal_to: 0 }
-  validates :total, presence: true
-end
-----
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
 
-N'oubliez pas d'ajouter la relation `orders` à nos utilisateur en spécifiant la suppression en cascade:
-
-[source,ruby]
-.app/models/user.rb
-----
-class User < ApplicationRecord
-  # ...
-  has_many :products, dependent: :destroy
-  has_many :orders, dependent: :destroy
-  # ...
-end
+@EntityRepository(Order)
+export class OrderRepository extends Repository<Order> {}
 ----
 
-Les tests devraient passer:
+Comme vous pouvez le constater, l'implémentation n'apporte rien de nouveau comparé à ce que nous avons déjà vu.
 
-[source,bash]
+J'en ai profité pour ajouter la contrainte `IsPositive` sur le champ `total` qui est un `number unsigned`. Cela signifie  qu'il ne peut pas être négatif.
+
+Mais avant d'oublier, nous devons aussi définir la relation côté `User`:
+
+[source,ts]
 ----
-$ rake test
-..................................
-34 runs, 50 assertions, 0 failures, 0 errors, 0 skips
+// src/entities/user.entity.ts
+// ...
+import { Order } from "./order.entity";
+
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];
+  // ...
+}
 ----
 
-Et _commitons_ tout cela:
+Parfait! Nous sommes prêt à passer à la suite. _Commitons_ tout cela avant:
 
 [source,bash]
 ----
@@ -99,64 +97,75 @@ $ git add . && git commit -m "Generate orders"
 
 === Les commandes et les produits
 
-Nous devons établir la liaison entre la commande et le produit. Cela se fait avec une association _many-to-many_ car de nombreux produits seront placés sur plusieurs commandes et les commandes auront plusieurs produits. Dans ce cas, nous avons donc besoin d’un modèle supplémentaire qui joindra ces deux autres objets et mappera l’association appropriée. Générons ce modèle:
+Nous devons établir la liaison entre la commande et les produits. Cela se fait avec une association _many-to-many_ car de nombreux produits seront placés sur plusieurs commandes et les commandes auront plusieurs produits. Dans ce cas, nous avons donc besoin d’un modèle supplémentaire qui joindra ces deux autres objets et mappera l’association appropriée. Voici l'implémentation:
 
-[source,bash]
-----
-$ rails generate model placement order:belongs_to product:belongs_to
-----
+// -- current
 
-Migrons la base de données:
+[source,ts]
+----
+// src/entities/placement.entity.ts
+import { IsDefined, validateOrReject } from "class-validator";
+import {/* ... */} from "typeorm";
+import { Order } from "./order.entity";
+import { Product } from "./product.entity";
+import { User } from "./user.entity";
 
-[source,bash]
-----
-$ rake db:migrate
-----
+@Entity()
+export class Placement {
+  @PrimaryGeneratedColumn()
+  id: number;
 
-L’implémentation est la suivante:
+  @IsDefined()
+  @ManyToOne(() => Product, (product) => product.placements)
+  product: Product;
 
-[source,ruby]
-.app/models/product.rb
-----
-class Product < ApplicationRecord
-  belongs_to :user
-  has_many :placements, dependent: :destroy
-  has_many :products, through: :placements
-  # ...
-end
-----
+  @IsDefined()
+  @ManyToOne(() => Order, (order) => order.placements)
+  order: User;
 
-[source,ruby]
-.app/models/order.rb
-----
-class Order < ApplicationRecord
-  has_many :placements, dependent: :destroy
-  has_many :products, through: :placements
-  # ...
-end
-----
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
 
-Si vous avez suivi le tutoriel jusqu’à présent, l’implémentation est déjà là, grâce au type de `belongs_to` que nous passons au générateur de commandes du modèle. Nous devrions ajouter l’option `inverse_of` au modèle de placement pour chaque appel aux `belongs_to`. Cela donne un petit coup de pouce lors du référencement de l’objet parent.
+@EntityRepository(Placement)
+export class PlacementRepository extends Repository<Placement> {}
 
-[source,ruby]
-.app/models/placement.rb
-----
-class Placement < ApplicationRecord
-  belongs_to :order
-  belongs_to :product, inverse_of: :placements
-end
 ----
 
-Et maintenant, lançons tous les tests des modèles afin de nous assurer que tout est bon:
-
-[source,bash]
+.Ajout de la relation `placements` au modèle `Product`
+[source,ts]
 ----
-$ rake test
-..................................
-34 runs, 50 assertions, 0 failures, 0 errors, 0 skips
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @OneToMany(() => Placement, (placement) => placement.product)
+  placements: Placement[];
+  // ...
+}
+// ...
 ----
 
-Maintenant que tout est beau et vert, _commitons_ les changements:
+.Ajout de la relation `placements` au modèle `Order`
+[source,ts]
+----
+// src/entities/order.entity.ts
+// ...
+@Entity()
+export class Order {
+  // ...
+  @OneToMany(() => Placement, (placement) => placement.order)
+  placements: Placement[];
+  // ...
+}
+// ...
+----
+
+_Commitons_ les changements:
 
 [source,bash]
 ----
@@ -165,7 +174,7 @@ $ git add . && git commit -m "Associates products and orders with a placements m
 
 == Exposer le modèle d’utilisateur
 
-Il est maintenant temps de préparer le contrôleur des commandes à exposer les bonnes commandes. Si vous vous souvenez des chapitres précédents où l’on avait utilisé https://github.com/Netflix/fast_jsonapi[fast_jsonapi] vous devez vous rappeler que c’était vraiment facile.
+Il est maintenant temps de préparer le contrôleur des commandes à exposer les bonnes commandes. Si vous vous souvenez des chapitres précédents où l’on avait utilisé https://github.com/SeyZ/jsonapi-serializer/[jsonapi-serializer] vous devez vous rappeler que c’était vraiment facile.
 
 Définissons d’abord quelles actions nous allons mettre en place:
 
@@ -173,14 +182,7 @@ Définissons d’abord quelles actions nous allons mettre en place:
 . Une action show pour récupérer une commande particulière de l’utilisateur courant
 . Une action de création pour passer réellement la commande
 
-Commençons par l’action `index`. Nous devons d’abord créer le contrôleur de commandes:
-
-[source,bash]
-----
-$ rails generate controller api::v1::orders
-----
-
-Jusqu’ici, et avant de commencer à taper du code, nous devons nous demander:
+Commençons par l’action `index`. Nous devons d’abord créer le contrôleur de commandes. Mais avant de commencer à taper du code, nous devons nous demander:
 
 > Est-ce que je dois laisser les routes de ma commande imbriqués dans le `UsersController` ou bien dois je les isoler?
 
@@ -188,33 +190,60 @@ La réponse est vraiment simple: cela dépend de la quantité d’informations q
 
 Dans notre cas, nous n'allons pas le faire car nous allons récupérer les commandes de utilisateur sur la route `/orders`. Commençons par quelques tests:
 
-[source,ruby]
-.test/controllers/api/v1/orders_controller_test.rb
+// -- current
+
+[source,ts]
 ----
-# ...
-class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
-  setup do
-    @order = products(:one)
-  end
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  let userRepository: UserRepository;
+  let orderRepository: OrderRepository;
+  let jsonWebTokenService: JsonWebTokenService;
+  let user: User;
+  let stranger: User;
+  let jwt: string;
+  let strangerJwt: string;
+  let order: Order;
 
-  test 'should forbid orders for unlogged' do
-    get api_v1_orders_url, as: :json
-    assert_response :forbidden
-  end
+  before(async () => {
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
 
-  test 'should show orders' do
-    get api_v1_orders_url,
-      headers: { Authorization: JsonWebToken.encode(user_id: @order.user_id) },
-      as: :json
-    assert_response :success
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+    orderRepository = await databaseService.getRepository(OrderRepository);
 
-    json_response = JSON.parse(response.body)
-    assert_equal @order.user.orders.count, json_response['data'].count
-  end
-end
+    stranger = await userRepository.save(generateUser());
+    strangerJwt = jsonWebTokenService.encode({ userId: stranger.id });
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    order = await orderRepository.save(generateOrder({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
+
+  describe("index", () => {
+    it("should forbid orders without auth", () => agent.get("/orders").expect(403));
+
+    it("should get orders of user", () =>
+      agent
+        .get("/orders")
+        .set("Authorization", jwt)
+        .expect(200)
+        .then(({ body }) => assert.ok(body.data.some(({ id }) => id === String(order.id)))));
+  });
+});
 ----
 
-Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini ni les bonnes routes ni l’action. Commençons donc par ajouter les routes:
+L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparait bien dans le retour JSON.
+
+NOTE: Vous avez certainement remarqué la syntaxe `({body}) => ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préférer l'utiliser qu'à partir de ce chapitre.
+
+Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur.
+
+// TODO: controleur + middleware
+// -- current
 
 [source,ruby]
 .config/routes.rb
