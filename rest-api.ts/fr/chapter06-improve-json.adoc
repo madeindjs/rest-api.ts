@@ -475,88 +475,54 @@ export const userSerializer = new Serializer("users", {
 // ...
 ----
 
-// -- current
+NOTE: à l'heure ou j'écris ces lignes, je n'ai pas trouvé d'autres moyens que le `as any` pour contourner l'erreur de _typing_ de TypeScript. Peut être que la librairie sera mse à jour prochainement.
 
-Cet ajout aura pour effet de rajouter une clé `relationship` contenant l’identifiant de l'utilisateur:
+Cet ajout aura pour effet de rajouter une clé `relationship` contenant l’identifiant de l'utilisateur mais aussi ajouter un clé `include` qui va contenir la relation. Voici un exemple:
 
+
+.Exemple de sortie JSON avec un utilisateur possédant un produit
 [source,json]
 ----
 {
-  "data": {
-      "id": "1",
-      "type": "product",
-      "attributes": {
-          "title": "Durable Marble Lamp",
-          "price": "11.55",
-          "published": true
-      },
-      "relationships": {
-          "user": {
-              "data": {
-                  "id": "1",
-                  "type": "user"
-              }
-          }
-      }
-  }
-}
-----
-
-Cela nous permet donc de corriger nos deux premières assertions. Nous voulons maintenant inclure les attributs de l’utilisateur qui possède le produit. Pour faire cela, nous devons simplement passer une option `:include` au _serializer_ instancié dans le _controller_. Alors faisons le:
-
-[source,ruby]
-.app/serializers/product_serializer.rb
-----
-class Api::V1::ProductsController < ApplicationController
-  # ...
-  def show
-    options = { include: [:user] }
-    render json: ProductSerializer.new(@product, options).serializable_hash
-  end
-  # ...
-end
-----
-
-Et voilà. Maintenant voilà à quoi le JSON devrait ressembler:
-
-[source,json]
-----
-{
-  "data": {
-    ...
-  },
-  "included": [
-    {
-      "id": "1",
-      "type": "user",
-      "attributes": {
-        "email": "staceeschultz@hahn.info"
+  data: {
+    type: 'users',
+    id: '16',
+    attributes: {
+      email: 'ddf1bbe99c3a7ee8@random.io'
+    },
+    relationships: {
+      products: {
+        data: [
+          { type: 'products', id: '15' }
+        ]
       }
     }
-  ]
+  },
+  included: [
+    {
+      type: 'products',
+      id: '15',
+      attributes: {
+        title: 'adc643eaa6bc1748',
+        price: 72.45882186217555,
+        published: false
+      }
+    }
+  ],
 }
 ----
 
 L’implémentation est très simple: il suffit d’ajouter une ligne au sérialiseur du produit:
 
-[source,ruby]
-.app/serializers/product_serializer.rb
-----
-class ProductSerializer < ActiveModel::Serializer
-  attributes :id, :title, :price, :published
-  has_one :user
-end
-----
-
-Maintenant, tous les tests devraient passer:
-
 [source,bash]
 ----
-$ rake test
+$ npm test
 
-# Running:
-
-........................
+  ProductsController
+...
+    show
+      ✓ should show product
+...
 ----
 
 Faisons un _commit_ pour fêter ça:
@@ -566,56 +532,72 @@ Faisons un _commit_ pour fêter ça:
 $ git commit -am "Add user relationship to product"
 ----
 
-=== Récupérer les produits pour des utilisateurs
+=== Récupérer l'utilisateur d'un produit
 
-Vous avez compris le principe? Nous avons inclus les informations de l'utilisateur dans le JSON des produits. Nous pouvons faire la même choses en incluant les informations des produits liés à un utilisateur pour la page `/api/v1/users/1`.
+Vous avez compris le principe? Nous avons inclus les informations de l'utilisateur dans le JSON des produits.
 
 Commençons par le test:
 
-[source,ruby]
-.app/controllers/api/v1/users_controller.rb
+[source,ts]
 ----
-# ...
-class Api::V1::UsersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test "should show user" do
-    get api_v1_user_url(@user), as: :json
-    assert_response :success
-
-    json_response = JSON.parse(self.response.body, symbolize_names: true)
-    assert_equal @user.email, json_response.dig(:data, :attributes, :email)
-    assert_equal @user.products.first.id.to_s, json_response.dig(:data, :relationships, :products, :data, 0, :id)
-    assert_equal @user.products.first.title, json_response.dig(:included, 0, :attributes, :title)
-  end
-  # ...
-end
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("show", () => {
+    it("should show product", () => {
+      agent
+        .get(`/products/${product.id}`)
+        .expect(200)
+        .then((response) => {
+          assert.strictEqual(response.body.data.attributes.title, product.title);
+          assert.strictEqual(response.body.included[0].attributes.email, product.user.email);
+        });
+    });
+  });
+  // ...
+});
 ----
 
 Ensuite le _serializer_:
 
-[source,ruby]
-.app/serializers/user_serializer.rb
+[source,ts]
 ----
-class UserSerializer
-  include FastJsonapi::ObjectSerializer
-  attributes :email
-  has_many :products
-end
+// src/utils/serializers.utils.ts
+// ...
+export const productsSerializer = new Serializer("products", {
+  attributes: ["title", "price", "published", "user"],
+  included: true,
+  user: {
+    ref: "id",
+    included: true,
+    attributes: ["email"],
+  },
+} as any);
 ----
 
 Et pour terminer le contrôleur:
 
-[source,ruby]
-.app/controllers/api/v1/users_controller.rb
+[source,ts]
 ----
-class Api::V1::UsersController < ApplicationController
-  # ...
-  def show
-    options = { include: [:products] }
-    render json: UserSerializer.new(@user, options).serializable_hash
-  end
-  # ...
-end
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return productsSerializer.serialize(products);
+  }
+  // ...
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(/* ... */) {
+    return productsSerializer.serialize(req.product);
+  }
+  // ...
+}
+
 ----
 
 Et voilà. Nous obtenons un JSON de cette forme:
@@ -623,41 +605,30 @@ Et voilà. Nous obtenons un JSON de cette forme:
 [source,json]
 ----
 {
-  "data": {
-    "id": "1",
-    "type": "user",
-    "attributes": {
-      "email": "staceeschultz@hahn.info"
+  data: {
+    type: 'products',
+    id: '2',
+    attributes: {
+      title: 'd358a5c96b94a562',
+      price: 56.85800753546402,
+      published: false
     },
-    "relationships": {
-      "products": {
-        "data": [
-          { "id": "1", "type": "product" },
-          { "id": "2", "type": "product" }
-        ]
+    relationships: {
+      user: {
+        data: {
+          type: 'users',
+          id: '3'
+        }
       }
     }
   },
-  "included": [
+  included: [
     {
-      "id": "1",
-      "type": "product",
-      "attributes": {
-        "title": "Durable Marble Lamp",
-        "price": "11.5537474980286",
-        "published": true
-      },
-      "relationships": {
-        "user": {
-          "data": {
-            "id": "1",
-            "type": "user"
-          }
-        }
+      type: 'users',
+      id: '3',
+      attributes: {
+        email: 'ddaf230c3d15a057@random.io'
       }
-    },
-    {
-        ...
     }
   ]
 }
@@ -667,14 +638,14 @@ C'était vraiment facile. Faisons un _commit_:
 
 [source,bash]
 ----
-$ git commit -am "Add products relationship to user#show"
+$ git commit -am "Add user relationship to ProductsController.show"
 ----
 
 == Rechercher les produits
 
 Dans cette dernière section, nous continuerons à renforcer l’action `Products#index` en mettant en place un mécanisme de recherche très simple pour permettre à n’importe quel client de filtrer les résultats. Cette section est facultative car elle n’aura aucun impact sur les modules de l’application. Mais si vous voulez pratiquer davantage avec le TDD, je vous recommande de compléter cette dernière étape.
 
-J’utilise https://github.com/activerecord-hackery/ransack[Ransack] ou https://github.com/casecommons/pg_search[pg_search] pour construire des formulaires de recherche avancée extrêmement rapidement. Mais ici, comme le but est d'apprendre et que la recherche que nous allons effectuer est très simple, je pense que nous pouvons construire un moteur de recherche à partir de zéro. Nous devons simplement considérer les critères par lesquels nous allons filtrer les attributs. Accrochez-vous bien à vos sièges, ça va être un voyage difficile.
+Il existe des librairies pour construire des formulaires de recherche avancée extrêmement rapidement. Mais ici, comme le but est d'apprendre et que la recherche que nous allons effectuer est très simple, je pense que nous pouvons construire un moteur de recherche à partir de zéro. Nous devons simplement considérer les critères par lesquels nous allons filtrer les attributs. Accrochez-vous bien à vos sièges, ça va être un voyage difficile.
 
 Nous filtrerons donc les produits selon les critères suivants:
 
@@ -685,6 +656,8 @@ Nous filtrerons donc les produits selon les critères suivants:
 Cela peut sembler court et facile, mais croyez-moi, cela vous donnera mal à la tête si vous ne le planifiez pas.
 
 === Le mot-clé by
+
+// -- current
 
 Nous allons créer un _scope_ pour trouver les enregistrements qui correspondent à un motif particulier de caractère. Appelons-le `filter_by_title`.
 
