@@ -689,87 +689,39 @@ $ npm test
 
 Nous constatons que notre test ne fonctionne plus car il dépasse le temps alloué à un test. Nous pourrions augmenter le temps alloué à ce test avec la méthode `timeout` mais ce n'est pas optimal. Mais rassurez vous, nous avons une solution très simple offerte par l'injection de dépendence que nous avons mis en place depuis le début: un _Mock_.
 
-L'idée est donc de créer un classe qui implémente les fonctionnalités du `MailerService` mais qui se comporte de la façon que nous voulons spécifiquement dans le contexte donnée. C'est à dire que nous voulons que durant les tests, les mails ne soient pas envoyé.
+L'idée est donc de créer un classe qui implémente les fonctionnalités du `MailerService` mais qui se comporte de la façon que nous voulons spécifiquement dans le contexte donnée. C'est à dire que nous voulons que durant les tests, les mails ne soient pas envoyé. Cela semble compliqué mais c'est en fait très simple:
 
-J’ai simplement copié/collé les tests de la documentation et je les ai adaptés à nos besoins. Nous devons maintenant nous assurer que ces tests passent.
-
-Tout d’abord, nous ajoutons la méthode `OrderMailer#send_confirmation`:
-
-[source,ruby]
-.app/mailers/order_mailer.rb
+[source,ts]
 ----
-class OrderMailer < ApplicationMailer
-  default from: 'no-reply@marketplace.com'
-  def send_confirmation(order)
-    @order = order
-    @user = @order.user
-    mail to: @user.email, subject: 'Order Confirmation'
-  end
-end
+// src/tests/fakeMailer.service.ts
+import { injectable } from "inversify";
+import { SendMailOptions } from "nodemailer";
+import { MailerService } from "../services/mailer.service";
+
+@injectable()
+export class FakeMailerService extends MailerService {
+  public async sendEmail(options: SendMailOptions): Promise<void> {}
+  protected async initializeTransporter() {}
+}
 ----
 
-Après avoir ajouté ce code, nous devons maintenant ajouter les vues correspondantes. C’est une bonne pratique d’inclure une version texte en plus de la version HTML.
+Et il suffit de `rebind` le service au début de notre test:
 
-[source,erb]
+[source,ts]
 ----
-<%# app/views/order_mailer/send_confirmation.txt.erb %>
-Order: #<%= @order.id %>
-You ordered <%= @order.products.count %> products:
-<% @order.products.each do |product| %>
-  <%= product.title %> - <%= number_to_currency product.price %>
-<% end %>
-----
-
-[source,erb]
-----
-<!-- app/views/order_mailer/send_confirmation.html.erb -->
-<h1>Order: #<%= @order.id %></h1>
-<p>You ordered <%= @order.products.count %> products:</p>
-<ul>
-  <% @order.products.each do |product| %>
-    <li><%= product.title %> - <%= number_to_currency product.price %></li>
-  <% end %>
-</ul>
+// src/controllers/orders.controller.spec.ts
+// ...
+describe.only("OrderController", () => {
+  // ...
+  before(async () => {
+    container.rebind(TYPES.MailerService).to(FakeMailerService);
+    // ...
+  });
+    // ...
+});
 ----
 
-Maintenant, nos tests devraient passer:
-
-[source,bash]
-----
-$ rake test
-........................................
-40 runs, 66 assertions, 0 failures, 0 errors, 0 skips
-----
-
-Et maintenant, il suffit d’appeler la méthode `OrderMailer#send_confirmation` dans l’action de création sur le contrôleur des ordres:
-
-[source,ruby]
-.app/controllers/api/v1/orders_controller.rb
-----
-class Api::V1::OrdersController < ApplicationController
-  # ...
-  def create
-    order = current_user.orders.build(order_params)
-
-    if order.save
-      OrderMailer.send_confirmation(order).deliver
-      render json: order, status: 201
-    else
-      render json: { errors: order.errors }, status: 422
-    end
-  end
-  # ...
-end
-----
-
-Pour être sûr que nous n’avons rien cassé, lançons tous les tests:
-
-[source,bash]
-----
-$ rake test
-........................................
-40 runs, 66 assertions, 0 failures, 0 errors, 0 skips
-----
+Et voilà, nos tests devraient passer à nouveau.
 
 _Commitons_ tout ce que nous venons de faire pour terminer cette section:
 
