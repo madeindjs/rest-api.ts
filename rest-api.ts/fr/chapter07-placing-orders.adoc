@@ -434,172 +434,108 @@ On dirait qu’il reste un paquet de chose à faire mais croyez-moi: vous êtes 
 
 Si vous vous rappelez le modèle de commande, nous avons besoin de trois choses: un total pour la commande, l’utilisateur qui passe la commande et les produits pour la commande. Compte tenu de cette information, nous pouvons commencer à ajouter quelques tests:
 
-[source,ruby]
-.test/controllers/api/v1/orders_controller_test.rb
+[source,ts]
 ----
-# ...
-class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
-  setup do
-    # ...
-    @order_params = { order: {
-      product_id: [products(:one).id, products(:two).id],
-      total: 50
-    } }
-  end
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  describe("create", () => {
+    let product1: Product;
+    let product2: Product;
 
-  # ...
+    before(async () => {
+      product1 = await productRepository.save(generateProduct());
+      product2 = await productRepository.save(generateProduct());
+    });
 
-  test 'should forbid create order for unlogged' do
-    assert_no_difference('Order.count') do
-      post api_v1_orders_url, params: @order_params, as: :json
-    end
-    assert_response :forbidden
-  end
+    it("should create order", () =>
+      agent
+        .post("/orders")
+        .set("Authorization", jwt)
+        .send({ productIds: [product1.id, product2.id] })
+        .expect(201));
 
-  test 'should create order with two products' do
-    assert_difference('Order.count', 1) do
-      post api_v1_orders_url,
-        params: @order_params,
-        headers: { Authorization: JsonWebToken.encode(user_id: @order.user_id) },
-        as: :json
-    end
-    assert_response :created
-  end
-end
-----
+    it("should not create product without auth", () =>
+      agent
+        .post("/orders")
+        .send({ productIds: [product1.id, product2.id] })
+        .expect(403));
 
-Comme vous pouvez le voir, nous sommes en train de créer une variable `order_params` avec les données de la commande. Vous voyez le problème ici? Je l’expliquerai plus tard. Ajoutons simplement le code nécessaire pour faire passer ce test.
-
-Nous devons d’abord ajouter l’action aux routes:
-
-[source,ruby]
-.config/routes.rb
-----
-# ...
-Rails.application.routes.draw do
-  # ...
-  resources :orders, only: %i[index show create]
-  # ...
-end
+    it("should not create order with missing title", () =>
+      agent.post("/orders").set("Authorization", jwt).send({ productIds: [] }).expect(400));
+  });
+  // ...
+});
 ----
 
-Ensuite, la mise en œuvre qui est facile:
+Encore une fois, nous allons créer des tests qui couvrent tous les cas possibles. Respectivement:
 
-[source,ruby]
-.app/controllers/api/v1/orders_controller.rb
+* le cas ou tout se passe bien
+* le cas ou l'utilisateur n'a pas envoyé les paramètres nécessaires
+* le cas ou l'utilisateur n'a pas spécifié sont jeton JWT
+
+Comme vous pouvez le voir dans le premier cas, l'utilisateur envoie un tableau des produits qu'il souhaite ajouter à sa commande. Nous allons donc dans le contrôleur:
+
+1. récupérer la liste des produits associés via les IDs
+2. calculer la somme totale que représente ces produits
+3. créer l'`Order`
+4. créer les `Placements` associé à cette commande
+
+Cela parait compliqué mais voyez l'implémentation:
+
+
+[source,ts]
 ----
-class Api::V1::OrdersController < ApplicationController
-  before_action :check_login, only: %i[index show create]
-  # ...
+// src/controllers/orders.controller.ts
+// ...
+@controller("/orders", TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
 
-  def create
-    order = current_user.orders.build(order_params)
+  @httpPost("/")
+  public async create(
+    @requestBody() body: { productIds: number[] },
+    { user }: Request & { user: User },
+    res: Response
+  ) {
+    const productRepository = await this.databaseService.getRepository(ProductRepository);
+    const orderRepository = await this.databaseService.getRepository(OrderRepository);
+    const placementRepository = await this.databaseService.getRepository(PlacementRepository);
 
-    if order.save
-      render json: order, status: 201
-    else
-      render json: { errors: order.errors }, status: 422
-    end
-  end
+    if (!body.productIds?.length) {
+      return res.status(400).json({ errors: { productIds: "should be an array of products ids" } });
+    }
 
-  private
+    const products = await productRepository.findByIds(body.productIds);
 
-  def order_params
-    params.require(:order).permit(:total, product_ids: [])
-  end
-end
+    const total = products.reduce((sum, product) => sum + product.price, 0);
+    const order = await orderRepository.save({ user, total });
+
+    const placements = products.map((product) => ({ order, product }));
+    await placementRepository.save(placements);
+
+    return res.sendStatus(201);
+  }
+  // ...
+}
 ----
 
 Et maintenant, nos tests devraient tous passer:
 
 [source,bash]
 ----
-$ rake test
-.......................................
-39 runs, 59 assertions, 0 failures, 0 errors, 0 skips
+$ npm test
+...
+  OrderController
+...
+    create
+      ✓ should create order
+      ✓ should not create product without auth
+      ✓ should not create order with missing title
 ----
 
-Ok donc tout va bien. Nous devrions maintenant passer au chapitre suivant, non? Laissez-moi faire une pause avant. Nous avons de graves erreurs sur l’application et elles ne sont pas liées au code lui-même mais sur la partie métier.
-
-Ce n’est pas parce que les tests passent que l’application remplit la partie métier de l’application. Je voulais en parler parce que dans de nombreux cas, c’est super facile de simplement recevoir des paramètres et de construire des objets à partir de ces paramètres. Dans notre cas, nous ne pouvons pas nous fier aux données que nous recevons. En effet, nous laissons ici le client fixer le total de la commande! Ouais, c’est fou!
-
-Nous devons donc ajouter quelques validations et calculer le total de la commande dans le modèle. De cette façon, nous ne recevons plus cet attribut total et nous avons un contrôle complet sur cet attribut. Alors faisons-le.
-
-Nous devons d’abord ajouter quelques tests pour le modèle de commande:
-
-[source,ruby]
-.test/models/order_test.rb
-----
-# ...
-class OrderTest < ActiveSupport::TestCase
-
-  setup do
-    @order = orders(:one)
-  end
-
-  test 'Should set total' do
-    order = Order.new user_id: @order.user_id
-    order.products << products(:one)
-    order.products << products(:two)
-    order.save
-
-    assert_equal (@product1.price + @product2.price), order.total
-  end
-end
-----
-
-Nous pouvons maintenant ajouter l’implémentation:
-
-[source,ruby]
-.app/models/order.rb
-----
-class Order < ApplicationRecord
-  # ...
-  def set_total!
-    self.total = self.products.map(&:price).sum
-  end
-end
-----
-
-Juste avant que vous ne lanciez vos tests, nous avons besoin de mettre à jour l’usine de commande:
-
-
-Nous pouvons maintenant _hooker_ la méthode `set_total!` à un rappel `before_validation` pour s’assurer qu’il a le bon total avant la validation.
-
-NOTE: Le _hook_ est une méthode qui se déclenchera automatiquement lors de l'exécution
-
-[source,ruby]
-.app/models/order.rb
-----
-class Order < ApplicationRecord
-  before_validation :set_total!
-  # ...
-end
-----
-
-A ce stade, nous nous assurons que le total est toujours présent et supérieur ou égal à zéro, ce qui signifie que nous pouvons supprimer ces validations et supprimer les spécifications. Nos tests devraient passer maintenant:
-
-[source,bash]
-----
-$ rake test
-
-...........F
-
-Failure:
-OrderTest#test_Should_have_a_positive_total [/home/arousseau/github/madeindjs/market_place_api/test/models/order_test.rb:14]:
-Expected true to be nil or false
-
-
-rails test test/models/order_test.rb:11
-
-............................
-
-Finished in 0.542600s, 73.7191 runs/s, 110.5786 assertions/s.
-----
-
-Oups! Nous obtenons une _failure_ sur notre précédent test _Should have a positive total_. C'est logique puisque le total de la commande se calcule dynamiquement. Nous pouvons donc tout simplement supprimer ce test qui est devenu obsolète.
-
-Nos tests doivent continuer à passer. _Commitons_ nos changements:
+_Commitons_ nos changements:
 
 [source,bash]
 ----
@@ -610,38 +546,150 @@ $ git commit -am "Adds the create method for the orders controller"
 
 La dernière section de ce chapitre sera d’envoyer un courriel de confirmation à l’utilisateur qui vient de créer une commande. Si vous le voulez, vous pouvez sauter cette étape et passer au chapitre suivant! Cette section est plus à un bonus.
 
-Vous êtes peut-être familier avec la manipulation des courriels avec Rails, je vais essayer de rendre cela simple et rapide:
+Nous allons donc utiliser la librairie https://nodemailer.com/[nodemailer]
 
-Nous commençons par créer le `order_mailer` avec un mail nommé `send_confirmation`:
+
+Installons donc la librairie:
 
 [source,bash]
 ----
-$ rails generate mailer order_mailer send_confirmation
+$ npm install nodemailer
+$ npm install --save-dev @types/nodemailer
 ----
 
-Maintenant, nous pouvons ajouter quelques tests pour les mails de commandes que nous venons de créer:
+Maintenant créons un nouveau service qui fera l'interface entre la librairie et notre code. Comme je le disait précédemment, c'est toujours une bonne idée de procéder ainsi car cela va nous permettre de _Mocker_ cette fonctionnalité durant nos tests. Ne vous inquiétez pas, nous en reparlerons juste après.
 
-[source,ruby]
-.test/mailers/order_mailer_test.rb
+.Implémentation d'un service faisant interface à nodemailer.
+[source,ts]
 ----
-# ...
-class OrderMailerTest < ActionMailer::TestCase
+// src/services/mailer.service.ts
+import { inject, injectable } from "inversify";
+import { createTestAccount, createTransport, SendMailOptions, Transporter } from "nodemailer";
+import { TYPES } from "../core/types.core";
+import { Logger } from "./logger.service";
 
-  setup do
-    @order = orders(:one)
-  end
+@injectable()
+export class MailerService {
+  private static transporter: Transporter;
 
-  test "should be set to be delivered to the user from the order passed in" do
-    mail = OrderMailer.send_confirmation(@order)
-    assert_equal "Order Confirmation", mail.subject
-    assert_equal [@order.user.email], mail.to
-    assert_equal ['no-reply@marketplace.com'], mail.from
-    assert_match "Order: ##{@order.id}", mail.body.encoded
-    assert_match "You ordered #{@order.products.count} products", mail.body.encoded
-  end
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
 
-end
+  public async sendEmail(options: SendMailOptions): Promise<void> {
+    await this.initializeTransporter();
+
+    await MailerService.transporter.sendMail(options);
+
+  }
+
+  private async initializeTransporter() {
+    if (MailerService.transporter !== undefined) {
+      return;
+    }
+
+    let { user, pass } = await createTestAccount();
+
+    MailerService.transporter = createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: { user, pass },
+    });
+  }
+}
 ----
+
+Comme vous le voyez, notre service ne fais pas grand chose. Nous initialisons juste ici un `transporteur` qui permet de se connecter à un compte SMTP. Vous pouvez utiliser le compte mail de votre choix et de déplacer les valeurs dans le fichier `.env` mais ici j'ai choisi d'utiliser la méthode `createTestAccount` qui permet de créer un compte test à la volée.
+
+Et comme nous venons de créer un service, nous devons l'ajouter au container:
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  MailerService: Symbol.for("MailerService"),
+  // ...
+};
+
+----
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+container.bind(TYPES.MailerService).to(MailerService);
+// ...
+----
+
+Et voilà. Je trouve aussi que c'est une bonne idée d'ajouter la création du mail du produit dans le `MailerService`. En revanche, il faut faire attention à ce que ce service ne devienne pas trop gros au fur et à mesure de l'extension de notre application et ne pas hésiter à le redécouper si nécessaire. Dans notre cas cela ne pose pas de problème. Voici donc la méthode:
+
+[source,ts]
+----
+// src/services/mailer.service.ts
+// ...
+@injectable()
+export class MailerService {
+  // ...
+  public async sendNewOrderEmail(order: Order): Promise<void> {
+    const productText = order.placements.map((p) => `- ${p.product.title}`);
+    const text = `Details of products:\n${productText}\nTOTAL:${order.total}€`;
+
+    await this.sendEmail({
+      to: order.user.email,
+      text,
+      subject: "Thanks for order",
+    });
+  }
+  // ...
+}
+----
+
+Nous pouvons maintenant appeler cette méthode directement donc notre contrôleur:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller("/orders", /* ... */)
+export class OrdersController {
+  // ...
+  @httpPost("/")
+  public async create(/* ... */) {
+    // ...
+    await this.mailerService.sendNewOrderEmail(order);
+    return res.sendStatus(201);
+  }
+  // ...
+}
+----
+
+Et voilà!
+
+NOTE: Si notre application grandie, il serait plus intéressant d'utiliser une librairie spécialisée dans la gestion de job comme https://github.com/graphile/worker[graphile-worker] afin de différer l'envoie d'email. Cela nous permettrait aussi de prioriser les tâches mais aussi de relancer plus tard les tâches qui n'ont pas fonctionnés. Dans notre cas, je ne l'ai pas mis en place afin de garder ce tutoriel plus simple.
+
+Lançons les tests pour êtres sûr:
+
+[source,sh]
+----
+$ npm test
+...
+  OrderController
+...
+    create
+      1) should create order
+      ✓ should not create product without auth
+      ✓ should not create order with missing title
+...
+
+  1) OrderController
+       create
+         should create order:
+     Error: Timeout of 2000ms exceeded.
+----
+
+Nous constatons que notre test ne fonctionne plus car il dépasse le temps alloué à un test. Nous pourrions augmenter le temps alloué à ce test avec la méthode `timeout` mais ce n'est pas optimal. Mais rassurez vous, nous avons une solution très simple offerte par l'injection de dépendence que nous avons mis en place depuis le début: un _Mock_.
+
+L'idée est donc de créer un classe qui implémente les fonctionnalités du `MailerService` mais qui se comporte de la façon que nous voulons spécifiquement dans le contexte donnée. C'est à dire que nous voulons que durant les tests, les mails ne soient pas envoyé.
 
 J’ai simplement copié/collé les tests de la documentation et je les ai adaptés à nos besoins. Nous devons maintenant nous assurer que ces tests passent.
 
