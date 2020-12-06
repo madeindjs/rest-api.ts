@@ -191,12 +191,12 @@ La réponse est vraiment simple: cela dépend de la quantité d’informations q
 Dans notre cas, nous n'allons pas le faire car nous allons récupérer les commandes de utilisateur sur la route `/orders`. Commençons par quelques tests:
 
 // -- current
-
+.Tests fonctionnels de la méthode `OrdersController.index`
 [source,ts]
 ----
 // src/controllers/orders.controller.spec.ts
 // ...
-describe("OrderController", () => {
+describe("OrdersController", () => {
   let userRepository: UserRepository;
   let orderRepository: OrderRepository;
   let jsonWebTokenService: JsonWebTokenService;
@@ -236,68 +236,76 @@ describe("OrderController", () => {
 });
 ----
 
-L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparait bien dans le retour JSON.
+L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparaît bien dans le retour JSON.
 
 NOTE: Vous avez certainement remarqué la syntaxe `({body}) => ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préférer l'utiliser qu'à partir de ce chapitre.
 
-Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur.
+Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur ni même le sérializeur spécifique aux commandes. Alors faisons le.
 
-// TODO: controleur + middleware
-// -- current
+Alors commençons par le sérialiseur:
 
-[source,ruby]
-.config/routes.rb
+[source,ts]
 ----
-Rails.application.routes.draw do
-  namespace :api, defaults: { format: :json } do
-    namespace :v1 do
-      resources :orders, only: [:index]
-      # ...
-    end
-  end
-end
+// src/utils/serializers.utils.ts
+// ...
+export const ordersSerializer = new Serializer("orders", {
+  attributes: ["total", "createdAt", "updatedAt"],
+} as any);
 ----
 
-Nous allons donc générer un nouveau _serializer_ pour les commandes:
+Et maintenant nous pouvons l'utiliser dans notre tout nouveau contrôleur:
 
-[source,bash]
+[source,ts]
 ----
-$ rails generate serializer order
+// src/controllers/orders.controller.ts
+import { Request, response, Response } from "express";
+import { inject } from "inversify";
+import { controller, httpGet } from "inversify-express-utils";
+import { TYPES } from "../core/types.core";
+import { Order, OrderRepository } from "../entities/order.entity";
+import { User } from "../entities/user.entity";
+import { DatabaseService } from "../services/database.service";
+import { ordersSerializer } from "../utils/serializers.utils";
+
+@controller("/orders", TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  public constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
+
+  @httpGet("/")
+  public async index({ user }: Request & { user: User }) {
+    const repository = await this.databaseService.getRepository(OrderRepository);
+    const orders = await repository.find({ user });
+    return ordersSerializer.serialize(orders);
+  }
+}
 ----
 
-Et ajoutons les relations:
+Dans le premier décorateur `@controller`, nous injection globalement le _middleware_ `FetchLoggedUserMiddleware`. Cela signifie qu'il faudra donner une jeton JWT pour accéder à toutes les actions de ce contrôleur. Cela nous permet donc de récupérer l'utilisateur dans la méthode `index` et de l'utiliser directement dans la méthode `find`. Nous utilisons le sérialseur pour formatter les données et les renvoyer.
 
-.app/serializers/order_serializer.rb
-[source,ruby]
+N'oublions pas de charger notre contôleur puisqu'il s'agit d'un tout nouveau contrôleur:
+
+[source,ts]
 ----
-class OrderSerializer
-  include FastJsonapi::ObjectSerializer
-  belongs_to :user
-  has_many :products
-end
-----
-
-Il est maintenant temps d’implémenter le contrôleur des commandes:
-
-[source,ruby]
-.app/controllers/api/v1/orders_controller.rb
-----
-class Api::V1::OrdersController < ApplicationController
-  before_action :check_login, only: %i[index]
-
-  def index
-    render json: OrderSerializer.new(current_user.orders).serializable_hash
-  end
-end
+// src/core/container.core.ts
+// ...
+import "../controllers/orders.controller";
+// ...
 ----
 
 Et maintenant nos tests devraient passer:
 
 [source,bash]
 ----
-$ rake test
-....................................
-36 runs, 53 assertions, 0 failures, 0 errors, 0 skips
+$ npm test
+...
+  OrderController
+    index
+      ✓ should forbid orders without auth (44ms)
+      ✓ should get orders of user
+...
 ----
 
 Nous aimons nos commits très petits. Alors _commitons_ dès maintenant:
@@ -310,69 +318,97 @@ $ git add . && git commit -m "Adds the index action for order"
 
 === Afficher une seule commande
 
-Comme vous pouvez déjà l’imaginer, cette route est très facile. Nous n’avons qu’à mettre en place quelques configurations (routes, action du contrôleur) et ce sera tout pour cette section. Nous allons aussi inclure les produits liés à cette commande dans le JSON de sortie.
+Comme vous pouvez déjà l’imaginer, cette route est très facile. Nous n’avons qu’à mettre en place quelques configurations (routes, action du contrôleur) et un nouveau _middleware_ qui va s'occuper de récupérer la commande et ce sera tout pour cette section. Nous inclurons plus tard les produits liés à cette commande dans le JSON de sortie.
 
 Commençons par ajouter quelques tests:
 
-[source,ruby]
-.spec/controllers/api/v1/orders_controller_test.rb
+[source,ts]
 ----
-# ...
-class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test 'should show orders' do
-    get api_v1_orders_url, headers: { Authorization: JsonWebToken.encode(user_id: @order.user_id) },  as: :json
-    assert_response :success
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrdersController", () => {
+  // ...
+  describe("show", () => {
+    it("should forbid show order for other users", () => {
+      agent.get(`/orders/${order.id}`).set("Authorization", strangerJwt).expect(403);
+    });
 
-    json_response = JSON.parse(response.body)
-    assert_equal @order.user.orders.count, json_response['data'].count
-  end
-end
-----
-
-Comme vous pouvez le voir, la deuxième partie du test vérifie que le produit est inclus dans le JSON.
-
-Ajoutons l’implémentation pour faire passer nos tests. Sur le fichier `routes.rb` ajoutez l’action `show` aux routes des commandes:
-
-[source,ruby]
-.config/routes.rb
-----
-# ...
-Rails.application.routes.draw do
-  # ...
-  resources :orders, only: %i[index show]
-  # ...
-end
+    it("should show order", () => {
+      agent
+        .get(`/orders/${order.id}`)
+        .set("Authorization", jwt)
+        .expect(200)
+        .then(({ body }) => assert.strictEqual(body.data.id, String(order.id)));
+    });
+  });
+  // ...
+});
 ----
 
-Et l’implémentation devrait ressembler à ceci:
+Passons à l'implémentation. Nous allons commencer par créer un _middleware_ qui se chargera de chercher la commande en fonction du paramètre. Le code est vraiment très similaire au `FetchProductMiddleware` donc je passerai un peu plus vite la dessus:
 
-[source,ruby]
-.app/controllers/api/v1/orders_controller.rb
+.Création du `FetchOrderMiddleware`
+[source,ts]
 ----
-class Api::V1::OrdersController < ApplicationController
-  before_action :check_login, only: %i[index show]
-  # ...
-  def show
-    order = current_user.orders.find(params[:id])
+// src/middlewares/fetchUser.middleware.ts
+// ...
+@injectable()
+export class FetchOrderMiddleware extends BaseMiddleware {
+  constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {
+    super();
+  }
 
-    if order
-      options = { include: [:products] }
-      render json: OrderSerializer.new(order, options).serializable_hash
-    else
-      head 404
-    end
-  end
-end
+  public async handler(req: Request & { order: Order }, res: Response, next: NextFunction): Promise<void | Response> {
+    const orderId = req.query.orderId ?? req.params.orderId;
+    const repository = await this.databaseService.getRepository(OrderRepository);
+    req.order = await repository.findOne(Number(orderId), {
+      relations: ["user"],
+    });
+
+    if (!req.order) {
+      return res.status(404).send("order not found");
+    }
+    next();
+  }
+}
+----
+
+.Ajout du `Symbol` pour l'injection dans le container
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  FetchOrderMiddleware: Symbol.for("FetchOrderMiddleware"),
+};
+
+----
+
+.Ajout `FetchOrderMiddleware` dans le container
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+export const container = new Container();
+// ...
+container.bind(TYPES.FetchOrderMiddleware).to(FetchOrderMiddleware);
 ----
 
 Tous nos tests passent désormais:
 
 [source,bash]
 ----
-$ rake test
-.....................................
-37 runs, 55 assertions, 0 failures, 0 errors, 0 skips
+$ npm test
+  OrderController
+    index
+      ✓ should forbid orders without auth (44ms)
+      ✓ should get orders of user
+    show
+      ✓ should forbid show order for other users
+      ✓ should show orders
 ----
 
 _Commitons_ les changements et passons à l’action `Product#create`.
@@ -381,6 +417,8 @@ _Commitons_ les changements et passons à l’action `Product#create`.
 ----
 $ git commit -am "Adds the show action for order"
 ----
+
+// -- current
 
 === Placement et commandes
 
