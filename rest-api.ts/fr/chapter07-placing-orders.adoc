@@ -711,7 +711,7 @@ Et il suffit de `rebind` le service au début de notre test:
 ----
 // src/controllers/orders.controller.spec.ts
 // ...
-describe.only("OrderController", () => {
+describe("OrderController", () => {
   // ...
   before(async () => {
     container.rebind(TYPES.MailerService).to(FakeMailerService);
