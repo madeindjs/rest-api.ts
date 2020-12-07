@@ -190,7 +190,6 @@ La réponse est vraiment simple: cela dépend de la quantité d’informations q
 
 Dans notre cas, nous n'allons pas le faire car nous allons récupérer les commandes de utilisateur sur la route `/orders`. Commençons par quelques tests:
 
-// -- current
 .Tests fonctionnels de la méthode `OrdersController.index`
 [source,ts]
 ----
@@ -234,6 +233,23 @@ describe("OrdersController", () => {
         .then(({ body }) => assert.ok(body.data.some(({ id }) => id === String(order.id)))));
   });
 });
+----
+
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+export function randomInteger(min: number = 0, max: number = 100): number {
+  return Math.floor(Math.random() * (max - min) - min);
+}
+// ...
+export function generateOrder(order?: Partial<Order>): Order {
+  const newOrder = new Order();
+  newOrder.user = order?.user ?? generateUser();
+  newOrder.total = randomInteger(1); // TODO
+
+  return newOrder;
+}
 ----
 
 L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparaît bien dans le retour JSON.

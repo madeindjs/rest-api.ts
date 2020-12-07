@@ -24,50 +24,34 @@ $ git checkout -b chapter08
 
 == Diminution de la quantité de produit
 
-Dans cette partie nous travaillerons sur la mise à jour de la quantité du produit pour nous assurer que chaque commande livrera le produit réel. Actuellement, le modèle de produit n’a pas d’attribut de quantité. Alors faisons-le:
+Dans cette partie nous travaillerons sur la mise à jour de la quantité du produit pour nous assurer que chaque commande livrera le produit réel. Actuellement, le modèle de produit n’a pas d’attribut de quantité. Alors ajoutons le:
 
-[source,bash]
+[source,ts]
 ----
-$ rails generate migration add_quantity_to_products quantity:integer
-----
-
-Attendez! N’exécutez pas encore cette migration! Nous allons y apporter une petite modification. Comme bonne pratique, j’aime ajouter des valeurs par défaut pour la base de données juste pour être sûr de ne pas tout gâcher avec des valeurs nulles. C’est un cas parfait!
-
-Votre fichier de migration devrait ressembler à ceci:
-
-[source,ruby]
-.db/migrate/20190621105101_add_quantity_to_products.rb
-----
-class AddQuantityToProducts < ActiveRecord::Migration[6.0]
-  def change
-    add_column :products, :quantity, :integer, default: 0
-  end
-end
-----
-
-Maintenant nous pouvons lancer la migration:
-
-[source,bash]
-----
-$ rake db:migrate
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @Column({ type: "integer", default: 0 })
+  quantity: number = 0;
+  // ...
+}
+// ...
 ----
 
 Et n'oublions pas de mettre à jour les _fixtures_ en ajoutant le champs *quantity* (j'ai choisi la valeur `5` totalement par hasard).
 
-[source,yml]
-.test/fixtures/products.yml
+[source,ts]
 ----
-one:
-  # ...
-  quantity: 5
-
-two:
-  # ...
-  quantity: 5
-
-another_tv:
-  # ...
-  quantity: 5
+// src/utils/faker.utils.ts
+// ...
+export function generateProduct(product?: Partial<Product>): Product {
+  // ...
+  newProduct.quantity = product?.quantity ?? randomInteger(1);
+  // ...
+}
+// ...
 ----
 
 Il est maintenant temps de diminuer la quantité du `Product` une fois l’`Order` passée. La première chose qui vous vient probablement à l’esprit est de le faire dans le modèle `Order` et c’est une erreur fréquente. Lorsque vous travaillez avec des associations _Many-to-Many_, nous oublions totalement le modèle de jointure qui dans ce cas est `Placement`. Le `Placement` est un meilleur endroit pour gérer cela car nous avons accès à la commande et au produit. Ainsi, nous pouvons facilement diminuer le stock du produit.
