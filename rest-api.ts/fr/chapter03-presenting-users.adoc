@@ -91,10 +91,10 @@ Nous allons maintenant créer un service `DatabaseService` qu va s'occuper de co
 [source,ts]
 ----
 // src/services/database.service.ts
-import { inject, injectable } from "inversify";
-import { Connection, createConnection, ObjectType } from "typeorm";
-import { TYPES } from "../core/types.core";
-import { Logger } from "./logger.service";
+import {inject, injectable} from 'inversify';
+import {Connection, createConnection, ObjectType} from 'typeorm';
+import {TYPES} from '../core/types.core';
+import {Logger} from './logger.service';
 
 @injectable()
 export class DatabaseService {
@@ -109,9 +109,9 @@ export class DatabaseService {
 
     try {
       DatabaseService.connection = await createConnection();
-      this.logger.log("INFO", `Connection established`);
+      this.logger.log('INFO', `Connection established`);
     } catch (e) {
-      this.logger.log("ERROR", "Cannot establish database connection", e);
+      this.logger.log('ERROR', 'Cannot establish database connection', e);
       process.exit(1);
     }
 
@@ -135,28 +135,25 @@ NOTE: C'est une bonne pratique de cacher la logique de la librairie par nos prop
 Maintenant que notre service est créé, il faut l'ajouter à notre container :
 
 .Ajout du `Symbol` lié au service `DatabaseService`
-[source,diff]
+[source,ts]
 ----
 // src/core/types.core.ts
 export const TYPES = {
-  Logger: Symbol.for("Logger"),
-+  DatabaseService: Symbol.for("DatabaseService"),
+  // ...
+  DatabaseService: Symbol.for('DatabaseService'),
 };
 ----
 
 .Enregistrement du service `DatabaseService` dans le container Inversify
-[source,diff]
+[source,ts]
 ----
 // src/core/container.core.ts
-import { Container } from "inversify";
-import "../controllers/home.controller";
-+ import { DatabaseService } from "../services/database.service";
-import { Logger } from "../services/logger.service";
-import { TYPES } from "./types.core";
-
+import {Container} from 'inversify';
+import {DatabaseService} from '../services/database.service';
+// ...
 export const container = new Container();
-container.bind(TYPES.Logger).to(Logger);
-+ container.bind(TYPES.DatabaseService).to(DatabaseService);
+// ...
+container.bind(TYPES.DatabaseService).to(DatabaseService);
 ----
 
 Et voilà.
@@ -178,14 +175,14 @@ import {
   EntityRepository,
   PrimaryGeneratedColumn,
   Repository,
-} from "typeorm";
+} from 'typeorm';
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column({unique: true})
   email: string;
 
   @Column()
@@ -224,18 +221,18 @@ Voici l'implémentation de notre contrôleur:
 [source,ts]
 ----
 // src/controllers/users.controller.ts
-import { Request, Response } from "express";
-import { inject } from "inversify";
-import { controller, httpGet } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
+import {Request, Response} from 'express';
+import {inject} from 'inversify';
+import {controller, httpGet} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
 
-@controller("/users")
+@controller('/users')
 export class UsersController {
   public constructor(@inject(TYPES.DatabaseService) private readonly database: DatabaseService) {}
 
-  @httpGet("/")
+  @httpGet('/')
   public async index(req: Request, res: Response) {
     const userRepository = await this.database.getRepository(UserRepository);
 
@@ -250,11 +247,11 @@ Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau contrôleu
 [source,diff]
 ----
 // src/core/container.core.ts
-import { Container } from "inversify";
+import {Container} from 'inversify';
 import "../controllers/home.controller";
 + import "../controllers/users.controller";
-import { DatabaseService } from "../services/database.service";
-import { Logger } from "../services/logger.service";
+import {DatabaseService} from '../services/database.service';
+import {Logger} from '../services/logger.service';
 // ...
 ----
 
@@ -296,7 +293,7 @@ Maintenant que toute notre structure a été mise en place, la suite va aller be
 ----
 // src/controllers/home.controller.ts
 // ...
-import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
+import {controller, httpGet, httpPost, requestBody} from 'inversify-express-utils';
 // ...
 
 interface CreateUserBody {
@@ -304,10 +301,10 @@ interface CreateUserBody {
   password: string;
 }
 
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
-  @httpPost("/")
+  @httpPost('/')
   public async create(@requestBody() body: CreateUserBody, req: Request, res: Response) {
     const repository = await this.database.getRepository(UserRepository);
     const user = new User();
@@ -344,11 +341,11 @@ Voici l'implémentation :
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
-  @httpGet("/:userId")
-  public async show(@requestParam("userId") userId: number) {
+  @httpGet('/:userId')
+  public async show(@requestParam('userId') userId: number) {
     const repository = await this.database.getRepository(UserRepository);
     return repository.findOneOrFail(userId);
   }
@@ -380,13 +377,13 @@ interface UpdateUserBody {
   password: string;
 }
 
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
-  @httpPut("/:userId")
+  @httpPut('/:userId')
   public async update(
     @requestBody() body: UpdateUserBody,
-    @requestParam("userId") userId: number,
+    @requestParam('userId') userId: number,
     req: Request,
     res: Response
   ) {
@@ -429,11 +426,11 @@ La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur 
 // src/controllers/home.controller.ts
 // ...
 
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
-  @httpDelete("/:userId")
-  public async destroy(@requestParam("userId") userId: number, req: Request, res: Response) {
+  @httpDelete('/:userId')
+  public async destroy(@requestParam('userId') userId: number, req: Request, res: Response) {
     const repository = await this.database.getRepository(UserRepository);
     const user = await repository.findOneOrFail(userId);
     await repository.delete(user);
@@ -485,9 +482,9 @@ Et il suffit ensuite d'ajouter les décorateurs `@IsEmail` et `@IsDefined` comme
 [source,diff]
 ----
 // src/entities/user.entity.ts
-+ import { IsDefined, IsEmail, validateOrReject } from "class-validator";
-- import { /* ... */ } from "typeorm";
-+ import { BeforeInsert, BeforeUpdate, /* ... */ } from "typeorm";
++ import {IsDefined, IsEmail, validateOrReject} from 'class-validator';
+- import {/* ... */} from 'typeorm';
++ import {BeforeInsert, BeforeUpdate, /* ... */} from 'typeorm';
 
 @Entity()
 export class User {
@@ -527,7 +524,7 @@ On voit que c'est beaucoup mieux. Cependant nous souhaiterions envoyer une erreu
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
   @httpPost("/")
@@ -586,12 +583,12 @@ J'ai choisi la deuxième option car elle permet de réduire le code et la respon
 
 [source,typescript]
 ----
-import { NextFunction, Request, Response } from "express";
-import { inject, injectable } from "inversify";
-import { BaseMiddleware } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { User, UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
+import {NextFunction, Request, Response} from 'express';
+import {inject, injectable} from 'inversify';
+import {BaseMiddleware} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
 
 @injectable()
 export class FetchUserMiddleware extends BaseMiddleware {
@@ -648,7 +645,7 @@ export const TYPES = {
 ----
 // src/core/container.core.ts
 // ...
-+ import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
++ import {FetchUserMiddleware} from '../middlewares/fetchUser.middleware';
 
 export const container = new Container();
 // services
@@ -664,15 +661,15 @@ Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutan
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
-  @httpGet("/:userId", TYPES.FetchUserMiddleware)
+  @httpGet('/:userId', TYPES.FetchUserMiddleware)
   public async show(/* ... */) {
     return req.user;
   }
 
-  @httpPut("/:userId", TYPES.FetchUserMiddleware)
+  @httpPut('/:userId', TYPES.FetchUserMiddleware)
   public async update(/* ... */) {
     // ...
     req.user.email = body.email ?? req.user.email;
@@ -680,7 +677,7 @@ export class UsersController {
     // ...
   }
 
-  @httpDelete("/:userId", TYPES.FetchUserMiddleware)
+  @httpDelete('/:userId', TYPES.FetchUserMiddleware)
   public async destroy(/* ... */) {
     // ...
     await repository.delete(req.user);
@@ -706,7 +703,7 @@ Voici un exemple d'une méthode pour hasher le mot de pass
 
 [source,ts]
 ----
-import { createHash } from "crypto";
+import {createHash} from 'crypto';
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password).digest("hex");
@@ -720,7 +717,7 @@ Et voilà! Pour savoir si le mot de passe correspond il suffit de vérifier si l
 
 [source,ts]
 ----
-import { createHash } from "crypto";
+import {createHash} from 'crypto';
 
 function hashPassword(password: string): string {
   return createHash("sha256").update(password).digest("hex");
@@ -744,7 +741,7 @@ Le sel de hachage consiste a rajouter un texte définis à chaque mot de passe. 
 
 [source,ts]
 ----
-import { createHash } from "crypto";
+import {createHash} from 'crypto';
 
 const salt = "my private salt";
 
@@ -771,7 +768,7 @@ Maintenant que nous avons vu la théorie, passons à la pratique. Nous allons ut
 [source,ts]
 ----
 // src/utils/password.utils.ts
-import { createHash } from "crypto";
+import {createHash} from 'crypto';
 
 const salt = "my private salt";
 
@@ -790,7 +787,7 @@ Nous allons maintenant utiliser la méthode `hashPassword` dans l'entité `User`
 ----
 // src/entities/user.entity.ts
 // ...
-import { hashPassword } from "../utils/password.utils";
+import {hashPassword} from '../utils/password.utils';
 
 @Entity()
 export class User {
@@ -871,9 +868,9 @@ Nous voici prêt à créer notre premier test :
 [source,ts]
 ----
 // src/entities/user.entity.spec.ts
-import assert from "assert";
-import { hashPassword } from "../utils/password.utils";
-import { User } from "./user.entity";
+import assert from 'assert';
+import {hashPassword} from '../utils/password.utils';
+import {User} from './user.entity';
 
 describe("User", () => {
   it("should hash password", () => {
@@ -938,8 +935,8 @@ Et tant qu'à faire, nous pouvons aussi ajouter un autre test unitaire sur la m�
 [source,ts]
 ----
 // src/utils/password.utils.spec.ts
-import assert from "assert";
-import { hashPassword, isPasswordMatch } from "./password.utils";
+import assert from 'assert';
+import {hashPassword, isPasswordMatch} from './password.utils';
 
 describe("isPasswordMatch", () => {
   const hash = hashPassword("good");
@@ -996,8 +993,8 @@ Maintenant créons notre agent qui sera utilisé dans tous nos tests:
 [source,ts]
 ----
 // src/tests/supertest.utils.ts
-import supertest, { SuperTest, Test } from "supertest";
-import { server } from "../core/server";
+import supertest, { SuperTest, Test} from 'supertest';
+import {server} from '../core/server';
 
 export const agent: SuperTest<Test> = supertest(server.build());
 ----
@@ -1008,10 +1005,10 @@ Et maintenant commençons pas créer notre premier test pour la méthode `index`
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { UserRepository } from "../entities/user.entity";
-import { agent } from "../tests/supertest.utils";
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {agent} from '../tests/supertest.utils';
 
 describe("UsersController", () => {
   let userRepository: UserRepository;

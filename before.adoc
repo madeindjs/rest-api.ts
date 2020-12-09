@@ -416,7 +416,7 @@
 // [source,ts]
 // ----
 // // src/main.ts
-// import express, { Request, Response } from "express";
+// import express, { Request, Response} from 'express';
 
 // const app = express();
 // const port = 3000;
@@ -484,7 +484,7 @@
 // +
 // [source,ts]
 // ----
-// import { injectable } from "inversify";
+// import {injectable} from 'inversify';
 
 // @injectable()
 // export class Logger {
@@ -520,9 +520,9 @@
 // [source,ts]
 // ----
 // // src/core/container.core.ts
-// import { Container } from "inversify";
-// import { Logger } from "../services/logger.service";
-// import { TYPES } from "./types.core";
+// import {Container} from 'inversify';
+// import {Logger} from '../services/logger.service';
+// import {TYPES} from './types.core';
 
 // export const container = new Container();
 // container.bind(TYPES.Logger).to(Logger);
@@ -540,9 +540,9 @@
 // [source,ts]
 // ----
 // // src/controllers/home.controller.ts
-// import { controller, httpGet } from "inversify-express-utils";
-// import { TYPES } from "../core/container.core";
-// import { Logger } from "../services/logger.service";
+// import {controller, httpGet} from 'inversify-express-utils';
+// import {TYPES} from '../core/container.core';
+// import {Logger} from '../services/logger.service';
 
 // @controller("/")
 // export class HomeController {
@@ -563,7 +563,7 @@
 // [source,diff]
 // ----
 // // src/core/container.core.ts
-// import { Container } from "inversify";
+// import {Container} from 'inversify';
 // + import "../controllers/home.controller";
 // import "../controllers/users.controller";
 // // ...
@@ -577,9 +577,9 @@
 // // src/main.ts
 // import "reflect-metadata";
 
-// import { InversifyExpressServer } from "inversify-express-utils";
-// import { container } from "./core/container.core";
-// import * as bodyParser from "body-parser";
+// import {InversifyExpressServer} from 'inversify-express-utils';
+// import {container} from './core/container.core';
+// import * as bodyParser from 'body-parser';
 
 // const port = 3000;
 
@@ -704,10 +704,10 @@
 // [source,ts]
 // ----
 // // src/services/database.service.ts
-// import { inject, injectable } from "inversify";
-// import { Connection, createConnection, ObjectType } from "typeorm";
-// import { TYPES } from "../core/types.core";
-// import { Logger } from "./logger.service";
+// import {inject, injectable} from 'inversify';
+// import {Connection, createConnection, ObjectType} from 'typeorm';
+// import {TYPES} from '../core/types.core';
+// import {Logger} from './logger.service';
 
 // @injectable()
 // export class DatabaseService {
@@ -761,11 +761,11 @@
 // [source,diff]
 // ----
 // // src/core/container.core.ts
-// import { Container } from "inversify";
+// import {Container} from 'inversify';
 // import "../controllers/home.controller";
-// + import { DatabaseService } from "../services/database.service";
-// import { Logger } from "../services/logger.service";
-// import { TYPES } from "./types.core";
+// + import {DatabaseService} from '../services/database.service';
+// import {Logger} from '../services/logger.service';
+// import {TYPES} from './types.core';
 
 // export const container = new Container();
 // container.bind(TYPES.Logger).to(Logger);
@@ -792,7 +792,7 @@
 //   EntityRepository,
 //   PrimaryGeneratedColumn,
 //   Repository,
-// } from "typeorm";
+//} from 'typeorm';
 
 // @Entity()
 // export class User {
@@ -837,14 +837,14 @@
 // [source,ts]
 // ----
 // // src/controllers/home.controller.ts
-// import { Request, Response } from "express";
-// import { inject } from "inversify";
-// import { controller, httpGet } from "inversify-express-utils";
-// import { TYPES } from "../core/types.core";
-// import { UserRepository } from "../entities/user.entity";
-// import { DatabaseService } from "../services/database.service";
+// import {Request, Response} from 'express';
+// import {inject} from 'inversify';
+// import {controller, httpGet} from 'inversify-express-utils';
+// import {TYPES} from '../core/types.core';
+// import {UserRepository} from '../entities/user.entity';
+// import {DatabaseService} from '../services/database.service';
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   public constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {}
 
@@ -863,11 +863,11 @@
 // [source,diff]
 // ----
 // // src/core/container.core.ts
-// import { Container } from "inversify";
+// import {Container} from 'inversify';
 // import "../controllers/home.controller";
 // + import "../controllers/users.controller";
-// import { DatabaseService } from "../services/database.service";
-// import { Logger } from "../services/logger.service";
+// import {DatabaseService} from '../services/database.service';
+// import {Logger} from '../services/logger.service';
 // // ...
 // ----
 
@@ -908,7 +908,7 @@
 // ----
 // // src/controllers/home.controller.ts
 // // ...
-// import { controller, httpGet, httpPost, requestBody } from "inversify-express-utils";
+// import {controller, httpGet, httpPost, requestBody} from 'inversify-express-utils';
 // // ...
 
 // interface CreateUserBody {
@@ -916,7 +916,7 @@
 //   password: string;
 // }
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   // ...
 
@@ -955,12 +955,12 @@
 // // src/controllers/home.controller.ts
 // // ...
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   // ...
-//   @httpGet("/:userId")
+//   @httpGet('/:userId')
 //   public async show(
-//     @requestParam("userId") userId: number,
+//     @requestParam('userId') userId: number,
 //     req: Request,
 //     res: Response
 //   ): Promise<User> {
@@ -995,13 +995,13 @@
 //   password: string;
 // }
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   // ...
-//   @httpPut("/:userId")
+//   @httpPut('/:userId')
 //   public async update(
 //     @requestBody() body: UpdateUserBody,
-//     @requestParam("userId") userId: number,
+//     @requestParam('userId') userId: number,
 //     req: Request,
 //     res: Response
 //   ): Promise<User> {
@@ -1044,11 +1044,11 @@
 // // src/controllers/home.controller.ts
 // // ...
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   // ...
-//   @httpDelete("/:userId")
-//   public async destroy(@requestParam("userId") userId: number) {
+//   @httpDelete('/:userId')
+//   public async destroy(@requestParam('userId') userId: number) {
 //     const repository = await this.databaseService.getRepository(UserRepository);
 //     const user = await repository.findOneOrFail(userId);
 //     repository.delete(user);
@@ -1099,7 +1099,7 @@
 // [source,diff]
 // ----
 // // src/entities/user.entity.ts
-// + import { IsDefined, IsEmail, validateOrReject } from "class-validator";
+// + import {IsDefined, IsEmail, validateOrReject} from 'class-validator';
 // import {
 // +  BeforeInsert,
 // +  BeforeUpdate,
@@ -1108,7 +1108,7 @@
 //   EntityRepository,
 //   PrimaryGeneratedColumn,
 //   Repository,
-// } from "typeorm";
+//} from 'typeorm';
 
 // @Entity()
 // export class User {
@@ -1151,7 +1151,7 @@
 // // src/controllers/home.controller.ts
 // // ...
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   // ...
 
@@ -1230,12 +1230,12 @@
 
 // [source,ts]
 // ----
-// import { NextFunction, Request, Response } from "express";
-// import { inject, injectable } from "inversify";
-// import { BaseMiddleware } from "inversify-express-utils";
-// import { TYPES } from "../core/types.core";
-// import { User, UserRepository } from "../entities/user.entity";
-// import { DatabaseService } from "../services/database.service";
+// import {NextFunction, Request, Response} from 'express';
+// import {inject, injectable} from 'inversify';
+// import {BaseMiddleware} from 'inversify-express-utils';
+// import {TYPES} from '../core/types.core';
+// import {User, UserRepository} from '../entities/user.entity';
+// import {DatabaseService} from '../services/database.service';
 
 // @injectable()
 // export class FetchUserMiddleware extends BaseMiddleware {
@@ -1292,7 +1292,7 @@
 // ----
 // // src/core/container.core.ts
 // // ...
-// + import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
+// + import {FetchUserMiddleware} from '../middlewares/fetchUser.middleware';
 
 // export const container = new Container();
 // // services
@@ -1309,16 +1309,16 @@
 // // src/controllers/home.controller.ts
 // // ...
 
-// @controller("/users")
+// @controller('/users')
 // export class UsersController {
 //   // ...
 
-//   @httpGet("/:userId", TYPES.FetchUserMiddleware)
+//   @httpGet('/:userId', TYPES.FetchUserMiddleware)
 //   public async show(req: Request & { user: User }): Promise<User> {
 //     return req.user;
 //   }
 
-//   @httpPut("/:userId", TYPES.FetchUserMiddleware)
+//   @httpPut('/:userId', TYPES.FetchUserMiddleware)
 //   public async update(
 //     @requestBody() body: UpdateUserBody,
 //     req: Request & { user: User },
@@ -1336,7 +1336,7 @@
 //     return repository.save(req.user);
 //   }
 
-//   @httpDelete("/:userId", TYPES.FetchUserMiddleware)
+//   @httpDelete('/:userId', TYPES.FetchUserMiddleware)
 //   public async destroy(req: Request & { user: User }) {
 //     const repository = await this.databaseService.getRepository(UserRepository);
 //     await repository.delete(req.user);
@@ -1361,7 +1361,7 @@
 
 // [source,ts]
 // ----
-// import { createHash } from "crypto";
+// import {createHash} from 'crypto';
 
 // function hashPassword(password: string): string {
 //   return createHash("sha256").update(password).digest("hex");
@@ -1375,7 +1375,7 @@
 
 // [source,ts]
 // ----
-// import { createHash } from "crypto";
+// import {createHash} from 'crypto';
 
 // function hashPassword(password: string): string {
 //   return createHash("sha256").update(password).digest("hex");
@@ -1403,7 +1403,7 @@
 
 // [source,ts]
 // ----
-// import { createHash } from "crypto";
+// import {createHash} from 'crypto';
 
 // const salt = "my private salt";
 
@@ -1434,7 +1434,7 @@
 // [source,ts]
 // ----
 // // src/utils/password.utils.ts
-// import { createHash } from "crypto";
+// import {createHash} from 'crypto';
 
 // const salt = "my private salt";
 
@@ -1453,7 +1453,7 @@
 // ----
 // // src/entities/user.entity.ts
 // // ...
-// import { hashPassword } from "../utils/password.utils";
+// import {hashPassword} from '../utils/password.utils';
 
 // @Entity()
 // export class User {
@@ -1543,9 +1543,9 @@
 // [source,ts]
 // ----
 // // src/entities/user.entity.spec.ts
-// import assert from "assert";
-// import { hashPassword } from "../utils/password.utils";
-// import { User } from "./user.entity";
+// import assert from 'assert';
+// import {hashPassword} from '../utils/password.utils';
+// import {User} from './user.entity';
 
 // describe("User", () => {
 //   it("should hash password", () => {
@@ -1596,8 +1596,8 @@
 // [source,ts]
 // ----
 // // src/utils/password.utils.spec.ts
-// import assert from "assert";
-// import { hashPassword, isPasswordMatch } from "./password.utils";
+// import assert from 'assert';
+// import {hashPassword, isPasswordMatch} from './password.utils';
 
 // describe("isPasswordMatch", () => {
 //   const hash = hashPassword("good");
@@ -1713,7 +1713,7 @@ La libraire s'utilise très facilement avec la méthode `jwt.sign` et `jwt.verif
 
 [source,ts]
 ----
-import { sign, verify } from "jsonwebtoken";
+import {sign, verify} from 'jsonwebtoken';
 
 const JWT_PRIVATE_KEY = "123456789";
 const payload = { userId: 1 };
@@ -1730,8 +1730,8 @@ Nous allons maintenant englober toute cette logique dans une classe `JsonWebToke
 [source,ts]
 ----
 // src/services/jsonWebToken.service.ts
-import { injectable } from "inversify";
-import { sign, verify } from "jsonwebtoken";
+import {injectable} from 'inversify';
+import {sign, verify} from 'jsonwebtoken';
 
 @injectable()
 export class JsonWebTokenService {
@@ -1765,7 +1765,7 @@ export const TYPES = {
 ----
 // src/core/container.core.ts
 // ...
-+ import { JsonWebTokenService } from "../services/jsonWebToken.service";
++ import {JsonWebTokenService} from '../services/jsonWebToken.service';
 
 export const container = new Container();
 // services
@@ -1781,10 +1781,10 @@ Et voilà. Nous pouvons même ajouter un petit test rapide qui va encoder et dé
 [source,ts]
 ----
 // src/services/jsonWebToken.service.spec.ts
-import assert from "assert";
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { JsonWebTokenService } from "./jsonWebToken.service";
+import assert from 'assert';
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {JsonWebTokenService} from './jsonWebToken.service';
 
 describe("JsonWebTokenService", () => {
   let jsonWebTokenService: JsonWebTokenService;
@@ -1844,14 +1844,14 @@ Nous allons donc créer le contrôleur `TokenControler` :
 [source,ts]
 ----
 // src/controllers/tokens.controller.ts
-import { Request, Response } from "express";
-import { inject } from "inversify";
-import { controller, httpPost, requestBody } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-import { JsonWebTokenService } from "../services/jsonWebToken.service";
-import { isPasswordMatch } from "../utils/password.utils";
+import {Request, Response} from 'express';
+import {inject} from 'inversify';
+import {controller, httpPost, requestBody} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+import {isPasswordMatch} from '../utils/password.utils';
 
 @controller("/tokens")
 export class TokensController {
@@ -2013,7 +2013,7 @@ export const TYPES = {
 ----
 // src/core/container.core.ts
 // ...
-+ import { FetchLoggedUserMiddleware } from "../middlewares/fetchLoggedUser.middleware";
++ import {FetchLoggedUserMiddleware} from '../middlewares/fetchLoggedUser.middleware';
 
 export const container = new Container();
 // ...
@@ -2027,13 +2027,13 @@ Et maintenant il ne nous reste plus qu'à utiliser le [.underline]#middleware# d
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
--   @httpGet("/:userId", TYPES.FetchUserMiddleware)
-+   @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
+-   @httpGet('/:userId', TYPES.FetchUserMiddleware)
++   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async show(
-    @requestParam("userId") userId: string,
+    @requestParam('userId') userId: string,
     req: Request & { user: User },
     res: Response
   ): Promise<User | Response> {
@@ -2056,14 +2056,14 @@ Le principe est exactement le même pour la méthode `update` et `destroy`.
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
 
--   @httpGet("/:userId", TYPES.FetchUserMiddleware)
-+   @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
+-   @httpGet('/:userId', TYPES.FetchUserMiddleware)
++   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async show(
-    @requestParam("userId") userId: string,
+    @requestParam('userId') userId: string,
     req: Request & { user: User },
     res: Response
   ): Promise<User | Response> {
@@ -2073,10 +2073,10 @@ export class UsersController {
     return req.user;
   }
 
--  @httpPut("/:userId", TYPES.FetchUserMiddleware)
-+  @httpPut("/:userId", TYPES.FetchLoggedUserMiddleware)
+-  @httpPut('/:userId', TYPES.FetchUserMiddleware)
++  @httpPut('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async update(
-    @requestParam("userId") userId: string,
+    @requestParam('userId') userId: string,
     @requestBody() body: UpdateUserBody,
     req: Request & { user: User },
     res: Response
@@ -2097,10 +2097,10 @@ export class UsersController {
     return repository.save(req.user);
   }
 
--  @httpDelete("/:userId", TYPES.FetchUserMiddleware)
-+  @httpDelete("/:userId", TYPES.FetchLoggedUserMiddleware)
+-  @httpDelete('/:userId', TYPES.FetchUserMiddleware)
++  @httpDelete('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async destroy(
-    @requestParam("userId") userId: string,
+    @requestParam('userId') userId: string,
     req: Request & { user: User },
     res: Response
   ) {

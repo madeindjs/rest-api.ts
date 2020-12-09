@@ -166,8 +166,8 @@ Effectivement. C'est pourquoi nous utilisons un `Container` qui va enregistrer l
 
 [source,ts]
 ----
-class Logger { /* ... */}
-class Database { /* ... */}
+class Logger {/* ... */}
+class Database {/* ... */}
 class User {/* ... */}
 
 class Container {
@@ -190,9 +190,6 @@ const user = container.getUser();
 
 Le code est plus long mais tout devient découpé. Rassurez-vous, nous n'allons pas implémenter tout cela à la mains. De très bonne librairies existent. Celle que j'ai choisi est https://github.com/inversify/InversifyJS[Inversify].
 
-// === Implémentation avec Inversify
-
-
 Dans cette section nous allons mettre en place concrètement un système d'injection de dépendance complet.
 
 Nous allons mettre en place un Logger qui pourra être injecté dans toutes les classes de notre application. Il nous permettra de les requêtes HTTP par exemple mais aussi bien d'autres événements.
@@ -208,17 +205,14 @@ Et créons une classe pour logger les événements toute simple:
 
 NOTE: On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
 
-
 [source,ts]
 ----
-import { injectable } from "inversify";
-
-@injectable()
+// src/services/logger.service.ts
 export class Logger {
   public log(
-    level: "DEBUG" | "INFO" | "ERROR" | "WARNING",
+    level: 'DEBUG' | 'INFO' | 'ERROR',
     message: string,
-    meta: any = {}
+    meta: any = {},
   ): void {
     const dateStr = new Date().toISOString();
     const metaStr = JSON.stringify(meta);
@@ -232,10 +226,10 @@ Pour la rendre injectable, il faut lui ajouter un décorateur `@injectable`. Ce 
 .ajout du décorateur `@injectable`
 [source,ts]
 ----
-import { injectable } from "inversify";
+import {injectable} from 'inversify';
 
 @injectable()
-export class Logger { /* ... */}
+export class Logger {/* ... */}
 ----
 
 Et voilà. Il ne nous reste plus qu'à créer le container qui va enregistrer ce service. https://github.com/inversify/InversifyJS#installation[La documentation] recommande de créer un objet `TYPES` qui va simplement stocker les identifiants de nos services. Nous allons créer un dossier `core` qui contiendra tout le code transverse à toute notre application.
@@ -243,7 +237,7 @@ Et voilà. Il ne nous reste plus qu'à créer le container qui va enregistrer ce
 [source,ts]
 ----
 // src/core/types.core.ts
-export const TYPES = { Logger: Symbol.for("Logger") };
+export const TYPES = {Logger: Symbol.for('Logger')};
 ----
 
 NOTE: Un https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol[`Symbol`] est un type primitif qui permet d'avoir une référence unique.
@@ -253,9 +247,9 @@ Maintenant nous pouvons utiliser ce symbole pour enregistrer notre logger dans u
 [source,ts]
 ----
 // src/core/container.core.ts
-import { Container } from "inversify";
-import { Logger } from "../services/logger.service";
-import { TYPES } from "./types.core";
+import {Container} from 'inversify';
+import {Logger} from '../services/logger.service';
+import {TYPES} from './types.core';
 
 export const container = new Container();
 container.bind(TYPES.Logger).to(Logger);
@@ -285,13 +279,13 @@ Avant d'écrire notre premier contrôleur, il est nécessaire de faire quelques 
 [source,ts]
 ----
 // src/core/server.ts
-import * as bodyParser from "body-parser";
-import { InversifyExpressServer } from "inversify-express-utils";
-import { container } from "./container.core";
+import * as bodyParser from 'body-parser';
+import {InversifyExpressServer} from 'inversify-express-utils';
+import {container} from './container.core';
 
 export const server = new InversifyExpressServer(container);
-server.setConfig((app) => {
-  app.use(bodyParser.urlencoded({ extended: true }));
+server.setConfig(app => {
+  app.use(bodyParser.urlencoded({extended: true}));
   app.use(bodyParser.json());
 });
 ----
@@ -301,17 +295,18 @@ Comme vous pouvez le voir, nous utilisons maintenant une instance de `InversifyE
 [source,ts]
 ----
 // src/main.ts
-import "reflect-metadata";
-import { container } from "./core/container.core";
-import { server } from "./core/server";
-import { TYPES } from "./core/types.core";
+import 'reflect-metadata';
+import {container} from './core/container.core';
+import {server} from './core/server';
+import {TYPES} from './core/types.core';
 
 const port = 3000;
 
-const app = server.build();
-app.listen(port, () =>
-  console.log(`Server listen on http://localhost:${port}/`)
-);
+server
+  .build()
+  .listen(port, () =>
+    console.log(`Server listen on http://localhost:${port}/`),
+  );
 ----
 
 Et voilà. Nous pouvons maintenant nous attaquer à notre premier contrôleur.
@@ -324,14 +319,14 @@ Passons directement à l'implémentation afin que cela soit plus parlant:
 [source,ts]
 ----
 // src/controllers/home.controller.ts
-import { controller, httpGet } from "inversify-express-utils";
+import {controller, httpGet} from 'inversify-express-utils';
 
-@controller("/")
+@controller('/')
 export class HomeController {
 
-  @httpGet("")
+  @httpGet('')
   public index(req: Request, res: Response) {
-    return res.send("Hello world");
+    return res.send('Hello world');
   }
 }
 ----
@@ -347,17 +342,17 @@ Maintenant essayons d'injecter le `Logger` afin d'afficher un message lorsque ce
 ----
 // src/controllers/home.controller.ts
 // ...
-import { TYPES } from "../core/container.core";
-import { Logger } from "../services/logger.service";
+import {TYPES} from '../core/types.core';
+import {Logger} from '../services/logger.service';
 
 @controller("/")
 export class HomeController {
   public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
 
-  @httpGet("")
+  @httpGet('')
   public index(req: Request, res: Response) {
-    this.logger.log("INFO", "Get Home.index");
-    return res.send("Hello world");
+    this.logger.log('INFO', 'Get Home.index');
+    return res.send('Hello world');
   }
 }
 ----
@@ -371,9 +366,9 @@ La dernière étape est d'importer manuellement ce contrôleur dans le container
 [source,diff]
 ----
 // src/core/container.core.ts
-import { Container } from "inversify";
-+ import "../controllers/home.controller";
-import "../controllers/users.controller";
+import {Container} from 'inversify';
++ import '../controllers/home.controller';
+import '../controllers/users.controller';
 // ...
 ----
 

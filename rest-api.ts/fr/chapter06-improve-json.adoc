@@ -79,7 +79,7 @@ Nous devons d’abord ajouter un fichier `serializers.utils.ts` qui contiendra t
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
-import { Serializer } from "jsonapi-serializer";
+import {Serializer} from 'jsonapi-serializer';
 
 export const userSerializer = new Serializer("users", {
   attributes: ["email"],
@@ -99,9 +99,9 @@ Il ne nous reste plus qu'à utiliser cette instance dans notre contrôleur:
 ----
 // src/controllers/home.controller.ts
 // ...
-import { userSerializer } from "../utils/serializers.utils";
+import {userSerializer} from '../utils/serializers.utils';
 
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
   @httpGet("/")
@@ -110,7 +110,7 @@ export class UsersController {
     return userSerializer.serialize(users);
   }
   // ...
-  @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
+  @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async show(/* ... */) {
     // ...
     return userSerializer.serialize(req.user);
@@ -170,7 +170,7 @@ Et voilà. Ce n’est pas plus compliqué que cela. Modifions un petit peu notre
 ----
 // src/controllers/home.controller.ts
 // ...
-import { productsSerializer } from "../utils/serializers.utils";
+import {productsSerializer} from '../utils/serializers.utils';
 
 @controller("/products")
 export class ProductController {
@@ -685,10 +685,10 @@ Comme depuis le début de ce livre, nous allons commencer par écrire le test qu
 [source,ts]
 ----
 // src/entities/product.entity.spec.ts
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { ProductRepository } from "../entities/product.entity";
-import { DatabaseService } from "../services/database.service";
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {ProductRepository} from '../entities/product.entity';
+import {DatabaseService} from '../services/database.service';
 
 describe("ProductRepository", () => {
   let productRepository: ProductRepository;
@@ -710,8 +710,8 @@ Ce tests aura besoin de plusieurs produits déja existants en base de données q
 ----
 // src/entities/product.entity.spec.ts
 // ...
-import { Product, ProductRepository } from "../entities/product.entity";
-import { generateProduct } from "../tests/faker.utils";
+import {Product, ProductRepository} from '../entities/product.entity';
+import {generateProduct} from '../tests/faker.utils';
 
 describe("ProductRepository", () => {
   // ...

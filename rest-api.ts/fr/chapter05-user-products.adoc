@@ -39,8 +39,8 @@ Passons directement à l'implémentation
 [source,ts]
 ----
 // src/entities/product.entity.ts
-import { validateOrReject } from "class-validator";
-import { BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn, } from "typeorm"; import { User } from "./user.entity";
+import {validateOrReject} from 'class-validator';
+import {BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn,} from 'typeorm"; import {User} from "./user.entity';
 
 @Entity()
 export class Product {
@@ -111,9 +111,9 @@ Et voilà. Notre association est faite et si vous démarrez le serveur avec les 
 ...
 query: BEGIN TRANSACTION
 ...
-query: CREATE TABLE "product" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "title" text NOT NULL, "price" float NOT NULL, "published" boolean NOT NULL, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), "userId" integer)
+query: CREATE TABLE "product" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "title" text NOT NULL, "price" float NOT NULL, "published" boolean NOT NULL, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), 'userId' integer)
 ...
-query: CREATE INDEX "IDX_329b8ae12068b23da547d3b479" ON "product" ("userId")
+query: CREATE INDEX "IDX_329b8ae12068b23da547d3b479" ON "product" ('userId')
 query: COMMIT
 ----
 
@@ -136,7 +136,7 @@ Pour cette partie là, nous n'avons pas besoin de mettre en place des tests car 
 .test/models/product_test.rb
 ----
 // src/entities/product.entity.ts
-import { IsDefined, IsPositive, validateOrReject } from "class-validator";
+import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
 // ...
 @Entity()
 export class Product {
@@ -192,7 +192,7 @@ Mais pour cela, nous allons tout d'abord créer un produit et un utilisateur dan
 ----
 // src/utils/faker.utils.ts
 // ...
-import { Product } from "../entities/product.entity";
+import {Product} from '../entities/product.entity';
 
 export function randomString(size: number = 8): string {
   return randomBytes(size).toString("hex");
@@ -215,14 +215,14 @@ Nous allons donc maintenant utiliser cette méthode dans le `before` du nouveau 
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { Product, ProductRepository } from "../entities/product.entity";
-import { User, UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-import { JsonWebTokenService } from "../services/jsonWebToken.service";
-import { generateProduct, generateUser } from "../tests/faker.utils";
-import { agent } from "../tests/supertest.utils";
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {Product, ProductRepository} from '../entities/product.entity';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+import {generateProduct, generateUser} from '../tests/faker.utils';
+import {agent} from '../tests/supertest.utils';
 
 describe("ProductsController", () => {
   let productRepository: ProductRepository;

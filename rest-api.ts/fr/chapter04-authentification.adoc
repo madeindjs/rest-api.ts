@@ -71,7 +71,7 @@ La libraire s'utilise très facilement avec la méthode `jwt.sign` et `jwt.verif
 
 [source,ts]
 ----
-import { sign, verify } from "jsonwebtoken";
+import {sign, verify} from 'jsonwebtoken';
 
 const JWT_PRIVATE_KEY = "123456789";
 const payload = { userId: 1 };
@@ -88,8 +88,8 @@ Nous allons maintenant englober toute cette logique dans une classe `JsonWebToke
 [source,ts]
 ----
 // src/services/jsonWebToken.service.ts
-import { injectable } from "inversify";
-import { sign, verify } from "jsonwebtoken";
+import {injectable} from 'inversify';
+import {sign, verify} from 'jsonwebtoken';
 
 @injectable()
 export class JsonWebTokenService {
@@ -122,7 +122,7 @@ export const TYPES = {
 ----
 // src/core/container.core.ts
 // ...
-import { JsonWebTokenService } from "../services/jsonWebToken.service";
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
 
 export const container = new Container();
 // ...
@@ -134,10 +134,10 @@ Et voilà. Nous pouvons même ajouter un petit test rapide qui va encoder et dé
 [source,ts]
 ----
 // src/services/jsonWebToken.service.spec.ts
-import assert from "assert";
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { JsonWebTokenService } from "./jsonWebToken.service";
+import assert from 'assert';
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {JsonWebTokenService} from './jsonWebToken.service';
 
 describe("JsonWebTokenService", () => {
   let jsonWebTokenService: JsonWebTokenService;
@@ -196,10 +196,10 @@ Forcément, le test va commencer par créer un utilisateur. C'est ce qu'on va fa
 [source,ts]
 ----
 // src/controllers/tokens.controller.spec.ts
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { User, UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
 
 describe("TokensController", () => {
   let user: User;
@@ -226,11 +226,11 @@ Maintenant nous n'avons plus qu'a écrire nos tests
 [source,ts]
 ----
 // src/controllers/tokens.controller.spec.ts
-import { container } from "../core/container.core";
-import { TYPES } from "../core/types.core";
-import { User, UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-import { agent } from "../tests/supertest.utils";
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {agent} from '../tests/supertest.utils';
 
 describe("TokensController", () => {
   // ...
@@ -297,12 +297,12 @@ Nous allons donc créer le contrôleur `TokenController`. Commençons par créer
 [source,ts]
 ----
 // src/controllers/tokens.controller.ts
-import { inject } from "inversify";
-import { controller } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { UserRepository } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-import { JsonWebTokenService } from "../services/jsonWebToken.service";
+import {inject} from 'inversify';
+import {controller} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
 
 @controller("/tokens")
 export class TokensController {
@@ -330,9 +330,9 @@ Maintenant il ne nous reste plus qu'à ce concentrer sur la méthode `create` de
 ----
 // src/controllers/tokens.controller.ts
 // ...
-import { Request, Response } from "express";
-import { controller, httpPost, requestBody } from "inversify-express-utils";
-import { isPasswordMatch } from "../utils/password.utils";
+import {Request, Response} from 'express';
+import {controller, httpPost, requestBody} from 'inversify-express-utils';
+import {isPasswordMatch} from '../utils/password.utils';
 
 @controller("/tokens")
 export class TokensController {
@@ -445,8 +445,8 @@ Ces trois tests nécessitent qu'on ai déjà un utilisateur en base. Nous allons
 [source,ts]
 ----
 // src/utils/faker.utils.ts
-import { randomBytes } from "crypto";
-import { User } from "../entities/user.entity";
+import {randomBytes} from 'crypto';
+import {User} from '../entities/user.entity';
 
 export function randomString(size: number = 8): string {
   return randomBytes(size).toString("hex");
@@ -609,11 +609,11 @@ Le principe est assez identique au précédent _middleware_ que nous avons crée
 [source,ts]
 ----
 // src/middlewares/fetchLoggedUser.middleware.ts
-import { inject, injectable } from "inversify";
-import { BaseMiddleware } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { DatabaseService } from "../services/database.service";
-import { JsonWebTokenService } from "../services/jsonWebToken.service";
+import {inject, injectable} from 'inversify';
+import {BaseMiddleware} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
 
 @injectable()
 export class FetchLoggedUserMiddleware extends BaseMiddleware {
@@ -635,8 +635,8 @@ Et maintenant voici l'implémentation de la méthode `handler`
 ----
 // src/middlewares/fetchLoggedUser.middleware.ts
 // ...
-import { NextFunction, Request, Response } from "express";
-import { User, UserRepository } from "../entities/user.entity";
+import {NextFunction, Request, Response} from 'express';
+import {User, UserRepository} from '../entities/user.entity';
 
 @injectable()
 export class FetchLoggedUserMiddleware extends BaseMiddleware {
@@ -688,7 +688,7 @@ export const TYPES = {
 ----
 // src/core/container.core.ts
 // ...
-import { FetchLoggedUserMiddleware } from "../middlewares/fetchLoggedUser.middleware";
+import {FetchLoggedUserMiddleware} from '../middlewares/fetchLoggedUser.middleware';
 
 export const container = new Container();
 // ...
@@ -705,11 +705,11 @@ Et maintenant il ne nous reste plus qu'à utiliser le _middleware_ dans le `User
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
--   @httpGet("/:userId", TYPES.FetchUserMiddleware)
-+   @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
+-   @httpGet('/:userId', TYPES.FetchUserMiddleware)
++   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async show(/* ... */) {
 +    if (Number(userId) !== req.user.id) {
 +      return res.sendStatus(403);
@@ -730,11 +730,11 @@ Le principe est exactement le même pour la méthode `update` et `destroy`.
 ----
 // src/controllers/home.controller.ts
 // ...
-@controller("/users")
+@controller('/users')
 export class UsersController {
   // ...
--   @httpGet("/:userId", TYPES.FetchUserMiddleware)
-+   @httpGet("/:userId", TYPES.FetchLoggedUserMiddleware)
+-   @httpGet('/:userId', TYPES.FetchUserMiddleware)
++   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async show(/* ... */)> {
 +    if (Number(userId) !== req.user.id) {
 +      return res.sendStatus(403);
@@ -742,8 +742,8 @@ export class UsersController {
     return req.user;
   }
 
--  @httpPut("/:userId", TYPES.FetchUserMiddleware)
-+  @httpPut("/:userId", TYPES.FetchLoggedUserMiddleware)
+-  @httpPut('/:userId', TYPES.FetchUserMiddleware)
++  @httpPut('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async update(/* ... */)> {
 +    if (Number(userId) !== req.user.id) {
 +      return res.sendStatus(403);
@@ -752,8 +752,8 @@ export class UsersController {
     return repository.save(req.user);
   }
 
--  @httpDelete("/:userId", TYPES.FetchUserMiddleware)
-+  @httpDelete("/:userId", TYPES.FetchLoggedUserMiddleware)
+-  @httpDelete('/:userId', TYPES.FetchUserMiddleware)
++  @httpDelete('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async destroy(/* ... */) {
 +    if (Number(userId) !== req.user.id) {
 +      return res.sendStatus(403);

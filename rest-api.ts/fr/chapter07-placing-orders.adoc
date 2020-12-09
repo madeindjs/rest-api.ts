@@ -32,10 +32,10 @@ Commençons par créer le modèle de la commande. Celui possédera deux relation
 [source,ts]
 ----
 // src/entities/order.entity.ts
-import { IsDefined, IsPositive, validateOrReject } from "class-validator";
-import {/* ... */} from "typeorm";
-import { Product } from "./product.entity";
-import { User } from "./user.entity";
+import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
+import {/* ... */} from 'typeorm';
+import {Product} from './product.entity';
+import {User} from './user.entity';
 
 @Entity()
 export class Order {
@@ -273,14 +273,14 @@ Et maintenant nous pouvons l'utiliser dans notre tout nouveau contrôleur:
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
-import { Request, response, Response } from "express";
-import { inject } from "inversify";
-import { controller, httpGet } from "inversify-express-utils";
-import { TYPES } from "../core/types.core";
-import { Order, OrderRepository } from "../entities/order.entity";
-import { User } from "../entities/user.entity";
-import { DatabaseService } from "../services/database.service";
-import { ordersSerializer } from "../utils/serializers.utils";
+import {Request, response, Response} from 'express';
+import {inject} from 'inversify';
+import {controller, httpGet} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {Order, OrderRepository} from '../entities/order.entity';
+import {User} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {ordersSerializer} from '../utils/serializers.utils';
 
 @controller("/orders", TYPES.FetchLoggedUserMiddleware)
 export class OrdersController {
@@ -574,10 +574,10 @@ Maintenant créons un nouveau service qui fera l'interface entre la librairie et
 [source,ts]
 ----
 // src/services/mailer.service.ts
-import { inject, injectable } from "inversify";
-import { createTestAccount, createTransport, SendMailOptions, Transporter } from "nodemailer";
-import { TYPES } from "../core/types.core";
-import { Logger } from "./logger.service";
+import {inject, injectable} from 'inversify';
+import {createTestAccount, createTransport, SendMailOptions, Transporter} from 'nodemailer';
+import {TYPES} from '../core/types.core';
+import {Logger} from './logger.service';
 
 @injectable()
 export class MailerService {
@@ -705,9 +705,9 @@ L'idée est donc de créer un classe qui implémente les fonctionnalités du `Ma
 [source,ts]
 ----
 // src/tests/fakeMailer.service.ts
-import { injectable } from "inversify";
-import { SendMailOptions } from "nodemailer";
-import { MailerService } from "../services/mailer.service";
+import {injectable} from 'inversify';
+import {SendMailOptions} from 'nodemailer';
+import {MailerService} from '../services/mailer.service';
 
 @injectable()
 export class FakeMailerService extends MailerService {
