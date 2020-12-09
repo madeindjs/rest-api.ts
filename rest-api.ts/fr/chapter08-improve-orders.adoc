@@ -33,14 +33,16 @@ Dans cette partie nous travaillerons sur la mise à jour de la quantité du prod
 @Entity()
 export class Product {
   // ...
-  @Column({ type: "integer", default: 0 })
+  @IsNumber()
+  @ValidateIf((total) => total >= 0)
+  @Column({type: 'integer', default: 0})
   quantity: number = 0;
   // ...
 }
 // ...
 ----
 
-Et n'oublions pas de mettre à jour les _fixtures_ en ajoutant le champs *quantity* (j'ai choisi la valeur `5` totalement par hasard).
+Et n'oublions pas de mettre à jour les _fixtures_ en ajoutant le champs `quantity`.
 
 [source,ts]
 ----
@@ -54,19 +56,45 @@ export function generateProduct(product?: Partial<Product>): Product {
 // ...
 ----
 
-Il est maintenant temps de diminuer la quantité du `Product` une fois l’`Order` passée. La première chose qui vous vient probablement à l’esprit est de le faire dans le modèle `Order` et c’est une erreur fréquente. Lorsque vous travaillez avec des associations _Many-to-Many_, nous oublions totalement le modèle de jointure qui dans ce cas est `Placement`. Le `Placement` est un meilleur endroit pour gérer cela car nous avons accès à la commande et au produit. Ainsi, nous pouvons facilement diminuer le stock du produit.
+Et n'oublions pas de mettre à jour l'action `create` du `ProductController` pour prendre en compte ce nouvel attribut lors de la création du produit:
 
-Avant de commencer à implémenter le code, nous devons changer la façon dont nous gérons la création de la commande car nous devons maintenant accepter une quantité pour chaque produit. Si vous vous souvenez, nous attendons un tableau d’identifiants de produits. Je vais essayer de garder les choses simples et je vais envoyer un tableau de Hash avec les clefs `product_id` et `quantity`.
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/products')
+export class ProductController {
+  // ...
+  @httpPost('/', TYPES.FetchLoggedUserMiddleware)
+  public async create(@requestBody() body: Partial<Product>, req: Request & {user: User}, res: Response) {
+    // ...
+    const product = new Product();
+    product.quantity = Number(body.quantity);
+    // ...
+  }
+  // ...
+}
+----
+
+Il est maintenant temps de mettre à jour la quantité du produit une fois qu'une commande est placée.
+
+Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée pour plusieurs raisons car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de garder les contrôleurs petits.
+
+C'est pour cela que je pense que les https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[`Subscribers` de TypeORM] sont un bien meilleur endroit pour gérer ça. Cela va nous permettre de déplacer toute cette logique dans une nouvelle classe.
+
+Avant de commencer à implémenter le code, nous devons changer la façon dont nous gérons la création de la commande car nous devons maintenant accepter une quantité pour chaque produit. Si vous vous souvenez, nous attendons un tableau d’identifiants de produits. Je vais essayer de garder les choses simples et je vais envoyer un tableau de Hash avec les clefs `productId` et `quantity`.
 
 Un exemple rapide serait quelque chose comme cela:
 
-[source,ruby]
+[source,ts]
 ----
-product_ids_and_quantities = [
-  { product_id: 1, quantity: 4 },
-  { product_id: 3, quantity: 5 }
+const productIdsAndQuantities = [
+  { productId: 1, quantity: 4 },
+  { productId: 3, quantity: 5 }
 ]
 ----
+
+// -- current
 
 Ça va être difficile, alors restez avec moi. Construisons d’abord des tests unitaires:
 

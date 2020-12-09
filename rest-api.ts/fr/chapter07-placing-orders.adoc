@@ -46,7 +46,8 @@ export class Order {
   @ManyToOne(() => User, (user) => user.orders)
   user: User;
 
-  @IsPositive()
+  @IsNumber()
+  @ValidateIf((total) => total >= 0)
   @Column({ type: "number", unsigned: true })
   total: number;
 
@@ -69,7 +70,7 @@ export class OrderRepository extends Repository<Order> {}
 
 Comme vous pouvez le constater, l'implémentation n'apporte rien de nouveau comparé à ce que nous avons déjà vu.
 
-J'en ai profité pour ajouter la contrainte `IsPositive` sur le champ `total` qui est un `number unsigned`. Cela signifie  qu'il ne peut pas être négatif.
+J'en ai profité pour ajouter la contrainte `ValidateIf` sur le champ `total` qui est un `number unsigned`. Cela signifie  qu'il ne peut pas être négatif.
 
 Mais avant d'oublier, nous devons aussi définir la relation côté `User`:
 
@@ -77,7 +78,7 @@ Mais avant d'oublier, nous devons aussi définir la relation côté `User`:
 ----
 // src/entities/user.entity.ts
 // ...
-import { Order } from "./order.entity";
+import {Order} from './order.entity';
 
 @Entity()
 export class User {
@@ -99,16 +100,15 @@ $ git add . && git commit -m "Generate orders"
 
 Nous devons établir la liaison entre la commande et les produits. Cela se fait avec une association _many-to-many_ car de nombreux produits seront placés sur plusieurs commandes et les commandes auront plusieurs produits. Dans ce cas, nous avons donc besoin d’un modèle supplémentaire qui joindra ces deux autres objets et mappera l’association appropriée. Voici l'implémentation:
 
-// -- current
 
 [source,ts]
 ----
 // src/entities/placement.entity.ts
-import { IsDefined, validateOrReject } from "class-validator";
-import {/* ... */} from "typeorm";
-import { Order } from "./order.entity";
-import { Product } from "./product.entity";
-import { User } from "./user.entity";
+import {IsDefined, validateOrReject} from 'class-validator';
+import {/* ... */} from 'typeorm';
+import {Order} from './order.entity';
+import {Product} from './product.entity';
+import {User} from './user.entity';
 
 @Entity()
 export class Placement {
@@ -132,7 +132,6 @@ export class Placement {
 
 @EntityRepository(Placement)
 export class PlacementRepository extends Repository<Placement> {}
-
 ----
 
 .Ajout de la relation `placements` au modèle `Product`
@@ -456,30 +455,30 @@ Si vous vous rappelez le modèle de commande, nous avons besoin de trois choses:
 // ...
 describe("OrderController", () => {
   // ...
-  describe("create", () => {
+  describe('create', () => {
     let product1: Product;
     let product2: Product;
 
     before(async () => {
-      product1 = await productRepository.save(generateProduct());
-      product2 = await productRepository.save(generateProduct());
+      product1 = await manager.save(generateProduct());
+      product2 = await manager.save(generateProduct());
     });
 
-    it("should create order", () =>
+    it('should create order', () =>
       agent
-        .post("/orders")
-        .set("Authorization", jwt)
-        .send({ productIds: [product1.id, product2.id] })
+        .post('/orders')
+        .set('Authorization', jwt)
+        .send({productIds: [product1.id, product2.id]})
         .expect(201));
 
-    it("should not create product without auth", () =>
+    it('should not create product without auth', () =>
       agent
-        .post("/orders")
-        .send({ productIds: [product1.id, product2.id] })
+        .post('/orders')
+        .send({productIds: [product1.id, product2.id]})
         .expect(403));
 
-    it("should not create order with missing title", () =>
-      agent.post("/orders").set("Authorization", jwt).send({ productIds: [] }).expect(400));
+    it('should not create order with missing title', () =>
+      agent.post('/orders').set('Authorization', jwt).send({productIds: []}).expect(400));
   });
   // ...
 });
@@ -509,27 +508,23 @@ Cela parait compliqué mais voyez l'implémentation:
 export class OrdersController {
   // ...
 
-  @httpPost("/")
-  public async create(
-    @requestBody() body: { productIds: number[] },
-    { user }: Request & { user: User },
-    res: Response
-  ) {
+  @httpPost('/')
+  public async create(@requestBody() body: {productIds: number[]}, {user}: Request & {user: User}, res: Response) {
     const productRepository = await this.databaseService.getRepository(ProductRepository);
     const orderRepository = await this.databaseService.getRepository(OrderRepository);
     const placementRepository = await this.databaseService.getRepository(PlacementRepository);
 
     if (!body.productIds?.length) {
-      return res.status(400).json({ errors: { productIds: "should be an array of products ids" } });
+      return res.status(400).json({errors: {productIds: 'should be an array of products ids'}});
     }
 
     const products = await productRepository.findByIds(body.productIds);
 
     const total = products.reduce((sum, product) => sum + product.price, 0);
-    const order = await orderRepository.save({ user, total });
+    const order = await orderRepository.save({user, total});
 
-    const placements = products.map((product) => ({ order, product }));
-    await placementRepository.save(placements);
+    const placements = products.map((product) => ({order, product}));
+    order.placements = await placementRepository.save(placements);
 
     return res.sendStatus(201);
   }
