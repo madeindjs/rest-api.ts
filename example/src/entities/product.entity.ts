@@ -1,5 +1,10 @@
 // src/entities/product.entity.ts
-import { IsDefined, IsPositive, ValidateIf, validateOrReject } from "class-validator";
+import {
+  IsDefined,
+  IsPositive,
+  ValidateIf,
+  validateOrReject,
+} from 'class-validator';
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -13,9 +18,9 @@ import {
   PrimaryGeneratedColumn,
   Repository,
   UpdateDateColumn,
-} from "typeorm";
-import { Placement } from "./placement.entity";
-import { User } from "./user.entity";
+} from 'typeorm';
+import {Placement} from './placement.entity';
+import {User} from './user.entity';
 
 @Entity()
 export class Product {
@@ -23,28 +28,28 @@ export class Product {
   id: number;
 
   @IsDefined()
-  @Column({ type: "text", nullable: false })
+  @Column({type: 'text', nullable: false})
   title: string;
 
   @IsPositive()
   @IsDefined()
-  @Column({ type: "float", nullable: false })
+  @Column({type: 'float', nullable: false})
   price: number;
 
-  @Column({ type: "boolean", default: false })
+  @Column({type: 'boolean', default: false})
   published: boolean;
 
   @IsPositive()
-  @ValidateIf((total) => total >= 0)
-  @Column({ type: "integer", default: 0 })
+  @ValidateIf(total => total >= 0)
+  @Column({type: 'integer', default: 0})
   quantity: number = 0;
 
   @Index()
   @IsDefined()
-  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  @ManyToOne(() => User, user => user.products, {onDelete: 'CASCADE'})
   user: User;
 
-  @OneToMany(() => Placement, (placement) => placement.product)
+  @OneToMany(() => Placement, placement => placement.product)
   placements: Placement[];
 
   @CreateDateColumn()
@@ -69,18 +74,20 @@ interface ProductSearchFilters {
 @EntityRepository(Product)
 export class ProductRepository extends Repository<Product> {
   public search(filters: ProductSearchFilters): Promise<Product[]> {
-    const query = this.createQueryBuilder().where("published = TRUE").orderBy("updatedAt", "DESC");
+    const query = this.createQueryBuilder()
+      .where('published = TRUE')
+      .orderBy('updatedAt', 'DESC');
 
     if (filters.title !== undefined) {
-      query.andWhere("lower(title) LIKE :title", { title: `%${filters.title}%` });
+      query.andWhere('lower(title) LIKE :title', {title: `%${filters.title}%`});
     }
 
     if (filters.priceMin !== undefined) {
-      query.andWhere("price >= :priceMin", { priceMin: filters.priceMin });
+      query.andWhere('price >= :priceMin', {priceMin: filters.priceMin});
     }
 
     if (filters.priceMax !== undefined) {
-      query.andWhere("price <= :priceMax", { priceMax: filters.priceMax });
+      query.andWhere('price <= :priceMax', {priceMax: filters.priceMax});
     }
 
     return query.getMany();

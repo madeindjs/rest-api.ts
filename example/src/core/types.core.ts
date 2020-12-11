@@ -1,12 +1,12 @@
 // src/core/types.core.ts
 export const TYPES = {
-  Logger: Symbol.for("Logger"),
-  DatabaseService: Symbol.for("DatabaseService"),
-  JsonWebTokenService: Symbol.for("JsonWebTokenService"),
-  MailerService: Symbol.for("MailerService"),
+  Logger: Symbol.for('Logger'),
+  DatabaseService: Symbol.for('DatabaseService'),
+  JsonWebTokenService: Symbol.for('JsonWebTokenService'),
+  MailerService: Symbol.for('MailerService'),
   // Middlewares
-  FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
-  FetchProductMiddleware: Symbol.for("FetchProductMiddleware"),
-  FetchOrderMiddleware: Symbol.for("FetchOrderMiddleware"),
-  FetchLoggedUserMiddleware: Symbol.for("FetchLoggedUserMiddleware"),
+  FetchUserMiddleware: Symbol.for('FetchUserMiddleware'),
+  FetchProductMiddleware: Symbol.for('FetchProductMiddleware'),
+  FetchOrderMiddleware: Symbol.for('FetchOrderMiddleware'),
+  FetchLoggedUserMiddleware: Symbol.for('FetchLoggedUserMiddleware'),
 };

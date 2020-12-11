@@ -3,20 +3,13 @@
     "rootDir": "src",
     "outDir": "dist",
     "module": "commonjs",
-    "types": [
-      "node",
-      "mocha"
-    ],
+    "types": ["node", "mocha"],
     "target": "es6",
     "esModuleInterop": true,
-    "lib": [
-      "es6"
-    ],
+    "lib": ["es6"],
     "moduleResolution": "node",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "exclude": [
-    "./**/*.spec.ts"
-  ]
+  "exclude": ["./**/*.spec.ts"]
 }

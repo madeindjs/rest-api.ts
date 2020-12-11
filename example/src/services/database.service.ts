@@ -1,8 +1,8 @@
 // src/services/database.service.ts
-import { inject, injectable } from "inversify";
-import { Connection, createConnection, ObjectType } from "typeorm";
-import { TYPES } from "../core/types.core";
-import { Logger } from "./logger.service";
+import {inject, injectable} from 'inversify';
+import {Connection, createConnection, ObjectType} from 'typeorm';
+import {TYPES} from '../core/types.core';
+import {Logger} from './logger.service';
 
 @injectable()
 export class DatabaseService {
@@ -18,11 +18,11 @@ export class DatabaseService {
 
     try {
       DatabaseService.connection = await createConnection();
-      this.logger.log("INFO", `Connection established`);
+      this.logger.log('INFO', `Connection established`);
       console.log(process.env.TYPEORM_ENTITIES);
     } catch (e) {
       console.error(e);
-      this.logger.log("ERROR", "Cannot establish database connection", e);
+      this.logger.log('ERROR', 'Cannot establish database connection', e);
       process.exit(1);
     }
 

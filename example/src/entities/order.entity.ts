@@ -1,5 +1,10 @@
 // src/entities/order.entity.ts
-import { IsDefined, IsPositive, ValidateIf, validateOrReject } from "class-validator";
+import {
+  IsDefined,
+  IsPositive,
+  ValidateIf,
+  validateOrReject,
+} from 'class-validator';
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -12,9 +17,9 @@ import {
   PrimaryGeneratedColumn,
   Repository,
   UpdateDateColumn,
-} from "typeorm";
-import { Placement } from "./placement.entity";
-import { User } from "./user.entity";
+} from 'typeorm';
+import {Placement} from './placement.entity';
+import {User} from './user.entity';
 
 @Entity()
 export class Order {
@@ -22,15 +27,15 @@ export class Order {
   id: number;
 
   @IsDefined()
-  @ManyToOne(() => User, (user) => user.orders)
+  @ManyToOne(() => User, user => user.orders)
   user: User;
 
-  @OneToMany(() => Placement, (placement) => placement.order)
+  @OneToMany(() => Placement, placement => placement.order)
   placements: Placement[];
 
   @IsPositive()
-  @ValidateIf((total) => total >= 0)
-  @Column({ type: "integer", default: 0, unsigned: true })
+  @ValidateIf(total => total >= 0)
+  @Column({type: 'integer', default: 0, unsigned: true})
   total: number;
 
   @CreateDateColumn()

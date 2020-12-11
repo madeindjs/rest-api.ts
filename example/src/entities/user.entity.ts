@@ -1,5 +1,5 @@
 // src/entities/user.entity.ts
-import { IsDefined, IsEmail, validateOrReject } from "class-validator";
+import {IsDefined, IsEmail, validateOrReject} from 'class-validator';
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -11,10 +11,10 @@ import {
   PrimaryGeneratedColumn,
   Repository,
   UpdateDateColumn,
-} from "typeorm";
-import { hashPassword } from "../utils/password.utils";
-import { Order } from "./order.entity";
-import { Product } from "./product.entity";
+} from 'typeorm';
+import {hashPassword} from '../utils/password.utils';
+import {Order} from './order.entity';
+import {Product} from './product.entity';
 
 @Entity()
 export class User {
@@ -23,7 +23,7 @@ export class User {
 
   @IsDefined()
   @IsEmail()
-  @Column({ unique: true })
+  @Column({unique: true})
   email: string;
 
   @IsDefined()
@@ -36,10 +36,10 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => Product, (product) => product.user)
+  @OneToMany(() => Product, product => product.user)
   products: Product[];
 
-  @OneToMany(() => Order, (order) => order.user)
+  @OneToMany(() => Order, order => order.user)
   orders: Order[];
 
   set password(password) {

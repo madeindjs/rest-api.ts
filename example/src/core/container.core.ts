@@ -1,19 +1,19 @@
 // src/core/container.core.ts
-import { Container } from "inversify";
-import "../controllers/home.controller";
-import "../controllers/orders.controller";
-import "../controllers/products.controller";
-import "../controllers/tokens.controller";
-import "../controllers/users.controller";
-import { FetchLoggedUserMiddleware } from "../middlewares/fetchLoggedUser.middleware";
-import { FetchOrderMiddleware } from "../middlewares/fetchOrder.middleware";
-import { FetchProductMiddleware } from "../middlewares/fetchProduct.middleware";
-import { FetchUserMiddleware } from "../middlewares/fetchUser.middleware";
-import { DatabaseService } from "../services/database.service";
-import { JsonWebTokenService } from "../services/jsonWebToken.service";
-import { Logger } from "../services/logger.service";
-import { MailerService } from "../services/mailer.service";
-import { TYPES } from "./types.core";
+import {Container} from 'inversify';
+import '../controllers/home.controller';
+import '../controllers/orders.controller';
+import '../controllers/products.controller';
+import '../controllers/tokens.controller';
+import '../controllers/users.controller';
+import {FetchLoggedUserMiddleware} from '../middlewares/fetchLoggedUser.middleware';
+import {FetchOrderMiddleware} from '../middlewares/fetchOrder.middleware';
+import {FetchProductMiddleware} from '../middlewares/fetchProduct.middleware';
+import {FetchUserMiddleware} from '../middlewares/fetchUser.middleware';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+import {Logger} from '../services/logger.service';
+import {MailerService} from '../services/mailer.service';
+import {TYPES} from './types.core';
 
 export const container = new Container();
 // services

@@ -1,12 +1,12 @@
 // src/utils/faker.utils.ts
-import { randomBytes } from "crypto";
-import { Order } from "../entities/order.entity";
-import { Placement } from "../entities/placement.entity";
-import { Product } from "../entities/product.entity";
-import { User } from "../entities/user.entity";
+import {randomBytes} from 'crypto';
+import {Order} from '../entities/order.entity';
+import {Placement} from '../entities/placement.entity';
+import {Product} from '../entities/product.entity';
+import {User} from '../entities/user.entity';
 
 export function randomString(size: number = 8): string {
-  return randomBytes(size).toString("hex");
+  return randomBytes(size).toString('hex');
 }
 
 export function randomBoolean(): boolean {
