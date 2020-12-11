@@ -1,5 +1,5 @@
 // src/entities/order.entity.ts
-import { IsDefined, IsPositive, validateOrReject } from "class-validator";
+import { IsDefined, IsPositive, ValidateIf, validateOrReject } from "class-validator";
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -29,7 +29,8 @@ export class Order {
   placements: Placement[];
 
   @IsPositive()
-  @Column({ type: "float", unsigned: true })
+  @ValidateIf((total) => total >= 0)
+  @Column({ type: "integer", default: 0, unsigned: true })
   total: number;
 
   @CreateDateColumn()

@@ -8,13 +8,6 @@ Précédemment nous avons amélioré notre API pour passer des commandes et envo
 
 Nous aurons aussi besoin de mettre à jour un peu la sortie JSON pour les commandes. Mais ne divulgâchons pas la suite.
 
-Maintenant que tout est clair, nous pouvons mettre les mains dans le cambouis. Vous pouvez cloner le projet jusqu’à ce point avec:
-
-[source,bash]
-----
-$ git checkout tags/checkpoint_chapter08
-----
-
 Créons une nouvelle branche afin de commencer à travailler:
 
 [source,bash]
@@ -24,7 +17,9 @@ $ git checkout -b chapter08
 
 == Diminution de la quantité de produit
 
-Dans cette partie nous travaillerons sur la mise à jour de la quantité du produit pour nous assurer que chaque commande livrera le produit réel. Actuellement, le modèle de produit n’a pas d’attribut de quantité. Alors ajoutons le:
+Dans cette partie nous travaillerons sur la mise à jour de la quantité du produit pour nous assurer que chaque commande livrera le produit réel.
+
+Nous allons tout d'abord rajouter un champs `total` sur le produit qui représentera le stock du produit disponible.
 
 [source,ts]
 ----
@@ -42,7 +37,26 @@ export class Product {
 // ...
 ----
 
-Et n'oublions pas de mettre à jour les _fixtures_ en ajoutant le champs `quantity`.
+Il faut aussi que ce champs soit disponible lors de la création du produit. Nous devons donc mettre à jour notre contrôleur:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/products')
+export class ProductController {
+  // ...
+  public async create(/* ... */) {
+    // ...
+    const product = new Product();
+    product.quantity = Number(body.quantity);
+    // ...
+  }
+  // ...
+}
+----
+
+Et n'oublions pas de mettre à jour les tests. Cela signifie que nous devons mettre à jour la méthode =generateProduct= qui doit gérer ce nouvel attribut:
 
 [source,ts]
 ----
@@ -56,31 +70,7 @@ export function generateProduct(product?: Partial<Product>): Product {
 // ...
 ----
 
-Et n'oublions pas de mettre à jour l'action `create` du `ProductController` pour prendre en compte ce nouvel attribut lors de la création du produit:
-
-[source,ts]
-----
-// src/controllers/home.controller.ts
-// ...
-@controller('/products')
-export class ProductController {
-  // ...
-  @httpPost('/', TYPES.FetchLoggedUserMiddleware)
-  public async create(@requestBody() body: Partial<Product>, req: Request & {user: User}, res: Response) {
-    // ...
-    const product = new Product();
-    product.quantity = Number(body.quantity);
-    // ...
-  }
-  // ...
-}
-----
-
-Il est maintenant temps de mettre à jour la quantité du produit une fois qu'une commande est placée.
-
-Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée pour plusieurs raisons car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de garder les contrôleurs petits.
-
-C'est pour cela que je pense que les https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[`Subscribers` de TypeORM] sont un bien meilleur endroit pour gérer ça. Cela va nous permettre de déplacer toute cette logique dans une nouvelle classe.
+=== Mise en place du test fonctionnel
 
 Avant de commencer à implémenter le code, nous devons changer la façon dont nous gérons la création de la commande car nous devons maintenant accepter une quantité pour chaque produit. Si vous vous souvenez, nous attendons un tableau d’identifiants de produits. Je vais essayer de garder les choses simples et je vais envoyer un tableau de Hash avec les clefs `productId` et `quantity`.
 
@@ -89,10 +79,52 @@ Un exemple rapide serait quelque chose comme cela:
 [source,ts]
 ----
 const productIdsAndQuantities = [
-  { productId: 1, quantity: 4 },
-  { productId: 3, quantity: 5 }
+  { id: 1, quantity: 4 },
+  { id: 3, quantity: 5 }
 ]
 ----
+
+Commençons donc par modifier notre test fonctionnel à propos du contrôleur des commandes:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  describe("create", () => {
+    let product1: Product;
+    let product2: Product;
+
+    before(async () => {
+      product1 = await productRepository.save(generateProduct());
+      product2 = await productRepository.save(generateProduct());
+    });
+
+    it("should create order", () =>
+      agent
+        .post("/orders")
+        .set("Authorization", jwt)
+        .send({ productIds: [product1.id, product2.id] })
+        .expect(201));
+    // ...
+  });
+  // ...
+});
+----
+
+
+
+
+=== Les subscribers
+
+Il est maintenant temps de mettre à jour la quantité du produit une fois qu'une commande est placée.
+
+Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée pour plusieurs raisons car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de garder les contrôleurs petits.
+
+C'est pour cela que je pense que un https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[`Subscriber` de TypeORM] est un bien meilleur endroit pour gérer cela. Cela va nous permettre de déplacer toute cette logique dans une nouvelle classe.
+
+
 
 // -- current
 

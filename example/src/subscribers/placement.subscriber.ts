@@ -18,7 +18,9 @@ export class PlacementSubscriber implements EntitySubscriberInterface<Placement>
   async beforeRemove({ entity, manager }: RemoveEvent<Placement>) {
     entity.product.quantity += entity.quantity;
     await manager.save(entity.product);
+  }
 
+  async afterRemove({ entity, manager }: RemoveEvent<Placement>) {
     await this.updateOrderTotal(manager, entity.order);
   }
 

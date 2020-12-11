@@ -3,7 +3,7 @@ import assert from "assert";
 import { container } from "../core/container.core";
 import { TYPES } from "../core/types.core";
 import { Order, OrderRepository } from "../entities/order.entity";
-import { Product, ProductRepository } from "../entities/product.entity";
+import { ProductRepository } from "../entities/product.entity";
 import { User, UserRepository } from "../entities/user.entity";
 import { DatabaseService } from "../services/database.service";
 import { JsonWebTokenService } from "../services/jsonWebToken.service";
@@ -67,26 +67,23 @@ describe("OrderController", () => {
   });
 
   describe("create", () => {
-    let product1: Product;
-    let product2: Product;
+    let productsParams;
 
     before(async () => {
-      product1 = await productRepository.save(generateProduct());
-      product2 = await productRepository.save(generateProduct());
+      const product1 = await productRepository.save(generateProduct());
+      const product2 = await productRepository.save(generateProduct());
+
+      productsParams = [
+        { id: product1.id, quantity: 1 },
+        { id: product2.id, quantity: 1 },
+      ];
     });
 
     it("should create order", () =>
-      agent
-        .post("/orders")
-        .set("Authorization", jwt)
-        .send({ productIds: [product1.id, product2.id] })
-        .expect(201));
+      agent.post("/orders").set("Authorization", jwt).send({ product: productsParams }).expect(201));
 
     it("should not create product without auth", () =>
-      agent
-        .post("/orders")
-        .send({ productIds: [product1.id, product2.id] })
-        .expect(403));
+      agent.post("/orders").send({ product: productsParams }).expect(403));
 
     it("should not create order with missing title", () =>
       agent.post("/orders").set("Authorization", jwt).send({ productIds: [] }).expect(400));

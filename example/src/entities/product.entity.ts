@@ -1,5 +1,5 @@
 // src/entities/product.entity.ts
-import { IsDefined, IsPositive, validateOrReject } from "class-validator";
+import { IsDefined, IsPositive, ValidateIf, validateOrReject } from "class-validator";
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -35,6 +35,7 @@ export class Product {
   published: boolean;
 
   @IsPositive()
+  @ValidateIf((total) => total >= 0)
   @Column({ type: "integer", default: 0 })
   quantity: number = 0;
 

@@ -9,7 +9,7 @@ import { Product, ProductRepository } from "../entities/product.entity";
 import { DatabaseService } from "../services/database.service";
 import { generateOrder, generatePlacement, generateProduct } from "../tests/faker.utils";
 
-describe.only("PlacementSubscriber", () => {
+describe("PlacementSubscriber", () => {
   let productRepository: ProductRepository;
   let placementRepository: PlacementRepository;
   let orderRepository: OrderRepository;

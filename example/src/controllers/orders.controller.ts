@@ -5,7 +5,6 @@ import { controller, httpGet, httpPost, requestBody } from "inversify-express-ut
 import { TYPES } from "../core/types.core";
 import { Order, OrderRepository } from "../entities/order.entity";
 import { PlacementRepository } from "../entities/placement.entity";
-import { ProductRepository } from "../entities/product.entity";
 import { User } from "../entities/user.entity";
 import { DatabaseService } from "../services/database.service";
 import { MailerService } from "../services/mailer.service";
@@ -27,24 +26,20 @@ export class OrdersController {
 
   @httpPost("/")
   public async create(
-    @requestBody() body: { productIds: number[] },
+    @requestBody() body: { products: { id: number; quantity: number }[] },
     { user }: Request & { user: User },
     res: Response
   ) {
-    const productRepository = await this.databaseService.getRepository(ProductRepository);
     const orderRepository = await this.databaseService.getRepository(OrderRepository);
     const placementRepository = await this.databaseService.getRepository(PlacementRepository);
 
-    if (!body.productIds?.length) {
-      return res.status(400).json({ errors: { productIds: "should be an array of products ids" } });
+    if (!Array.isArray(body.products)) {
+      return res.status(400).json({ errors: { products: "should be an array of products ids" } });
     }
 
-    const products = await productRepository.findByIds(body.productIds);
+    const order = await orderRepository.save({ user, total: 0 });
 
-    const total = products.reduce((sum, product) => sum + product.price, 0);
-    const order = await orderRepository.save({ user, total });
-
-    const placements = products.map((product) => ({ order, product }));
+    const placements = body.products.map((product) => ({ product, order }));
     order.placements = await placementRepository.save(placements);
 
     await this.mailerService.sendNewOrderEmail(order);
