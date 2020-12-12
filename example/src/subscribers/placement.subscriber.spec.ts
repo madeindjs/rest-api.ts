@@ -40,7 +40,7 @@ describe('PlacementSubscriber', () => {
     assert.strictEqual(product.quantity, 10);
   });
 
-  it('should update order.total after insert', async () => {
+  it.only('should update order.total after insert', async () => {
     const product = await manager.save(
       generateProduct({quantity: 10, price: 5}),
     );

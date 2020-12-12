@@ -313,18 +313,17 @@ export class PlacementSubscriber
 ----
 
 
-NOTE: Nous récupérons le produit via le `manager` au lieu de simplement récupérer via la relation `enity.product` afin de s'assurer d'avoir la dernière version stoqué en base
+NOTE: Nous récupérons le produit via le `manager` au lieu de simplement récupérer via la relation `enity.product` afin de s'assurer d'avoir la dernière version stocké en base
 
 Et voilà. C'était facile non? Lançons les tests pour être sûr.
 
 
-[source,ts]
----
+[source,sh]
+----
 $ npm test
 ...
   PlacementSubscriber
     ✓ should update product.quantity after insert (40ms)
-...
 ----
 
 Parfait passons à la suite.
@@ -333,6 +332,109 @@ Parfait passons à la suite.
 
 Si vous avez bien compris la section précédente, vous devinez que la mise à jour du coup de la commande va être assez similaire.
 
+Commençons par écrire les tests. Nous allons donc créer un `Produit`, puis une `Order` et ensuite un `Placement` pour vérifier que le total de la commande s'est mis à jour. Nous allons ensuite supprimer ce `Placement` et vérifier que le
+
+[source,ts]
+----
+// src/subscribers/placement.subscriber.spec.ts
+// ...
+describe('PlacementSubscriber', () => {
+  // ...
+  it('should update order.total after insert', async () => {
+    const product = await manager.save(
+      generateProduct({quantity: 10, price: 5}),
+    );
+    let order = await manager.save(generateOrder());
+
+    const placement = generatePlacement({order, product, quantity: 2});
+    await manager.save(placement);
+
+    order = await manager.findOne(Order, order.id);
+    assert.strictEqual(order.total, 2 * product.price);
+
+    await manager.remove(placement);
+    order = await manager.findOne(Order, order.id);
+    assert.strictEqual(order.total, 0);
+  });
+});
+----
+
+Et voilà. Ce test ressemble vraiment au précédente. Passons donc rapidement à l'implémentation:
+
+[source,ts]
+----
+// src/subscribers/placement.subscriber.ts
+// ...
+@EventSubscriber()
+export class PlacementSubscriber
+  implements EntitySubscriberInterface<Placement> {
+  // ...
+  async afterInsert({entity, manager}: InsertEvent<Placement>) {
+    // ...
+    await this.updateOrderTotal(manager, entity.order);
+  }
+
+  // ...
+
+  async afterRemove({entity, manager}: RemoveEvent<Placement>) {
+    await this.updateOrderTotal(manager, entity.order);
+  }
+
+  private async updateOrderTotal(manager: EntityManager, order: Order) {
+    const placements = await manager.find(Placement, {
+      where: {order},
+      relations: ['product'],
+    });
+
+    order.total = placements.reduce(
+      (sum, placement) => sum + placement.quantity * placement.product.price,
+      0,
+    );
+
+    await manager.save(Order, order);
+  }
+}
+
+----
+
+Regardons de plus près la méthode `updateOrderTotal`:
+
+1. nous récupérons tous les `placements` de la commande passé en paramètre avec les produits associés
+2. nous additionnons le total du placement
+
+.Le _query builder_ de TypeORM
+***
+Il est possible de réécrire le code précédent avec le _Query Builder_ de TypeORM. Le _Query Builder_ permet d'avoir un plus grand contrôle sur la requête SQL générée et ainsi obtenir de meilleures performances. Le code peut être plus complexe mais aussi plus performant car nous n'avons pas besoin  de charger plusieurs objets en mémoire.
+
+C'est le cas ici donc je tenais à faire une petite apparté. Voici donc l'équivalent avec le _Query Builder_
+
+[source,ts]
+----
+const result = await manager
+  .createQueryBuilder(Placement, 'pl')
+  .select('SUM(pl.quantity) * p.price', 'total')
+  .innerJoin('pl.order', 'o')
+  .innerJoin('pl.product', 'p')
+  .where('o.id = :orderId', {orderId: order.id})
+  .groupBy('o.id')
+  .getRawOne();
+order.total = result?.total ?? 0;
+----
+
+Ce code va générer la requête SQL suivante:
+
+[source,sql]
+----
+SELECT SUM("pl"."quantity") * "p"."price" AS "total"
+FROM "placement" "pl"
+INNER JOIN "order" "o" ON "o"."id"="pl"."orderId"
+INNER JOIN "product" "p" ON "p"."id"="pl"."productId"
+WHERE "o"."id" = ?
+GROUP BY "o"."id"
+----
+
+TODO
+***
 
 // -- current
 

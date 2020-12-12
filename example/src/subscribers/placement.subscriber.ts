@@ -38,15 +38,25 @@ export class PlacementSubscriber
   }
 
   private async updateOrderTotal(manager: EntityManager, order: Order) {
-    const placements = await manager.find(Placement, {
-      where: {order},
-      relations: ['product'],
-    });
+    const result = await manager
+      .createQueryBuilder(Placement, 'pl')
+      .select('SUM(pl.quantity) * p.price', 'total')
+      .innerJoin('pl.order', 'o')
+      .innerJoin('pl.product', 'p')
+      .where('o.id = :orderId', {orderId: order.id})
+      .groupBy('o.id')
+      .getRawOne();
+    order.total = result?.total ?? 0;
 
-    order.total = placements.reduce(
-      (sum, placement) => sum + placement.quantity * placement.product.price,
-      0,
-    );
+    // const placements = await manager.find(Placement, {
+    //   where: {order},
+    //   relations: ['product'],
+    // });
+
+    // order.total = placements.reduce(
+    //   (sum, placement) => sum + placement.quantity * placement.product.price,
+    //   0,
+    // );
 
     await manager.save(Order, order);
   }
