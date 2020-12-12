@@ -154,7 +154,6 @@ export class Product {
   published: boolean;
 
   @Index()
-  @IsDefined()
   @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
   user: User;
   // ...

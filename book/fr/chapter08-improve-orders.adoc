@@ -93,19 +93,23 @@ Commençons donc par modifier notre test fonctionnel à propos du contrôleur de
 describe("OrderController", () => {
   // ...
   describe("create", () => {
-    let product1: Product;
-    let product2: Product;
+    let productsParams;
 
     before(async () => {
-      product1 = await productRepository.save(generateProduct());
-      product2 = await productRepository.save(generateProduct());
+      const product1 = await productRepository.save(generateProduct());
+      const product2 = await productRepository.save(generateProduct());
+
+      productsParams = [
+        {id: product1.id, quantity: 1},
+        {id: product2.id, quantity: 1},
+      ];
     });
 
-    it("should create order", () =>
+    it('should create order', () =>
       agent
-        .post("/orders")
-        .set("Authorization", jwt)
-        .send({ productIds: [product1.id, product2.id] })
+        .post('/orders')
+        .set('Authorization', jwt)
+        .send({products: productsParams})
         .expect(201));
     // ...
   });
@@ -113,17 +117,221 @@ describe("OrderController", () => {
 });
 ----
 
+Comme vous le voyez, nous avons simplement mis à jour les paramètres que nous passons à la requêtes.
+
+Récapitulons un peu ce que nous devons changer dans le contrôleur. Nous devons retrouver le produit associé à l'`id` dans le tableau que créer les `placements`. Voyons voir l'implémentation du contrôleur.
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller('/orders', TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+  @httpPost('/')
+  public async create(
+    @requestBody() body: {products: {id: number; quantity: number}[]},
+    // ...
+  ) {
+    const {manager} = await this.databaseService.getConnection();
+
+    if (!body.products?.length) {
+      return res.status(400).json({
+        errors: {
+          products: 'should be an array of `{id, quantity}`',
+        },
+      });
+    }
+
+    const order = await manager.save(Order, {
+      user,
+      total: 0,
+      placements: [],
+    } as Order);
+
+    for (const {id, quantity} of body.products) {
+      const product = await manager.findOneOrFail(Product, {id});
+      const placement = await manager.save(Placement, {
+        product,
+        order,
+        quantity,
+      } as Placement);
+      order.placements.push(placement);
+    }
+
+    await this.mailerService.sendNewOrderEmail(order);
+
+    return res.sendStatus(201);
+  }
+  // ...
+}
+----
+
+Oula. Le code devient un peu plus long et mérite quelques explications:
+
+- nous créons la commande avec un total égal à 0. Nous verrons dans la prochaine sections comment faire en sorte que ce total se mette à jour automatiquement.
+- `body.products.map(product => ({product, order}))` va construire des objet `Placement` sans passer par la classe `Placement`. Ces objet seront convertis en instance de `Placement` une fois sauvegardé et nous les attachons directement à la commande.
 
 
-
-=== Les subscribers
+=== Le _subscriber_
 
 Il est maintenant temps de mettre à jour la quantité du produit une fois qu'une commande est placée.
 
-Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée pour plusieurs raisons car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de garder les contrôleurs petits.
+Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de garder les contrôleurs petits.
 
-C'est pour cela que je pense que un https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[`Subscriber` de TypeORM] est un bien meilleur endroit pour gérer cela. Cela va nous permettre de déplacer toute cette logique dans une nouvelle classe.
+C'est pour cela que je pense que un https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[`Subscriber` de TypeORM] est un bien meilleur endroit pour la simple raison que nous sommes certains que notre _subscriber_ sera appelé quoiqu'il arrive sans que nous aillons à nous en soucier.
 
+NOTE: Il serait possible de d'utiliser les _entity listeners_ comme `@afterInsert` sur la méthode `UserRepository.validate` mais je recommande vraiment d'utiliser les _subscriber_ lorsque nous souhaitons manipuler plusieurs types d'entité. Cela permet de mieux découper sont code et ainsi ne pas faire dépendre une classe d'une autre.
+
+Le comportement que nous allons mettre en place est le suivant:
+
+- lorsqu'un placement est créé
+  - nous enlevons `placement.quantity` à l'attribut `product.quantity`
+  - nous recalculons le coût total de la commande
+- lorsqu'un placement est créé
+  - nous ajoutons `placement.quantity` à l'attribut `product.quantity`
+  - nous recalculons le coût total de la commande
+
+Le _subscriber_ va se matérialiser en un classe qui étends `EntitySubscriberInterface`. Si nous regardons de plus prêt cette interface, nous voyons que nous avons accès à un paquet de méthodes:
+
+.Quelques méthodes de l'interface `EntitySubscriberInterface`
+[source,ts]
+----
+// node_modules/typeorm/subscriber/EntitySubscriberInterface.d.ts
+export interface EntitySubscriberInterface<Entity = any> {
+  // ...
+  beforeInsert?(event: InsertEvent<Entity>): Promise<any> | void;
+  afterInsert?(event: InsertEvent<Entity>): Promise<any> | void;
+  beforeUpdate?(event: UpdateEvent<Entity>): Promise<any> | void;
+  afterUpdate?(event: UpdateEvent<Entity>): Promise<any> | void;
+  beforeRemove?(event: RemoveEvent<Entity>): Promise<any> | void;
+  afterRemove?(event: RemoveEvent<Entity>): Promise<any> | void;
+  // ...
+}
+----
+
+Nous pouvons donc créer notre classe qui étends de `EntitySubscriberInterface`:
+
+[source,ts]
+----
+import {
+  EntityManager,
+  EntitySubscriberInterface,
+  EventSubscriber,
+  InsertEvent,
+  RemoveEvent,
+} from 'typeorm';
+import {Order} from '../entities/order.entity';
+import {Placement} from '../entities/placement.entity';
+import {Product} from '../entities/product.entity';
+
+@EventSubscriber()
+export class PlacementSubscriber
+  implements EntitySubscriberInterface<Placement> {
+
+  listenTo() {
+    return Placement;
+  }
+
+  async afterInsert({entity, manager}: InsertEvent<Placement>) {/*...*/}
+  async beforeRemove({entity, manager}: RemoveEvent<Placement>) {/*...*/}
+  async afterRemove({entity, manager}: RemoveEvent<Placement>) {/*...*/}
+}
+----
+
+Vous pouvez aussi remarquer que ici j'ai implémenté la méthode `listenTo` qui va spécifier le champ d'écoute de ce _subscriber_. Mais avant de passer à la suite, nous devons indiquer à TypeORM ou ce trouve nos migration via la variable de configuration suivante que vous devez ajouter à votre fichier `.env` et `.test.env`.
+
+.Ajout de la configuration des _subscribers_
+[source,env]
+----
+TYPEORM_SUBSCRIBERS=src/subscribers/*.subscriber.ts
+----
+
+Nous somme maintenant prêt à passer à l'implémentation des méthodes!
+
+==== Mise à jour de la quantité de produits
+
+Comme d'habitude, nous allons créer un test dédié à cette nouvelle classe. Ce test va tout simplement créer un produit avec une quantité suffisante et ensuite créer un `Placement` et vérifier que le total a été mis à jour. Nous faisons ensuite le sens inverse en supprimant le produit et on vérifie que l'on retrouve bien la quantité originelle.
+
+[source,ts]
+----
+// src/subscribers/placement.subscriber.spec.ts
+// ...
+describe('PlacementSubscriber', () => {
+  let manager: EntityManager;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(
+      TYPES.DatabaseService,
+    );
+    const connection = await databaseService.getConnection();
+    manager = connection.manager;
+  });
+
+  it('should update product.quantity after insert', async () => {
+    let product = await manager.save(generateProduct({quantity: 10}));
+    const order = await manager.save(generateOrder());
+
+    const placement = await manager.save(
+      generatePlacement({order, product, quantity: 2}),
+    );
+
+    product = await manager.findOne(Product, product.id);
+    assert.strictEqual(product.quantity, 10 - placement.quantity);
+
+    await manager.remove(placement);
+    product = await manager.findOne(Product, product.id);
+    assert.strictEqual(product.quantity, 10);
+  });
+});
+----
+
+L'implémentation du subscriber est vraiment très simple. Nous allons utiliser les méthode `beforeInsert` et `beforeRemove` afin d'incrémenter ou de décrémenter le total de produit et ensuite de sauvegarder le produit.
+
+[source,ts]
+----
+// src/subscribers/placement.subscriber.ts
+// ...
+@EventSubscriber()
+export class PlacementSubscriber
+  implements EntitySubscriberInterface<Placement> {
+  // ...
+  async afterInsert({entity, manager}: InsertEvent<Placement>) {
+    const productId = entity.product.id;
+    const product = await manager.findOneOrFail(Product, {id: productId});
+    product.quantity -= entity.quantity;
+    await manager.save(product);
+  }
+
+  async beforeRemove({entity, manager}: RemoveEvent<Placement>) {
+    const productId = entity.product.id;
+    const product = await manager.findOneOrFail(Product, {id: productId});
+    product.quantity += entity.quantity;
+    await manager.save(product);
+  }
+}
+----
+
+
+NOTE: Nous récupérons le produit via le `manager` au lieu de simplement récupérer via la relation `enity.product` afin de s'assurer d'avoir la dernière version stoqué en base
+
+Et voilà. C'était facile non? Lançons les tests pour être sûr.
+
+
+[source,ts]
+---
+$ npm test
+...
+  PlacementSubscriber
+    ✓ should update product.quantity after insert (40ms)
+...
+----
+
+Parfait passons à la suite.
+
+==== Mise à jour du coup total de la commande
+
+Si vous avez bien compris la section précédente, vous devinez que la mise à jour du coup de la commande va être assez similaire.
 
 
 // -- current

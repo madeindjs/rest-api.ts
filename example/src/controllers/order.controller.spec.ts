@@ -1,5 +1,6 @@
 // src/controllers/orders.controller.spec.ts
 import assert from 'assert';
+import 'mocha';
 import {container} from '../core/container.core';
 import {TYPES} from '../core/types.core';
 import {Order, OrderRepository} from '../entities/order.entity';
@@ -95,17 +96,17 @@ describe('OrderController', () => {
       agent
         .post('/orders')
         .set('Authorization', jwt)
-        .send({product: productsParams})
+        .send({products: productsParams})
         .expect(201));
 
     it('should not create product without auth', () =>
-      agent.post('/orders').send({product: productsParams}).expect(403));
+      agent.post('/orders').send({products: productsParams}).expect(403));
 
-    it('should not create order with missing title', () =>
+    it('should not create order with missing products', () =>
       agent
         .post('/orders')
         .set('Authorization', jwt)
-        .send({productIds: []})
+        .send({products: []})
         .expect(400));
   });
 

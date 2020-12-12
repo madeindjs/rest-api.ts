@@ -45,7 +45,6 @@ export class Product {
   quantity: number = 0;
 
   @Index()
-  @IsDefined()
   @ManyToOne(() => User, user => user.products, {onDelete: 'CASCADE'})
   user: User;
 

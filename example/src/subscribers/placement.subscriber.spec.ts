@@ -1,11 +1,11 @@
 // src/subscribers/placement.subscriber.spec.ts
 import assert from 'assert';
+import 'mocha';
 import {EntityManager} from 'typeorm';
 import {container} from '../core/container.core';
 import {TYPES} from '../core/types.core';
-import {Order, OrderRepository} from '../entities/order.entity';
-import {PlacementRepository} from '../entities/placement.entity';
-import {Product, ProductRepository} from '../entities/product.entity';
+import {Order} from '../entities/order.entity';
+import {Product} from '../entities/product.entity';
 import {DatabaseService} from '../services/database.service';
 import {
   generateOrder,
@@ -14,10 +14,6 @@ import {
 } from '../tests/faker.utils';
 
 describe('PlacementSubscriber', () => {
-  let productRepository: ProductRepository;
-  let placementRepository: PlacementRepository;
-  let orderRepository: OrderRepository;
-
   let manager: EntityManager;
 
   before(async () => {
@@ -26,11 +22,6 @@ describe('PlacementSubscriber', () => {
     );
     const connection = await databaseService.getConnection();
     manager = connection.manager;
-    productRepository = await databaseService.getRepository(ProductRepository);
-    placementRepository = await databaseService.getRepository(
-      PlacementRepository,
-    );
-    orderRepository = await databaseService.getRepository(OrderRepository);
   });
 
   it('should update product.quantity after insert', async () => {

@@ -9,7 +9,8 @@ import {
 } from 'inversify-express-utils';
 import {TYPES} from '../core/types.core';
 import {Order, OrderRepository} from '../entities/order.entity';
-import {PlacementRepository} from '../entities/placement.entity';
+import {Placement} from '../entities/placement.entity';
+import {Product} from '../entities/product.entity';
 import {User} from '../entities/user.entity';
 import {DatabaseService} from '../services/database.service';
 import {MailerService} from '../services/mailer.service';
@@ -38,26 +39,33 @@ export class OrdersController {
     {user}: Request & {user: User},
     res: Response,
   ) {
-    const orderRepository = await this.databaseService.getRepository(
-      OrderRepository,
-    );
-    const placementRepository = await this.databaseService.getRepository(
-      PlacementRepository,
-    );
+    const {manager} = await this.databaseService.getConnection();
 
-    if (!Array.isArray(body.products)) {
-      return res
-        .status(400)
-        .json({errors: {products: 'should be an array of products ids'}});
+    if (!body.products?.length) {
+      return res.status(400).json({
+        errors: {
+          products: 'should be an array of `{id, quantity}`',
+        },
+      });
     }
 
-    const order = await orderRepository.save({user, total: 0});
+    const order = await manager.save(Order, {
+      user,
+      total: 0,
+      placements: [],
+    } as Order);
 
-    const placements = body.products.map(product => ({product, order}));
-    order.placements = await placementRepository.save(placements);
+    for (const {id, quantity} of body.products) {
+      const product = await manager.findOneOrFail(Product, {id});
+      const placement = await manager.save(Placement, {
+        product,
+        order,
+        quantity,
+      } as Placement);
+      order.placements.push(placement);
+    }
 
     await this.mailerService.sendNewOrderEmail(order);
-
     return res.sendStatus(201);
   }
 

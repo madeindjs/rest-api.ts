@@ -1,3 +1,4 @@
+// src/subscribers/placement.subscriber.ts
 import {
   EntityManager,
   EntitySubscriberInterface,
@@ -7,6 +8,7 @@ import {
 } from 'typeorm';
 import {Order} from '../entities/order.entity';
 import {Placement} from '../entities/placement.entity';
+import {Product} from '../entities/product.entity';
 
 @EventSubscriber()
 export class PlacementSubscriber
@@ -16,15 +18,19 @@ export class PlacementSubscriber
   }
 
   async afterInsert({entity, manager}: InsertEvent<Placement>) {
-    entity.product.quantity -= entity.quantity;
-    await manager.save(entity.product);
+    const productId = entity.product.id;
+    const product = await manager.findOneOrFail(Product, {id: productId});
+    product.quantity -= entity.quantity;
+    await manager.save(product);
 
     await this.updateOrderTotal(manager, entity.order);
   }
 
   async beforeRemove({entity, manager}: RemoveEvent<Placement>) {
-    entity.product.quantity += entity.quantity;
-    await manager.save(entity.product);
+    const productId = entity.product.id;
+    const product = await manager.findOneOrFail(Product, {id: productId});
+    product.quantity += entity.quantity;
+    await manager.save(product);
   }
 
   async afterRemove({entity, manager}: RemoveEvent<Placement>) {
@@ -42,6 +48,6 @@ export class PlacementSubscriber
       0,
     );
 
-    await manager.save(order);
+    await manager.save(Order, order);
   }
 }

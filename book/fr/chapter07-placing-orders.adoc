@@ -42,7 +42,6 @@ export class Order {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @IsDefined()
   @ManyToOne(() => User, (user) => user.orders)
   user: User;
 
@@ -115,11 +114,9 @@ export class Placement {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @IsDefined()
   @ManyToOne(() => Product, (product) => product.placements)
   product: Product;
 
-  @IsDefined()
   @ManyToOne(() => Order, (order) => order.placements)
   order: User;
 
