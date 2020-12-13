@@ -132,7 +132,16 @@ describe('ProductsController', () => {
       agent.post('/products').send({title, price, published}).expect(403, done);
     });
 
-    it('should not create user with missing title', done => {
+    it('should not create product with missing title', done => {
+      const {price, published} = generateProduct();
+      agent
+        .post('/products')
+        .set('Authorization', strangerJwt)
+        .send({price, published})
+        .expect(400, done);
+    });
+
+    it('should not create product with missing title', done => {
       const {price, published} = generateProduct();
       agent
         .post('/products')

@@ -1,8 +1,9 @@
 // src/entities/product.entity.ts
 import {
   IsDefined,
+  IsInt,
   IsPositive,
-  ValidateIf,
+  Min,
   validateOrReject,
 } from 'class-validator';
 import {
@@ -39,8 +40,12 @@ export class Product {
   @Column({type: 'boolean', default: false})
   published: boolean;
 
-  @IsPositive()
-  @ValidateIf(total => total >= 0)
+  @IsInt()
+  @Min(0)
+  // @ValidateIf((product, value) => {
+  //   console.log(product);
+  //   return product.quantity >= 0;
+  // })
   @Column({type: 'integer', default: 0})
   quantity: number = 0;
 

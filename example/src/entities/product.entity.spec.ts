@@ -74,4 +74,16 @@ describe('ProductRepository', () => {
       assert.ok(products.some(p => p.id === tvCheap.id) === false);
     });
   });
+
+  describe('validate', () => {
+    it('should have a positive quantity', async () => {
+      const product = generateProduct({quantity: -1});
+      try {
+        await productRepository.save(product);
+        assert.fail('Should not validate product');
+      } catch (errors) {
+        assert.ok(errors.some(error => error.property === 'quantity'));
+      }
+    });
+  });
 });
