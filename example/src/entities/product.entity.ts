@@ -18,6 +18,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   Repository,
+  SelectQueryBuilder,
   UpdateDateColumn,
 } from 'typeorm';
 import {Placement} from './placement.entity';
@@ -77,7 +78,9 @@ interface ProductSearchFilters {
 
 @EntityRepository(Product)
 export class ProductRepository extends Repository<Product> {
-  public search(filters: ProductSearchFilters): Promise<Product[]> {
+  private perPage: 20;
+
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
     const query = this.createQueryBuilder()
       .where('published = TRUE')
       .orderBy('updatedAt', 'DESC');
@@ -94,6 +97,17 @@ export class ProductRepository extends Repository<Product> {
       query.andWhere('price <= :priceMax', {priceMax: filters.priceMax});
     }
 
-    return query.getMany();
+    return query;
+  }
+
+  public paginate(
+    query: SelectQueryBuilder<Product>,
+    page: number | string,
+  ): SelectQueryBuilder<Product> {
+    if (page) {
+      return query.offset(Number(page) * this.perPage).limit(this.perPage);
+    }
+
+    return query;
   }
 }

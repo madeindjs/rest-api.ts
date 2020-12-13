@@ -668,7 +668,7 @@ interface ProductSearchFilters {
 
 @EntityRepository(Product)
 export class ProductRepository extends Repository<Product> {
-  public search(filters: ProductSearchFilters): Promise<Product[]> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
     // need to be implemented
   }
 }
@@ -757,7 +757,7 @@ describe("ProductRepository", () => {
   describe("search", () => {
     // ...
     it("should not include unpublished products", async () => {
-      const products = await productRepository.search({});
+      const products = await productRepository.search({}).getMany();
       assert.ok(products.every((p) => p.published));
     });
   });
@@ -774,12 +774,12 @@ interface ProductSearchFilters { }
 
 @EntityRepository(Product)
 export class ProductRepository extends Repository<Product> {
-  public search(filters: ProductSearchFilters): Promise<Product[]> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
     const query = this.createQueryBuilder()
                       .where("published = TRUE")
                       .orderBy("updatedAt", "DESC");
 
-    return query.getMany();
+    return query;
   }
 }
 ----
@@ -799,7 +799,7 @@ describe("ProductRepository", () => {
   describe("search", () => {
     // ...
     it("should filter products by title", async () => {
-      const products = await productRepository.search({ title: "tv" });
+      const products = await productRepository.search({ title: "tv" }).getMany();
       assert.ok(products.some((p) => p.id === tvPlosmo.id));
       assert.ok(products.some((p) => p.id === computer.id) === false);
     });
@@ -821,13 +821,13 @@ interface ProductSearchFilters {
 
 @EntityRepository(Product)
 export class ProductRepository extends Repository<Product> {
-  public search(filters: ProductSearchFilters): Promise<Product[]> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
     // ...
     if (filters.title !== undefined) {
       query.andWhere("lower(title) LIKE :title", { title: `%${filters.title}%` });
     }
 
-    return query.getMany();
+    return query;
   }
 }
 
@@ -861,13 +861,17 @@ describe("ProductRepository", () => {
   describe("search", () => {
     // ...
     it("should filter products by priceMax", async () => {
-      const products = await productRepository.search({ priceMax: 100 });
+      const products = await productRepository
+        .search({priceMax: 100})
+        .getMany();
       assert.ok(products.some((p) => p.id === tvCheap.id));
       assert.ok(products.some((p) => p.id === tvPlosmo.id) === false);
     });
 
     it("should filter products by priceMin", async () => {
-      const products = await productRepository.search({ priceMin: 500 });
+      const products = await productRepository
+        .search({priceMin: 500})
+        .getMany();
       assert.ok(products.some((p) => p.id === tvPlosmo.id));
       assert.ok(products.some((p) => p.id === tvCheap.id) === false);
     });
@@ -889,7 +893,7 @@ interface ProductSearchFilters {
 
 @EntityRepository(Product)
 export class ProductRepository extends Repository<Product> {
-  public search(filters: ProductSearchFilters): Promise<Product[]> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
     // ...
     if (filters.priceMin !== undefined) {
       query.andWhere("price >= :priceMin", { priceMin: filters.priceMin });
@@ -1025,7 +1029,7 @@ export class ProductController {
   @httpGet("/")
   public async index(req: Request) {
     const repository = await this.databaseService.getRepository(ProductRepository);
-    const products = await repository.search(req.query);
+    const products = await repository.search(req.query).getMany();
     return productsSerializer.serialize(products);
   }
   // ...

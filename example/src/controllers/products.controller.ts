@@ -9,6 +9,7 @@ import {
   httpPost,
   httpPut,
   requestBody,
+  requestParam,
 } from 'inversify-express-utils';
 import {TYPES} from '../core/types.core';
 import {Product, ProductRepository} from '../entities/product.entity';
@@ -24,11 +25,17 @@ export class ProductController {
   ) {}
 
   @httpGet('/')
-  public async index(req: Request) {
+  public async index(
+    @requestParam('page') page: string = undefined,
+    req: Request,
+  ) {
     const repository = await this.databaseService.getRepository(
       ProductRepository,
     );
-    const products = await repository.search(req.query);
+    let query = repository.search(req.query);
+    query = repository.paginate(query, page);
+
+    const products = await query.getMany();
     return productsSerializer.serialize(products);
   }
 

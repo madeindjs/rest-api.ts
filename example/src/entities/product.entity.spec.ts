@@ -1,5 +1,6 @@
 // src/entities/product.entity.spec.ts
 import assert from 'assert';
+import 'mocha';
 import {container} from '../core/container.core';
 import {TYPES} from '../core/types.core';
 import {Product, ProductRepository} from '../entities/product.entity';
@@ -52,24 +53,28 @@ describe('ProductRepository', () => {
     });
 
     it('should not include unpublished products', async () => {
-      const products = await productRepository.search({});
+      const products = await productRepository.search({}).getMany();
       assert.ok(products.every(p => p.published));
     });
 
     it('should filter products by title', async () => {
-      const products = await productRepository.search({title: 'tv'});
+      const products = await productRepository.search({title: 'tv'}).getMany();
       assert.ok(products.some(p => p.id === tvPlosmo.id));
       assert.ok(products.some(p => p.id === computer.id) === false);
     });
 
     it('should filter products by priceMax', async () => {
-      const products = await productRepository.search({priceMax: 100});
+      const products = await productRepository
+        .search({priceMax: 100})
+        .getMany();
       assert.ok(products.some(p => p.id === tvCheap.id));
       assert.ok(products.some(p => p.id === tvPlosmo.id) === false);
     });
 
     it('should filter products by priceMin', async () => {
-      const products = await productRepository.search({priceMin: 500});
+      const products = await productRepository
+        .search({priceMin: 500})
+        .getMany();
       assert.ok(products.some(p => p.id === tvPlosmo.id));
       assert.ok(products.some(p => p.id === tvCheap.id) === false);
     });

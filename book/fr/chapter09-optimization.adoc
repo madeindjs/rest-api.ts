@@ -10,13 +10,6 @@ Bienvenue dans le dernier chapitre du livre. Le chemin a été long mais vous n�
 
 J’essaierai d’aller aussi loin que possible en essayant de couvrir certains scénarios courants. J’espère que ces scenarii vous seront utiles pour certains de vos projets.
 
-Si vous commencez à lire à ce stade, vous voudrez probablement que le code fonctionne, vous pouvez le cloner comme ça:
-
-[source,bash]
-----
-$ git checkout tags/checkpoint_chapter09
-----
-
 Créons une nouvelle branche pour ce chapitre:
 
 [source,bash]
@@ -24,29 +17,37 @@ Créons une nouvelle branche pour ce chapitre:
 $ git checkout -b chapter09
 ----
 
-
 == Pagination
 
-Une stratégie très commune pour optimiser la récupération d’enregistrements dans une base de données est de charger seulement une quantité limitée en les paginant. Si vous êtes familier avec cette technique, vous savez qu’avec Rails c’est vraiment très facile à mettre en place avec des gemmes telles que https://github.com/mislav/will_paginate[will_paginate] ou https://github.com/kaminari/kaminari[kaminari].
+Une stratégie très commune pour optimiser la récupération d’enregistrements dans une base de données est de charger seulement une quantité limitée en les paginant. Nous allons le faire très facilement.
 
-La seule partie délicate ici est de savoir comment gérer la sortie JSON pour donner assez d’informations au client sur la façon dont le tableau est paginé. Dans la section précédente, j’ai partagé quelques ressources sur les pratiques que j’allais suivre ici. L’une d’entre elles était http://jsonapi.org/ qui est une page incontournable des signets.
+La seule partie délicate ici est de savoir comment gérer la sortie JSON pour donner assez d’informations au client sur la façon dont le tableau est paginé. Dans la section précédente, j’ai partagé quelques ressources sur les pratiques que j’allais suivre ici. L’une d’entre elles était http://jsonapi.org/[JSON:API].
 
-Si nous lisons la section sur le format, nous arriverons à une sous-section appelée https://jsonapi.org/format/#document-top-level[Top Level]. Pour vous expliquer rapidement, ils mentionnent quelque chose sur la pagination:
+La norme JSON:API impose un format stricte mais claire. Cela nous permet de ne pas se soucier de comment doit être implémentée. Une sous-section appelée https://jsonapi.org/format/#document-top-level[Top Level] de la documentation officielle de JSON:API mentionnent quelque chose sur la pagination:
 
 > "meta": méta-information sur une ressource, telle que la pagination.
 
 Ce n’est pas très descriptif mais au moins nous avons un indice sur ce qu’il faut regarder ensuite au sujet de l’implémentation de la pagination. Ne vous inquiétez pas, c’est exactement ce que nous allons faire ici.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Commençons par la liste des produits.
 
 === Les produits
-
-Nous allons commencer par paginer la liste des produits car nous n’avons aucune restriction d’accès. Cela nous facilitera les tests. Nous devons d’abord ajouter la gemme de kaminari à notre `Gemfile`:
-
-[source,bash]
-----
-$ bundle add kaminari
-----
 
 Maintenant nous pouvons aller à l’action `Products#index` et ajouter les méthodes de pagination comme indiqué dans la documentation:
 
@@ -490,188 +491,188 @@ Nous sommes donc passés de 137 ms à 40 ms. L’amélioration est donc énorme!
 $ git commit -am "Adds caching for the serializers"
 ----
 
-== Requêtes N+1
+// == Requêtes N+1
 
-Les *requêtes N+1* sont une plaie qui peuvent avoir un impact énorme sur les performances d'une application. Ce phénomène se produit souvent lorsqu'on utilise un **ORM** car il génère **automatiquement** les requêtes SQL pour nous. Cet outil bien pratique est à double tranchant car il peut générer un **grand nombre** de requêtes SQL.
+// Les *requêtes N+1* sont une plaie qui peuvent avoir un impact énorme sur les performances d'une application. Ce phénomène se produit souvent lorsqu'on utilise un **ORM** car il génère **automatiquement** les requêtes SQL pour nous. Cet outil bien pratique est à double tranchant car il peut générer un **grand nombre** de requêtes SQL.
 
-Quelque chose à savoir avec les requêtes SQL est qu'il vaut mieux faire en sorte de limiter leur nombre. En d'autres termes, une grosse requête est souvent plus performante que cent petites.
+// Quelque chose à savoir avec les requêtes SQL est qu'il vaut mieux faire en sorte de limiter leur nombre. En d'autres termes, une grosse requête est souvent plus performante que cent petites.
 
-Voici un exemple où l'on veut récupérer tous les utilisateurs qui ont déjà créé un produit. Ouvrez la console Rails avec `rails console` et exécutez le code Ruby suivant:
+// Voici un exemple où l'on veut récupérer tous les utilisateurs qui ont déjà créé un produit. Ouvrez la console Rails avec `rails console` et exécutez le code Ruby suivant:
 
-[source,ruby]
-----
-Product.all.map { |product| product.user }
-----
+// [source,ruby]
+// ----
+// Product.all.map { |product| product.user }
+// ----
 
-La console interactive de Rails nous montre les requêtes SQL qui sont générées. Voyez par vous même:
+// La console interactive de Rails nous montre les requêtes SQL qui sont générées. Voyez par vous même:
 
-[source,sql]
-----
-Product Load (0.5ms)  SELECT "products".* FROM "products"
-User Load (0.2ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 28], ["LIMIT", 1]]
-User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 28], ["LIMIT", 1]]
-User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 29], ["LIMIT", 1]]
-User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 29], ["LIMIT", 1]]
-User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 30], ["LIMIT", 1]]
-User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 30], ["LIMIT", 1]]
-----
+// [source,sql]
+// ----
+// Product Load (0.5ms)  SELECT "products".* FROM "products"
+// User Load (0.2ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 28], ["LIMIT", 1]]
+// User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 28], ["LIMIT", 1]]
+// User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 29], ["LIMIT", 1]]
+// User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 29], ["LIMIT", 1]]
+// User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 30], ["LIMIT", 1]]
+// User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 30], ["LIMIT", 1]]
+// ----
 
-On voit ici que nous générons une grande quantité de requêtes:
+// On voit ici que nous générons une grande quantité de requêtes:
 
-- `Product.all` = 1 requête pour récupérer les recettes
-- `product.user` = 1 requête `SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT 1  [["id", 1]]` par produit récupéré
+// - `Product.all` = 1 requête pour récupérer les recettes
+// - `product.user` = 1 requête `SELECT  "users".* FROM "users" WHERE "users"."id" = ? LIMIT 1  [["id", 1]]` par produit récupéré
 
-D'où le nom de "requête N+1" puisque nous effectuons une requête par liaison enfant.
+// D'où le nom de "requête N+1" puisque nous effectuons une requête par liaison enfant.
 
-Nous pouvons corriger cela simplement en utilisant `includes`. `includes` va **pré-charger** les objets enfants dans une seule requête. Son utilisation est très facile. Si nous reprenons l'exemple précédent, voici le résultat:
+// Nous pouvons corriger cela simplement en utilisant `includes`. `includes` va **pré-charger** les objets enfants dans une seule requête. Son utilisation est très facile. Si nous reprenons l'exemple précédent, voici le résultat:
 
-[source,ruby]
-----
-Product.includes(:user).all.map { |product| product.user }
-----
+// [source,ruby]
+// ----
+// Product.includes(:user).all.map { |product| product.user }
+// ----
 
-La console interactive de Rails nous montre les requêtes SQL qui sont générées. Voyez par vous même:
+// La console interactive de Rails nous montre les requêtes SQL qui sont générées. Voyez par vous même:
 
-[source,sql]
-----
-Product Load (0.3ms)  SELECT "products".* FROM "products"
-User Load (0.8ms)  SELECT "users".* FROM "users" WHERE "users"."id" IN (?, ?, ?)  [["id", 28], ["id", 29], ["id", 30]]
-----
+// [source,sql]
+// ----
+// Product Load (0.3ms)  SELECT "products".* FROM "products"
+// User Load (0.8ms)  SELECT "users".* FROM "users" WHERE "users"."id" IN (?, ?, ?)  [["id", 28], ["id", 29], ["id", 30]]
+// ----
 
-Rails effectue une deuxième requête qui va récupérer *tous* les utilisateurs d'un coup.
-
-
-=== Prevention des requêtes N+1
+// Rails effectue une deuxième requête qui va récupérer *tous* les utilisateurs d'un coup.
 
 
-
-Imaginons que nous voulons ajouter les propriétaires des produits pour la route `/products`. Nous avons déjà vu que avec la librairie `fast_jsonapi` il est très facile de le faire:
-
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
-----
-class Api::V1::ProductsController < ApplicationController
-  # ...
-  def index
-    # ...
-    options = get_links_serializer_options('api_v1_products_path', @products)
-    options[:include] = [:user]
-
-    render json: ProductSerializer.new(@products, options).serializable_hash
-  end
-  # ...
-end
-----
-
-Maintenant effectuons une requête avec cURL. Je vous rappelle que nous devons obtenir un jeton d'authentification avant d'accéder à la page.
-
-[source,bash]
-----
-$ curl -X POST --data "user[email]=ockymarvin@jacobi.co" --data "user[password]=locadex1234"  http://localhost:3000/api/v1/tokens
-----
-
-NOTE: "ockymarvin@jacobi.co" correspond à un utilisateur créé dans mon application avec le _seed_. Dans votre cas, il sera sûrement différent du mien puisque nous avons utilisé la librairie Faker.
-
-A l'aide du token obtenu, nous pouvons maintenant effectuer une requête pour accéder aux produits
-
-[source,bash]
-----
-$ curl --header "Authorization=ey..." http://localhost:3000/api/v1/products
-----
-
-Vous voyez très certainement passer plusieurs requêtes dans la console Rails exécutant le serveur web.
-
-[source,sql]
-----
-Started GET "/api/v1/products" for 127.0.0.1 at 2019-06-26 13:36:19 +0200
-Processing by Api::V1::ProductsController#index as JSON
-   (0.1ms)  SELECT COUNT(*) FROM "products"
-  ↳ app/controllers/concerns/paginable.rb:9:in `get_links_serializer_options'
-  Product Load (0.2ms)  SELECT "products".* FROM "products" LIMIT ? OFFSET ?  [["LIMIT", 20], ["OFFSET", 0]]
-  ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
-  User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
-  ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
-   (0.5ms)  SELECT "products"."id" FROM "products" WHERE "products"."user_id" = ?  [["user_id", 36]]
-  ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
-  CACHE User Load (0.0ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
-  ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
-  CACHE User Load (0.0ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
-  ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
-  CACHE User Load (0.0ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
-----
+// === Prevention des requêtes N+1
 
 
-Il est donc malheureusement **très facile** de créer une requête N+1. Heureusement, il existe une gemme qui permet de nous **alerter** lorsque ce genre de situation arrive: https://github.com/flyerhzm/bullet[Bullet]. Bullet va nous prévenir (par mail, http://growl.info/[notification growl], https://slack.com[Slack], console, etc..) lorsqu'il trouve une requête N+1.
 
-Pour l'installer, nous ajoutons la _gem_ au _GemFile_
+// Imaginons que nous voulons ajouter les propriétaires des produits pour la route `/products`. Nous avons déjà vu que avec la librairie `fast_jsonapi` il est très facile de le faire:
 
-[source,bash]
-----
-$ bundle add bullet --group development
-----
+// [source,ruby]
+// .app/controllers/api/v1/products_controller.rb
+// ----
+// class Api::V1::ProductsController < ApplicationController
+//   # ...
+//   def index
+//     # ...
+//     options = get_links_serializer_options('api_v1_products_path', @products)
+//     options[:include] = [:user]
 
-Et il suffit de mettre à jour la configuration de notre application pour l'environnement de développement. Dans notre cas nous allons uniquement activer le mode `rails_logger` qui va s'afficher
+//     render json: ProductSerializer.new(@products, options).serializable_hash
+//   end
+//   # ...
+// end
+// ----
 
-[source,ruby]
-.config/environments/development.rb
-----
-Rails.application.configure do
-  # ...
-  config.after_initialize do
-    Bullet.enable = true
-    Bullet.rails_logger = true
-  end
-end
-----
+// Maintenant effectuons une requête avec cURL. Je vous rappelle que nous devons obtenir un jeton d'authentification avant d'accéder à la page.
 
-Redémarrez le serveur web et relancez la dernière requête avec cURL:
+// [source,bash]
+// ----
+// $ curl -X POST --data "user[email]=ockymarvin@jacobi.co" --data "user[password]=locadex1234"  http://localhost:3000/api/v1/tokens
+// ----
 
-[source,bash]
-----
-$ curl --header "Authorization=ey..." http://localhost:3000/api/v1/products
-----
+// NOTE: "ockymarvin@jacobi.co" correspond à un utilisateur créé dans mon application avec le _seed_. Dans votre cas, il sera sûrement différent du mien puisque nous avons utilisé la librairie Faker.
 
-Et regardez la console Rails. Bullet nous indique qu'il vient de détecter une requête N+1.
+// A l'aide du token obtenu, nous pouvons maintenant effectuer une requête pour accéder aux produits
 
-----
-GET /api/v1/products
-USE eager loading detected
-  Product => [:user]
-  Add to your finder: :includes => [:user]
-----
+// [source,bash]
+// ----
+// $ curl --header "Authorization=ey..." http://localhost:3000/api/v1/products
+// ----
 
-Il nous indique même comment la corriger:
+// Vous voyez très certainement passer plusieurs requêtes dans la console Rails exécutant le serveur web.
 
-> Add to your finder: :includes => [:user]
+// [source,sql]
+// ----
+// Started GET "/api/v1/products" for 127.0.0.1 at 2019-06-26 13:36:19 +0200
+// Processing by Api::V1::ProductsController#index as JSON
+//    (0.1ms)  SELECT COUNT(*) FROM "products"
+//   ↳ app/controllers/concerns/paginable.rb:9:in `get_links_serializer_options'
+//   Product Load (0.2ms)  SELECT "products".* FROM "products" LIMIT ? OFFSET ?  [["LIMIT", 20], ["OFFSET", 0]]
+//   ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
+//   User Load (0.1ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
+//   ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
+//    (0.5ms)  SELECT "products"."id" FROM "products" WHERE "products"."user_id" = ?  [["user_id", 36]]
+//   ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
+//   CACHE User Load (0.0ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
+//   ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
+//   CACHE User Load (0.0ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
+//   ↳ app/controllers/api/v1/products_controller.rb:16:in `index'
+//   CACHE User Load (0.0ms)  SELECT "users".* FROM "users" WHERE "users"."id" = ? LIMIT ?  [["id", 36], ["LIMIT", 1]]
+// ----
 
-Corrigeons donc notre erreur donc le contrôleur:
 
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
-----
-class Api::V1::ProductsController < ApplicationController
-  # ...
-  def index
-    @products = Product.includes(:user)
-                       .page(current_page)
-                       .per(per_page)
-                       .search(params)
+// Il est donc malheureusement **très facile** de créer une requête N+1. Heureusement, il existe une gemme qui permet de nous **alerter** lorsque ce genre de situation arrive: https://github.com/flyerhzm/bullet[Bullet]. Bullet va nous prévenir (par mail, http://growl.info/[notification growl], https://slack.com[Slack], console, etc..) lorsqu'il trouve une requête N+1.
 
-    options = get_links_serializer_options('api_v1_products_path', @products)
-    options[:include] = [:user]
+// Pour l'installer, nous ajoutons la _gem_ au _GemFile_
 
-    render json: ProductSerializer.new(@products, options).serializable_hash
-  end
-  # ...
-end
-----
+// [source,bash]
+// ----
+// $ bundle add bullet --group development
+// ----
 
-Et voilà! Il est maintenant temps de faire notre _commit_.
+// Et il suffit de mettre à jour la configuration de notre application pour l'environnement de développement. Dans notre cas nous allons uniquement activer le mode `rails_logger` qui va s'afficher
 
-[source,bash]
-----
-$ git commit -am "Add bullet to avoid N+1 query"
-----
+// [source,ruby]
+// .config/environments/development.rb
+// ----
+// Rails.application.configure do
+//   # ...
+//   config.after_initialize do
+//     Bullet.enable = true
+//     Bullet.rails_logger = true
+//   end
+// end
+// ----
+
+// Redémarrez le serveur web et relancez la dernière requête avec cURL:
+
+// [source,bash]
+// ----
+// $ curl --header "Authorization=ey..." http://localhost:3000/api/v1/products
+// ----
+
+// Et regardez la console Rails. Bullet nous indique qu'il vient de détecter une requête N+1.
+
+// ----
+// GET /api/v1/products
+// USE eager loading detected
+//   Product => [:user]
+//   Add to your finder: :includes => [:user]
+// ----
+
+// Il nous indique même comment la corriger:
+
+// > Add to your finder: :includes => [:user]
+
+// Corrigeons donc notre erreur donc le contrôleur:
+
+// [source,ruby]
+// .app/controllers/api/v1/products_controller.rb
+// ----
+// class Api::V1::ProductsController < ApplicationController
+//   # ...
+//   def index
+//     @products = Product.includes(:user)
+//                        .page(current_page)
+//                        .per(per_page)
+//                        .search(params)
+
+//     options = get_links_serializer_options('api_v1_products_path', @products)
+//     options[:include] = [:user]
+
+//     render json: ProductSerializer.new(@products, options).serializable_hash
+//   end
+//   # ...
+// end
+// ----
+
+// Et voilà! Il est maintenant temps de faire notre _commit_.
+
+// [source,bash]
+// ----
+// $ git commit -am "Add bullet to avoid N+1 query"
+// ----
 
 
 == Activation des CORS
