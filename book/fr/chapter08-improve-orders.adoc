@@ -19,6 +19,8 @@ $ git checkout -b chapter08
 
 Dans cette partie nous travaillerons sur la mise à jour de la quantité du produit pour nous assurer que chaque commande livrera le produit réel.
 
+=== Ajout de l'attribut `product.total`
+
 Nous allons tout d'abord rajouter un champs `total` sur le produit qui représentera le stock du produit disponible.
 
 [source,ts]
@@ -35,7 +37,7 @@ export class Product {
 // ...
 ----
 
-Il faut aussi que ce champs soit disponible lors de la création du produit. Nous devons donc mettre à jour notre contrôleur:
+Il faut aussi que ce champ soit disponible lors de la création du produit. Nous devons donc mettre à jour notre contrôleur:
 
 [source,ts]
 ----
@@ -54,7 +56,7 @@ export class ProductController {
 }
 ----
 
-Et n'oublions pas de mettre à jour les tests. Cela signifie que nous devons mettre à jour la méthode =generateProduct= qui doit gérer ce nouvel attribut:
+Nous devons aussi mettre à jour la méthode =generateProduct= qui doit gérer ce nouvel attribut:
 
 [source,ts]
 ----
@@ -68,7 +70,9 @@ export function generateProduct(product?: Partial<Product>): Product {
 // ...
 ----
 
-Et ajoutons aussi un test qui va vérifier que nous ne pouvons créer un produit avec un stock négatif:
+Nous devons maintenant vérifier que le total ne peut jamais être inférieur à zero. Cela permettra de sécuriser notre application et ainsi empêcher qu'une commande soit passée s'il n'y a pas de stock sur le produit.
+
+Commençons donc par ajouter un test qui va décrire le comportement souhaité:
 
 [source,ts]
 ----
@@ -90,7 +94,7 @@ describe('ProductRepository', () => {
 });
 ----
 
-Faire passer le test est très facile gràce aux décorateurs de TypeORM. Il suffit d'ajouter le décorateur `@IsInt` et `@Min` comme cela:
+Faire passer le test est très facile gràce aux décorateurs de `class-validator`. Il suffit d'ajouter le décorateur `@IsInt` et `@Min` comme cela:
 
 
 [source,ts]
@@ -109,7 +113,7 @@ export class Product {
 // ...
 ----
 
-Et voilà. Commitons les changements:
+Comme vous le voyez c'est vraiment très simple et le code est très lisible. Et voilà. Commitons les changements:
 
 [source,sh]
 ----
@@ -118,13 +122,12 @@ $ git commit -am "Add quantity to products"
 
 === Mise en place du test fonctionnel
 
-Avant de commencer à implémenter le code, nous devons changer la façon dont nous gérons la création de la commande car nous devons maintenant accepter une quantité pour chaque produit. Si vous vous souvenez, nous attendons un tableau d’identifiants de produits. Je vais essayer de garder les choses simples et je vais envoyer un tableau de Hash avec les clefs `productId` et `quantity`.
+Avant de commencer à aller plus loin, nous devons changer la façon dont nous gérons la création de la commande car nous devons maintenant prendre en compte une quantité pour chaque produit. Si vous vous souvenez, jusqu'à maintenant nous attendons un tableau d’identifiants de produits. Je vais essayer de garder les choses simples et nous allons maintenant accepter un tableau d'objets contenant les attributs `id` et `quantity`. Un exemple rapide serait quelque chose comme cela:
 
-Un exemple rapide serait quelque chose comme cela:
 
 [source,ts]
 ----
-const productIdsAndQuantities = [
+const productOrderParams = [
   { id: 1, quantity: 4 },
   { id: 3, quantity: 5 }
 ]
@@ -132,6 +135,7 @@ const productIdsAndQuantities = [
 
 Commençons donc par modifier notre test fonctionnel à propos du contrôleur des commandes:
 
+.Modification du test fonctionnel de la création du produit
 [source,ts]
 ----
 // src/controllers/orders.controller.spec.ts
@@ -165,7 +169,7 @@ describe("OrderController", () => {
 
 Comme vous le voyez, nous avons simplement mis à jour les paramètres que nous passons à la requêtes.
 
-Récapitulons un peu ce que nous devons changer dans le contrôleur. Nous devons retrouver le produit associé à l'`id` dans le tableau que créer les `placements`. Voyons voir l'implémentation du contrôleur.
+Récapitulons un peu ce que nous devons changer dans le contrôleur. Nous devons retrouver le produit associé à l'`id` dans le tableau que créer les `placements`. Voyons voir l'implémentation du contrôleur:
 
 [source,ts]
 ----
@@ -204,10 +208,7 @@ export class OrdersController {
       } as Placement);
       order.placements.push(placement);
     }
-
-    await this.mailerService.sendNewOrderEmail(order);
-
-    return res.sendStatus(201);
+    // ...
   }
   // ...
 }
@@ -260,13 +261,8 @@ Nous pouvons donc créer notre classe qui étends de `EntitySubscriberInterface`
 
 [source,ts]
 ----
-import {
-  EntityManager,
-  EntitySubscriberInterface,
-  EventSubscriber,
-  InsertEvent,
-  RemoveEvent,
-} from 'typeorm';
+// src/subscribers/placement.subscriber.ts
+import {/*...*/} from 'typeorm';
 import {Order} from '../entities/order.entity';
 import {Placement} from '../entities/placement.entity';
 import {Product} from '../entities/product.entity';
@@ -294,8 +290,6 @@ TYPEORM_SUBSCRIBERS=src/subscribers/*.subscriber.ts
 ----
 
 Nous somme maintenant prêt à passer à l'implémentation des méthodes!
-
-== Mise à jour de la quantité de produits
 
 Comme d'habitude, nous allons créer un test dédié à cette nouvelle classe. Ce test va tout simplement créer un produit avec une quantité suffisante et ensuite créer un `Placement` et vérifier que le total a été mis à jour. Nous faisons ensuite le sens inverse en supprimant le produit et on vérifie que l'on retrouve bien la quantité originelle.
 
@@ -358,7 +352,6 @@ export class PlacementSubscriber
 }
 ----
 
-
 NOTE: Nous récupérons le produit via le `manager` au lieu de simplement récupérer via la relation `enity.product` afin de s'assurer d'avoir la dernière version stocké en base
 
 Et voilà. C'était facile non? Lançons les tests pour être sûr.
@@ -374,7 +367,7 @@ $ npm test
 
 Parfait passons à la suite.
 
-==== Mise à jour du coup total de la commande
+=== Mise à jour du coup total de la commande
 
 Si vous avez bien compris la section précédente, vous devinez que la mise à jour du coup de la commande va être assez similaire.
 
