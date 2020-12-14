@@ -14,7 +14,7 @@ export function randomBoolean(): boolean {
 }
 
 export function randomInteger(min: number = 0, max: number = 100): number {
-  return Math.floor(Math.random() * (max - min) - min);
+  return Math.floor(Math.random() * (max - min) + min);
 }
 
 export function generateUser(user?: Partial<User>): User {

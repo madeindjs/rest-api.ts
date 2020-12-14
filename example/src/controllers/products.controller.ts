@@ -15,6 +15,7 @@ import {TYPES} from '../core/types.core';
 import {Product, ProductRepository} from '../entities/product.entity';
 import {User} from '../entities/user.entity';
 import {DatabaseService} from '../services/database.service';
+import {paginate} from '../services/paginate.service';
 import {productsSerializer} from '../utils/serializers.utils';
 
 @controller('/products')
@@ -32,11 +33,8 @@ export class ProductController {
     const repository = await this.databaseService.getRepository(
       ProductRepository,
     );
-    let query = repository.search(req.query);
-    query = repository.paginate(query, page);
 
-    const products = await query.getMany();
-    return productsSerializer.serialize(products);
+    return paginate(repository.search(req.query), productsSerializer, req);
   }
 
   @httpPost('/', TYPES.FetchLoggedUserMiddleware)

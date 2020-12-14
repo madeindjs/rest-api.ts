@@ -105,9 +105,9 @@ export class ProductRepository extends Repository<Product> {
     page: number | string,
   ): SelectQueryBuilder<Product> {
     if (page) {
-      return query.offset(Number(page) * this.perPage).limit(this.perPage);
+      query.offset(Number(page) * this.perPage);
     }
 
-    return query;
+    return query.limit(this.perPage);
   }
 }

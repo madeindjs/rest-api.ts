@@ -1,5 +1,6 @@
 // src/controllers/products.controller.spec.ts
 import assert from 'assert';
+import 'mocha';
 import {URLSearchParams} from 'url';
 import {container} from '../core/container.core';
 import {TYPES} from '../core/types.core';
@@ -42,6 +43,20 @@ describe('ProductsController', () => {
   describe('index', () => {
     it('should respond 200', done => {
       agent.get('/products').expect(200, done);
+    });
+
+    it.only('should paginate results', async () => {
+      for (let i = 0; i < 20; i++) {
+        await productRepository.save(generateProduct({published: true}));
+      }
+
+      await agent
+        .get('/products')
+        .expect(200)
+        .then(response => {
+          assert.strictEqual(response.body.data.length, 20);
+          assert.ok(response.body.links);
+        });
     });
 
     describe('search', () => {
