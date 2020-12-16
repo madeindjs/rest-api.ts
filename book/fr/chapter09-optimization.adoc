@@ -295,64 +295,146 @@ $ git commit -am "Adds pagination for orders index action"
 
 == Mise en cache
 
-Nous pouvons facilement mettre e place une mise en cache simple pour certains de nos _endpoint_. L'implémentation sera vraiment très facile grâce à TypeORM.
+Nous pouvons facilement mettre en place une mise en cache simple pour certains de nos requêtes. L'implémentation sera vraiment très facile grâce à TypeORM. TypeORM va ainsi créer une nouvelle table qui va stocker la requête exécutée et le résultat qu'elle a retourné. Lors de la prochaine execution, TypeORM retournera le même résultat que le précédent. Cela permet d'économiser de précieuses ressources à notre gestionnaire de base de données (ici Sqlite) lors de certaines requêtes SQL coûteuses. Ici le résultat ne sera pas flagrant car les requêtes SQL éxécutées restent simple mais nous allons quand même le mettre en place.
 
-Si nous effectuons une demande à la liste des produits, nous remarquerons que le temps de réponse prend environ 20 millisecondes en utilisant cURL
+Avant de voir un peu le comportement du cache, nous allons créer un script qui va insérer des données fictives dans notre base de données. Cela sera très facile car il nous suffit d'utiliser les méthodes que nous avons créées lors de nos tests. Voici un petit script que nous allons créer dans un nouveau dossier `scripts`:
+
+[source,ts]
+----
+// src/scripts/loadFakeData.script.ts
+import 'reflect-metadata';
+// ...
+async function createOrder(manager: EntityManager) {
+  const user = await manager.save(User, generateUser());
+  const owner = await manager.save(User, generateUser());
+  const order = await manager.save(Order, generateOrder({user}));
+
+  for (let j = 0; j < 5; j++) {
+    const product = await manager.save(Product, generateProduct({user: owner}));
+    await manager.save(Placement, {order, product, quantity: 2});
+  }
+}
+
+async function main() {
+  const {manager} = await container
+    .get<DatabaseService>(TYPES.DatabaseService)
+    .getConnection();
+  const logger = container.get<Logger>(TYPES.Logger);
+
+  for (let i = 0; i < 100; i++) {
+    logger.log('DEBUG', `Inserting ${i} / 100`);
+    await createOrder(manager);
+  }
+}
+
+if (require.main === module) {
+  main().then().catch(console.error);
+}
+----
+
+Et voilà. Quelques explications:
+
+- `createOrder` va, comme son nom l'indique, créer une commande mais en plus créer un produit et cinq `placements`
+- `main` va créer une boucle autour de `createOrder` afin de l'appeler plusieurs fois
+- `require.main === module` peut paraître abstrait mais c'est en fait très simple: cela signifie que la fonction sera exécutée qui si nous exécutons explicitement le fichier. En d'autres termes, cela permet de s'assurer que la méthode ne sera pas exécutée si le fichier est malencontreusement importé
+
+Maintenant nous pouvons lancer le script avec la commande suivante:
+
+[source,ts]
+----
+$ npm run build && node dist/scripts/loadFakeData.script.js
+----
+
+Nous pouvons vérifier que tout s'est bien passé en envoyant une petite requête SQL directement sur la base de données:
+
+[source,sh]
+----
+$ sqlite3 db/development.sqlite "SELECT COUNT(*) FROM product"
+500
+----
+
+
+
+Maintenant essayons d'activer le cache. C'est vraiment très facile. Tout d'abord nous devons ajouter la variable d'environement suivante afin que TypeORM crée une table dédiée au démarrage:
+
+[source,env]
+----
+# .env
+# ...
+TYPEORM_CACHE=true
+----
+
+Maintenant nous allons ajouter deux lignes à notre méthode `paginate`:
+
+[source,ts]
+----
+// src/services/paginate.service.ts
+// ...
+export async function paginate<T>(/*...*/) {
+  // ...
+  const count = await queryBuilder.cache(60 * 1000).getCount();
+  // ...
+  const data = await queryBuilder
+    .clone()
+    .offset(offset)
+    .limit(PER_PAGE)
+    .cache(60 * 1000)
+    .getMany();
+  // ...
+  return response;
+}
+----
+
+Et voilà. La méthode `cache` s'occupe de tout. Essayons pour voir. Lancez le serveur `npm start` et envoyons une requête HTTP:
 
 [source,bash]
 ----
-$ curl -w 'Total: %{time_total}\n' -o /dev/null -s http://localhost:3000/products
-Total: 0,137088
+$ curl -w 'Total: %{time_total}\n' -o /dev/null -s "http://localhost:3000/products?title=42"
+Total: 0,019708
 ----
 
 NOTE: L’option `-w` nous permet de récupérer le temps de la requête, `-o` redirige la réponse vers un fichier et `-s` masque l’affichage de cURL
 
-En ajoutant seulement une ligne à la classe `ProductSerializer`, nous verrons une nette amélioration du temps de réponse!
+Le temps de réponse prend environ 20 millisecondes en utilisant cURL. Mais regardons plutôt la console du serveur qui nous affiche les requêtes SQL:
 
-[source,ruby]
-.app/serializers/order_serializer.rb
+[source,sql]
 ----
-class OrderSerializer
-  # ...
-  cache_options enabled: true, cache_length: 12.hours
-end
-----
-
-[source,ruby]
-.app/serializers/product_serializer.rb
-----
-class ProductSerializer
-  # ...
-  cache_options enabled: true, cache_length: 12.hours
-end
+...
+query: SELECT * FROM "query-result-cache" "cache" WHERE "cache"."query" = ? -- PARAMETERS: ...
+query: SELECT COUNT(1) AS "cnt" FROM "product" "Product" WHERE published = TRUE AND lower(title) LIKE ? -- PARAMETERS: ...
+query: INSERT INTO "query-result-cache"("identifier", "query", "time", "duration", "result") VALUES (NULL, ?, ?, ?, ?) -- PARAMETERS: ...
+...
 ----
 
-[source,ruby]
-.app/serializers/user_serializer.rb
+Voici quelques explications sur ces requêtes:
+
+1. une requête est effectuée sur la table `"query-result-cache"` afin de voir si un cache est présent
+2. la requête est effectuée car le cache n'existait pas
+3. le résultat est insérée dans la table `"query-result-cache"`
+
+Essayons d'exécuter la commande cURL à nouveau:
+
+[source,sh]
 ----
-class UserSerializer
-  # ...
-  cache_options enabled: true, cache_length: 12.hours
-end
+$ curl -w 'Total: %{time_total}\n' -o /dev/null -s "http://localhost:3000/products?title=42"
+Total: 0,007368
 ----
 
-Et c’est tout! Vérifions l’amélioration:
+Nous voyons que le temps de réponse est à présent divisé par deux. Bien évidement ce chiffre est à prendre avec des pincettes mais voyons dans la console ce qui vient de ce passer:
 
-[source,bash]
+[source,sql]
 ----
-$ curl -w 'Total: %{time_total}\n' -o /dev/null -s http://localhost:3000/products
-Total: 0,054786
-$ curl -w 'Total: %{time_total}\n' -o /dev/null -s http://localhost:3000/products/
-Total: 0,032341
+query: SELECT * FROM "query-result-cache" "cache" WHERE "cache"."query" = ? -- PARAMETERS: ...
 ----
 
-Nous sommes donc passés de 137 ms à 40 ms. L’amélioration est donc énorme! _Committons_ une dernière fois nos changements.
+Et voilà. Le cache a été utilisé et ... rien de plus! Maintenant c'est à vous de juger de quelles requêtes peuvent être mise en cache et pour combien de temps en fonction du besoin.
+
+L’amélioration est donc énorme! _Committons_ une dernière fois nos changements.
 
 [source,ruby]
 ----
 $ git commit -am "Adds caching for the serializers"
 ----
-
 
 == Activation des CORS
 
@@ -371,50 +453,25 @@ CORS est un mécanisme qui a pour but de permettre les requêtes faites en votre
 - un port différent
 - un protocole différent
 
-Nous devons manuellement activer cette fonctionnalité afin que n'importe quel client puisse effectuer des requêtes sur notre API.
+Nous devons manuellement activer cette fonctionnalité afin que n'importe quel client puisse effectuer des requêtes sur notre API. Une librairie tout simple existe déjà donc nous allons les installer:
 
-
-
-Rails nous permet de faire ça très facilement. Jetez un coup d'œil au fichier `cors.rb` situé dans le dossier `initializers`.
-
-[source,ruby]
-.config/initializers/cors.rb
+[source,sh]
 ----
-# ...
-
-# Rails.application.config.middleware.insert_before 0, Rack::Cors do
-#   allow do
-#     origins 'example.com'
-#
-#     resource '*',
-#       headers: :any,
-#       methods: [:get, :post, :put, :patch, :delete, :options, :head]
-#   end
-# end
+$ npm install --save cors
 ----
 
-Vous voyez. Il suffit de dé-commenter le code et de le modifier un peut pour limiter l'accès à certaines actions ou bien certains verbes HTTP. Dans notre cas, cette configuration nous convient très bien pour le moment.
+Et ensuite il suffit de modifier un tout petit peu notre serveur:
 
-[source,ruby]
-.config/initializers/cors.rb
+[source,ts]
 ----
-# ...
-
-Rails.application.config.middleware.insert_before 0, Rack::Cors do
-  allow do
-    origins 'example.com'
-    resource '*',
-      headers: :any,
-      methods: [:get, :post, :put, :patch, :delete, :options, :head]
-  end
-end
-----
-
-Nous devons aussi installer la gemme `rack-cors` qui est commentée dans le `Gemfile`:
-
-[source,bash]
-----
-$ bundle add rack-cors
+// src/main.ts
+import 'reflect-metadata';
+import cors from 'cors';
+// ...
+server
+  .setConfig(app => app.use(cors()))
+  .build()
+  .listen(port, () => console.log(`Listen on http://localhost:${port}/`));
 ----
 
 Et voilà! Il est maintenant temps de faire notre dernier commit et de merger nos modifications sur la branche master.
@@ -429,10 +486,10 @@ $ git merge chapter09
 
 == Conclusion
 
-Si vous arrivez à ce point, cela signifie que vous en avez fini avec le livre. Bon travail! Vous venez de devenir un grand développeur API Rails, c’est sûr.
+Si vous arrivez à ce point, cela signifie que vous en avez fini avec le livre. Bon travail! Vous venez de devenir un grand développeur Node.js, c’est sûr. Nous avons donc construit ensemble une API solide et complète. Celle-ci possède toutes les qualité pour détrôner https://www.amazon.com/[Amazon], soyez en sûr.
 
-Nous avons donc construit ensemble une API solide et complète. Celle-ci possède toutes les qualité pour détrôner https://www.amazon.com/[Amazon], soyez en sûr. Merci d’avoir traversé cette grande aventure avec moi, j’espère que vous avez apprécié le voyage autant que moi.
+Merci d’avoir traversé cette grande aventure avec moi. Gardez à l'esprit que vous venez de voir une de nombreuse manière d'architecturer une API avec Node.js. J'espère que celle-ci vous aura permis de découvrir des nouvelles notions et surtout que vous avez pris autant de plaisir à coder que moi.
 
-Je tiens à vous rappeler que tout le code source de ce livre est disponible au format https://asciidoctor.org[Asciidoctor] sur https://github.com/madeindjs/api_on_rails[GitHub]. Ainsi n’hésitez pas à https://github.com/madeindjs/api_on_rails/fork[forker] le projet si vous voulez l’améliorer ou corriger une faute qui m’aurait échappée.
+Je tiens à vous rappeler que tout le code source de ce livre est disponible au format https://asciidoctor.org[Asciidoctor] sur https://github.com/madeindjs/rest-api.ts[GitHub]. Ainsi n’hésitez pas à https://github.com/madeindjs/rest-api.ts/fork[forker] le projet si vous voulez l’améliorer ou corriger une faute qui m’aurait échappée.
 
-Si vous avez aimé ce livre, n'hésitez pas à me le faire savoir par mail mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr]. Je suis ouvert à toutes critiques, bonne ou mauvaise, autour d'un bonne bière :) .
+Si vous avez aimé ce livre, n'hésitez pas à me le faire savoir par mail mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr]. Je suis ouvert à toutes critiques, bonne ou mauvaise, autour d'une bonne bière :) .

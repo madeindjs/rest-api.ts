@@ -304,9 +304,7 @@ const port = 3000;
 
 server
   .build()
-  .listen(port, () =>
-    console.log(`Server listen on http://localhost:${port}/`),
-  );
+  .listen(port, () => console.log(`Listen on http://localhost:${port}/`));
 ----
 
 Et voilà. Nous pouvons maintenant nous attaquer à notre premier contrôleur.

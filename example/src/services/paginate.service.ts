@@ -12,7 +12,7 @@ export async function paginate<T>(
 ) {
   const page = Number(query.page ?? 1);
 
-  const count = await queryBuilder.getCount();
+  const count = await queryBuilder.cache(60 * 1000).getCount();
   const totalPage = Math.floor(count / PER_PAGE);
   const prevPage = page === 1 ? 1 : page - 1;
   const nextPage = page === totalPage ? page : page + 1;
@@ -22,6 +22,7 @@ export async function paginate<T>(
     .clone()
     .offset(offset)
     .limit(PER_PAGE)
+    .cache(60 * 1000)
     .getMany();
 
   const getUrlForPage = page =>
