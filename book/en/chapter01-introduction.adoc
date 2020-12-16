@@ -1,33 +1,36 @@
 [#chapter01-introduction]
 = Introduction
 
-Welcome to API on Rails 6, a tutorial on steroids to learn the best way to build your next API with Rails. The purpose of this book is to provide a comprehensive methodology to develop a RESTful API following best practices.
+Welcome to API-REST.ts, a steroid tutorial to learn the best way to build your next application with Typescript. The purpose of this book is to provide you with a complete methodology to develop a RESTful API following best practices.
 
-As soon as you finish this book, you will be able to create your own API and integrate it with any client such as a web browser or mobile application. The generated code is built with Ruby on Rails 6.0 which is the current version.
+When you are finished with this book, you will create your own API and integrate it with any client, such as a web browser or mobile application. The generated code is built with Typescript 4, which is the current version.
 
-The purpose of this book is not only to teach you how to build an API with Rails but rather to teach you how to build an *evolutive* and *maintainable* API with Rails. That is, improve your current knowledge with Rails. On this journey, you will learn to:
+This book intends not only to teach you how to build an API but rather to teach you how to build a scalable and maintainable API with Typescript. In this journey, you will learn how to:
 
-- Use Git for version control
-- Building JSON responses
-- Test your end-points with units and functional tests
+- Using Git for version control
+- Building JSON Answers
+- Test your entry points with unit and functional tests
 - Set up authentication with JSON Web Tokens (JWT)
-- Use JSON:API specification
+- Use JSON:API specifications
 - Optimize and cache the API
 
-I strongly recommend you follow all the steps in this book. Try not to skip chapters because I will give you some tips and tricks to improve your skills throughout the book. You can consider yourself the main character of a video game who gains a level in each chapter.
+I strongly recommend that you follow all the steps in this book. Try not to skip any chapters, as I will offer you tips and tricks to improve yourself throughout the book. You can think of yourself as the main character in a video game that gets a higher level with each chapter.
 
-In the first chapter, I will explain how to configure your environment (in case you don't already have it). Then we will create an application called `market_place_api`. I will ensure that I teach you the best practices I have learned during my experience. This means that we'll start using *Git* just after initializing the project.
+In this first chapter, I will explain how to configure your environment (if you haven't already done so). We will then create an application called =market_place=. I will make sure to teach you the best practices I have learned from my experience. This means that after initializing the project, we will start using Git.
 
-We'll build the application following a simple working method that I use daily in the next chapters. We will develop the entire application using Test Driven Development (TDD). I will also explain the interest of using an API for your next project and choosing a suitable response format such as JSON or XML. Further on, we will get our hands on the code and complete the basics of the application by building all the necessary roads. We will also secure access to the API by building authentication by exchanging HTTP headers. Finally, in the last chapter, we will add some optimization techniques to improve the structure and response times of the server.
+In the next chapters, we will build the application following a simple working method daily. We will develop the entire application using test-driven development (TDD). I will also explain the interest in using an API for your next project and choosing a suitable response format such as JSON or XML. Later on, we will get our hands on the code and complete the application's basics by building all the necessary roads. We will also secure access to the API by building authentication through HTTP header exchange. Finally, in the last chapter, we will add some optimization techniques to improve the server's structure and response times.
 
-The final application will scratch the surface of being a market place where users will be able to place orders, upload products, and more. There are plenty of options out there to set up an online store, such as http://shopify.com[Shopify], http://spreecommerce.com/[Spree], or http://magento.com[Magento].
+The final application will be a marketplace application that will allow sellers to set up their own online store. Users will be able to place orders, download products, and more. There are many options to create an online store, such as http://shopify.com/ [Shopify], http://spreecommerce.com/ [Spree], or http://magento.com/ [Magento].
 
+Throughout this journey (it depends on your expertise), you will improve and better understand how modern frameworks work. I have also taken some of the practices from my experience as a developer..
+
+// -- current
 
 == Conventions on this book
 
-The conventions on this book are based on the ones from http://www.railstutorial.org/book/beginning#sec-conventions[Ruby on Rails Tutorial]. In this section, I’ll mention some that may not be so clear.
+The conventions in this book are based on those in https://www.railstutorial.org/book[Ruby on Rails Tutorial]. In this section, I will mention a few that you may not be familiar with.
 
-I’ll be using many examples using command-line instructions. I won’t deal with windows `cmd` (sorry guys), so all the examples use Unix-style command line prompt, as follows:
+I will use many examples using command line. I'm not going to deal with Windows `cmd` (sorry, guys). I'm going to base all the examples using the Unix-style command line prompt. Here is an example:
 
 [source,bash]
 ----
@@ -35,114 +38,104 @@ $ echo "A command-line command"
 A command-line command
 ----
 
-I’ll be using some guidelines related to the language, what I mean by this is:
+I will try to shorten the code pieces as much as possible, keeping only interesting lines depending on the context. I'll hide irrelevant lines with the comment symbol `// ...` or `/* ... */`. At the beginning of each piece of code, I will also specify the path and the name of the file concerned. Here is an example.
 
-* *Avoid* means you are not supposed to do it
-* *Prefer* indicates that from the 2 options, the first it’s a better fit
-* *Use* means you are good to use the resource
+[source,ts]
+----
+// user.ts
+// ...
+class User {
+  constructor(/* ... */) {
+      doInterestingStuff(message);
+  }
+  // ...
+  doInterestingStuff(message: string) {
+    console.log(message)
+  }
+}
+----
 
-If for any reason you encounter some errors when running a command, rather than trying to explain every possible outcome, I recommend you to `google it', which I don’t consider a bad practice or whatsoever. But if you feel like you want to grab a beer or have some trouble with the tutorial you can always mailto:contact@rousseau-alexandre.fr[email me].
+I will use some principles like:
+
+* _"Avoid"_ means you're not supposed to.
+* _"Prefer"_ indicates that the first is the most appropriate of the two options.
+* _"Use"_ means that you can use the resource.
+
+If you encounter any error while executing a command, I recommend using your search engine to find your solution. Unfortunately, I cannot cover all possible errors. If you encounter any problems with this tutorial, you can always mailto:contact@rousseau-alexandre.fr[send me an email].
 
 == Development environments
 
-One of the most painful parts for almost every developer is setting everything up, but as long as you get it done, the next steps should be a piece of cake and well rewarded. So I will guide you to keep you motivated.
+For almost all developers, one of the most painful parts is setting up a comfortable development environment. If you do it right, the next steps should be a breeze. I will guide you through this step to make it easier and more motivating.
 
-=== Text editors and Terminal
+=== Text Editors and Terminal
 
-There are many cases in which development environments may differ from computer to computer. That is not the case with text editors or IDE’s. I think for Rails development an IDE is way too much, but some other might find that the best way to go, so if that it’s your case I recommend you go with http://www.aptana.com/products/radrails[RadRails] or http://www.jetbrains.com/ruby/index.html[RubyMine], both are well supported and come with many integrations out of the box.
+There are two categories of code editors :
 
-* *Text editor*: I personally use http://www.vim.org/[vim] as my default editor with https://github.com/carlhuda/janus[janus] which will add and handle many of the plugins you are probably going to use. In case you are not a _vim_ fan like me, there are a lot of other solutions such as http://www.sublimetext.com/[Sublime Text] which is a cross-platform easy to learn and customize (this is probably your best option), it is highly inspired by http://macromates.com/[TextMate] (only available for Mac OS). A third option is using a more recent text editor from the guys at http://gitub.com[GitHub] called https://atom.io/[Atom], it’s a promising text editor made with JavaScript, it is easy to extend and customize to meet your needs, give it a try. Any of the editors I present will do the job, so I’ll let you decide which one fits your eye.
-* *Terminal*: If you decided to go with http://icalialabs.github.io/kaishi/[kaishi] for setting the environment you will notice that it sets the default shell to `zsh`, which I highly recommend. For the terminal, I’m not a fan of the _Terminal_ app that comes out of the box if you are on Mac OS, so check out http://www.iterm2.com/#/section/home[iTerm2], which is a terminal replacement for Mac OS. If you are on Linux you probably have a nice terminal already, but the default should work just fine.
+- the *text editors* like https://atom.io/[Atom], https://www.sublimetext.com/[Sublime Text], https://www.vim.org/[VIM] and many others.
+- the complete *development environments* like https://www.eclipse.org/ [Eclipse], https://netbeans.org/[Netbeans]], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
 
-=== Browsers
+Development environments are more complete and offer more features but are often much heavier.
 
-When it comes to browsers I would say http://www.mozilla.org/en-US/firefox/new/[Firefox] immediately, but some other developers may say https://www.google.com/intl/en/chrome/browser/[Chrome] or even https://www.apple.com/safari/[Safari]. Any of those will help you build the application you want, they come with nice inspector not just for the DOM but for network analysis and many other features you might know already.
+There is no bad choice, and it's really a matter of taste.
 
-=== Package manager
+I use https://code.visualstudio.com/[Visual Studio Code] from Microsoft, which is at the crossroads between a text editor and a development environment. Its auto-completion is really very powerful when using https://www.typescriptlang.org/[Typescript]]. If you don't know what to use, you can't go wrong by using this editor.
 
-* *Mac OS*: There are many options to manage how you install packages on your Mac, such as https://www.macports.org/[Mac Ports] or http://brew.sh/[Homebrew], both are good options but I would choose the last one, I’ve encountered fewer troubles when I install software and I manage it. To install `brew` just run the command below:
+=== Web browser
+
+As for the browser, I will advise directly http://www.mozilla.org/en-US/firefox/new/[Firefox]. But other developers use https://www.google.com/intl/en/chrome/browser/[Chrome] or even https://www.apple.com/safari/[Safari]. Any of them will help you build the application you want. They all offer a good inspector for the DOM, a network analyzer, and many other features you may already be familiar with.
+
+However, I advise you to use at least two web browsers. There are some nuances in the interpretation of Javascript or CSS. By using two browsers, you make sure that your developments work correctly for most of your users.
+
+Personally, I use Firefox in everyday life, and I check the proper functioning of my features on https://www.chromium.org/[Chromium], a derivative of Google Chrome.
+
+=== Package Manager
+
+* *Mac OS*: There are many options to manage how you install packages on your Mac, such as https://www.macports.org/[Mac Ports] or http://brew.sh/[Homebrew]. Both are good options, but I would choose the latter. I've had fewer problems installing software with Homebrew. To install `brew`, just run the command below:
 
 [source,bash]
 ----
 $ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
 ----
 
-* *Linux*: You are all set! It really does not matter if you are using `apt`, `pacman`, `yum` as long you feel comfortable with it, and you know how to install packages so you can keep moving forward.
+* *Linux*: You're already ready! It doesn't matter if you use `apt`, `pacman`, `yum` as long as you feel comfortable and know how to install packages.
 
 === Git
 
-We will be using Git a lot, and you should use it too not just for the purpose of this tutorial but for every single project.
+We will use Git a lot, and you should use it too (not only for this tutorial but for all your projects). It's straightforward to install it:
 
-* on Mac OS: `$ brew install git`
-* on Linux: `$ sudo apt-get install git`
+* under Mac OS: `$ brew install git`.
+* under Linux: `$ sudo apt-get install git`.
 
-=== Ruby
+=== Node.js
 
-There are many ways in which you can install and manage ruby, and by now you should probably have some version installed if you are on Mac OS, to see which version you have, just type:
-
-[source,bash]
-----
-$ ruby -v
-----
-
-Rails 6.0 requires the installation of version 2.5 or higher.
-
-I recommend using http://rvm.io/[Ruby Version Manager (RVM)] or http://rbenv.org/[rbenv] to install it. We will use RVM in this tutorial but it doesn't matter which of these two options you use
-
-The principle of these tools is allowing you to install several versions of Ruby on the same machine, in an environment that is airtight to a possible version installed on your operating system and to be able to switch from one to the other easily.
-
-To install RVM, go to https://rvm.io/ and install the GPG footnote key:[The GPG key allows you to verify the identity of the author of the sources you download.]. Once that's done:
+There are many ways to install and manage Node.js. You may even already have a version installed on your system. To find out, just type:
 
 [source,bash]
 ----
-$ gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
-$ \curl -sSL https://get.rvm.io | bash
+$ node -v
 ----
 
-Next, it is time to install ruby:
+If you haven't installed it, you can do it with your package manager. However, I recommend that you use https://github.com/nvm-sh/nvm [Node Version Manager (NVM)]. The principle of this tool is to allow you to install several versions of Node.js on the same machine, in an environment sealed to a possible version installed on your operating system, and to be able to switch from one to the other easily.
+
+To install it, go to https://github.com/nvm-sh/nvm#installing-and-updating [follow the official documentation]. You have to launch the following script :
 
 [source,bash]
 ----
-$ rvm install 2.6
+$ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash
 ----
 
-Now it is time to install the rest of the dependencies we will be using.
+The URL of the script may vary depending on the current version.
 
-==== Gems, Rails & Missing libraries
-
-First, we update the gems on the whole system:
+Once the installation is complete, you can install the latest version of Node.js with the following command:
 
 [source,bash]
 ----
-$ gem update --system
-----
-
-On some cases if you are on a Mac OS, you will need to install some extra libraries:
-
-[source,bash]
-----
-$ brew install libtool libxslt libksba openssl
-----
-
-We then install the necessary gems and ignore documentation for each gem:
-
-[source,bash]
-----
-$ gem install bundler
-$ gem install rails -v 6.0.0
-----
-
-Check for everything to be running nice and smooth:
-
-[source,bash]
-----
-$ rails -v
-Rails 6.0.0
+nvm install node
 ----
 
 ==== Database
 
-I highly recommend you install http://www.postgresql.org/[Postgresql] to manage your databases. But here we’ll be using http://www.sqlite.org/[SQlite] for simplicity. If you are using Mac OS you should be ready to go, in case you are on Linux, don’t worry we have you covered:
+I strongly recommend that you install http://www.postgresql.org/[Postgresql] to manage your databases. But here, for simplicity, we will use http://www.sqlite.org/[SQlite]. If you are using Mac OS you don't have any additional libraries to install. If you are using Linux, don't worry, I'll guide you:
 
 [source,bash]
 ----
@@ -158,87 +151,307 @@ $ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
 
 == Initializing the project
 
-Initializing a Rails application may be pretty straightforward for you. If that is not the case here is a super quick tutorial.
+In my opinion, this is one of the most interesting parts because you will discover a way of doing things that is certainly different from yours.
 
-There is the command:
+There is a ton of complete frameworks like https://nestjs.com/[Nest.js], which is really great. But here, we're going to start from scratch using some prevalent libraries to master our application.
 
-[source,bash]
-----
-$ mkdir ~/workspace
-$ cd ~/workspace
-$ rails new market_place_api --api
-----
+This method will also allow you to adapt and build the architecture that suits you best. Keep in mind that the architecture I'm going to present to you is the one I like. It is totally personal, and I don't pretend that it is the best. Always keep a critical mind.
 
-NOTE: The `--api` option appeared in version 5 of Rails. It allows you to limit the libraries and _Middleware_ included in the application. This also avoids generating HTML views when using Rails generators.
+Are you ready? Here we go!
 
-As you may guess, the commands above will generate the bare bones of your Rails application.
-
-== Versioning
-
-Remember that Git helps you track and maintain your code history. Keep in mind that the source code of the application is published on GitHub. You can follow the project on https://github.com/madeindjs/api_on_rails_6[GitHub].
-
-Ruby on Rails initialized the Git directory for you when you used the `rails new` command. This means that you do not need to execute the `git init` command.
-
-However, it is necessary to configure the information of the author of _commits_. If you have not already done so, go to the directory and run the following commands:
+Go to the folder of your choice and create a new folder:
 
 [source,bash]
 ----
-$ git config --global user.name "Type in your name"
-$ git config --global user.email "Type in your email"
+$ mkdir node_market_place
+$ cd node_market_place
 ----
 
-Rails also provides a _.gitignore_ file to ignore some files that we don’t want to track. The default _.gitignore_ file should look like the one shown below:
+=== Version control
 
-..gitignore
+Remember that Git helps you track and maintain your code history. Version all your projects. Even if it's a small project.
+
+Initializing Git in your project is as simple as the following command:
+
+[source,bash]
 ----
-# Ignore bundler config.
-/.bundle
-
-# Ignore the default SQLite database.
-/db/*.sqlite3
-/db/*.sqlite3-journal
-
-# Ignore all logfiles and tempfiles.
-/log/*
-/tmp/*
-!/log/.keep
-!/tmp/.keep
-
-# Ignore uploaded files in development.
-/storage/*
-!/storage/.keep
-.byebug_history
-
-# Ignore master key for decrypting credentials and more.
-/config/master.key
+$ git init
 ----
 
-After modifying the _.gitignore_ file we just need to add the files and commit the changes, the necessary commands are shown below:
+However, you need to configure the committer's information. If it is not already done, go to the directory and run the following commands:
+
+[source,bash]
+----
+$ git config user.name "John Doe"
+$ git config user.email "john@doe.io"
+----
+
+And there you go. Let's move on.
+
+=== NPM Initialization
+
+NPM is the official package manager of Node.js. Since version 0.6.3 of Node.js, npm is part of the environment and is automatically installed by default.
+
+Initializing your project with Node.js means that you will be able to install any library published on https://www.npmjs.com/[npmjs.com].
+
+So let's initialize NPM in our :
+
+[source,bash]
+----
+$ npm init
+----
+
+Several questions will be asked, and in the end, you will see a new `package.json` file. This file details the information about your project and its dependencies.
+
+=== Setting up Typescript
+
+Now that we have created our folders, we are ready to implement Typescript.
+
+Typescript will bring us strong typing and will perform checks before _transpiling_ Typescript code to Javascript :
+
+NOTE: We talk about a *compiler* for compiling a program into an executable and a *transpilation* for converting a program from one language to another language.
+
+Therefore, we install Typescript as a development dependency because it will only be used to transpile our code. It will be Node.js, which will execute the Javascript later :
+
+[source,bash]
+----
+$ npm add typescript @types/node --save-dev
+----
+
+We have added two libraries :
+
+* `typescript`, which will give us the tools for *transpilation*.
+* `@types/node` which will add the definition of the types of Node.js
+
+So let's add our first Typescript file :
+
+[source,ts]
+----
+// src/main.ts
+function say(message: string): void {
+    console.log(`I said: ${message}`);
+}
+say("Hello");
+----
+
+This code is really very basic and will just be used to check that the transpilation works.
+
+To use Typescript transpilation, we need to define a configuration file `tsconfig.json`. Here is a basic one:
+
+[source,json]
+----
+{
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "dist",
+    "module": "commonjs",
+    "types": ["node"],
+    "target": "es6",
+    "esModuleInterop": true,
+    "lib": ["es6"],
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+----
+
+That's much code but the two directives to remember here are: `rootDir` and `outDir`. They will specify where the Typescript files are (`rootDir`) and where the Javascript files resulting from the transpilation are (`outDir`).
+
+In our case, I put all the Typescript files in the `src` folder and the result of the transpilation in `dist`.
+
+From here, you can test that everything works by executing the following command:
+
+[source,bash]
+----
+$ ./node_modules/.bin/tsc
+----
+
+You will see a `dist/main.js` file of the following form.
+
+[source,javascript]
+----
+// dist/main.js
+function say(message) {
+  console.log(`I said: ${message}`);
+}
+say("Hello");
+----
+
+This is the transposed version of our Typescript file.
+
+Now that we've seen that everything works, we can automate this a bit by adding the commands directly into the `package.json` file:
+
+[source,json]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js"
+  },
+  // ...
+}
+----
+
+So now you can execute the script with the following command:
+
+[source,bash]
+----
+npm run start
+----
+
+Now that everything is working, it's time to version our changes. Don't add all the created files. It's important only to version some folders:
+
+* the `node_modules` folder contains the libraries retrieved using NPM, and it will be changed when updating these libraries.
+* the `dist` folder because it results from the transpilation of our code
+
+To ignore them, create a `.gitignore` file with the following content :
+
+....
+node_modules
+dist
+....
+
+We can now add all our files with Git and commit :
+
+[source,bash]
+----
+git add .
+$ git commit -m "Setup Typescript for backend"
+----
+
+==== Setting up Hot Reload with Nodemon
+
+It's nice to have a Hot Reload feature in the development phase. This means that our program will transpilate itself again and run every time our code changes.
+
+The `Nodemon` library will provide us with this feature. Let's add it :
+
+[source,bash]
+----
+npm add nodemon --save-dev
+----
+
+Now you have to define a `nodemon.json` file:
+
+source,json]
+----
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["src/**/*.spec.ts"],
+  "exec": "npm run start".
+}
+----
+
+A few explanations are necessary:
+
+* `watch` specifies the directory in which Nodemon will watch for file changes
+* `ignore` allows to avoid Hot Reload for certain types of files (here are the tests we will see later)
+* `exec`, the command to be executed at each change
+
+Let's check that everything works by running Nodemon by hand:
+
+[source,bash]
+----
+./node_modules/.bin/nodemon
+[nodemon] 2.0.6
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): src/**/*
+[nodemon] watching extensions: ts
+[nodemon] starting `npm run start`
+I said: Hello
+[nodemon] clean exit - waiting for changes before restart
+----
+
+Our code has been transpilated and executed, and we can see that Nodemon is still running and waiting for a change. So let's change our `main.ts` file:
+
+[source,bash]
+----
+[nodemon] restarting due to changes...
+[nodemon] starting `npm run start`
+Nodemon said: Hello
+[nodemon] clean exit - waiting for changes before restart
+----
+
+Now that everything works, we can modify the `package.json` file and add the command `nodemon`:l
+
+[source,json]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js",
+    "start:watch": "nodemon"
+  },
+  // ...
+}
+----
+
+We can now commit the changes:
 
 [source,bash]
 ----
 $ git add .
-$ git commit -m "Initial commit"
+$ git commit -m "Setup Nodemon"
 ----
 
-TIP: I have found that committing a message starting with a present tense verb, describing what the commit does and not what it did, helps when you are exploring the history of the project. I find it is more natural to read and understand. I’ll follow this practice until the end of the tutorial.
+==== Setting up the web server
 
-Lastly and as an optional step we setup the GitHub (I’m not going through that in here) project and push our code to the remote server: We first add the remote:
+So far, we have set up an environment that will allow us to avoid syntax and typing errors automatically with Typescript. It's time to make a real feature: the web server finally.
+
+There are several libraries to make a web server with Node.js. In my case, I recommend https://expressjs.com/fr/[Express.js] simply because it's the one with a bigger community, and it offers basic features. It also gives you the freedom to organize your code the way you want and offers a ton of plugins to add features on top of it.
+
+Adding it is very easy:
 
 [source,bash]
 ----
-$ git remote add origin git@github.com:madeindjs/market_place_api_6.git
+npm add express --save
 ----
 
-Then we push the code:
+We will also add the Typescript typings that will help your code editor a little bit:
 
 [source,bash]
 ----
-$ git push -u origin master
+npm add @types/express --save-dev
 ----
 
-As we move forward with the tutorial, I’ll be using the practices I follow on my daily basis, this includes working with `branches`, `rebasing`, `squash` and some more. For now, you don’t have to worry if some of these don’t sound familiar to you, I walk you through them in time.
+And now we can instantiate our server in the file `main.ts`.
+
+[source,ts]
+----
+// src/main.ts
+import express, {Request, Response} from 'express';
+
+const app = express();
+const port = 3000;
+
+app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
+app.listen(port, () => console.log(`listen on http://localhost:${port}/`));
+----
+
+You can start the server with Nodemon (if it is not already done) with `npm run start:watch`, and you will get the following result :
+
+....
+nodemon] restarting due to changes...
+[nodemon] starting `npm run start`.
+Server listen on http://localhost:3000/
+....
+
+So you can open your browser at http://localhost:3000 and see that everything works. Here is the result here using `curl`:
+
+[source,bash]
+----
+$ curl http://localhost:3000
+Hello World!
+----
+
+Now that everything is working, let's commit the changes:
+
+[source,bash]
+----
+$ git commit -am "Add express.js server"
+----
 
 == Conclusion
 
-It’s been a long way through this chapter, if you reach here let me congratulate you and be sure that from this point things will get better. So let’s get our hands dirty and start typing some code!
+It has been quite a long chapter. If you have arrived here, allow me to congratulate you. Things will get better from this point on. Let's start getting our hands on the code!

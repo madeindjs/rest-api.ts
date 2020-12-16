@@ -22,8 +22,7 @@ Dans les prochains chapitres, nous allons construire l’application en suivant 
 
 L’application finale sera une application de place de marché qui permettra à des vendeurs de mettre en place leur propre boutique en ligne. Les utilisateurs seront en mesure de passer des commandes, télécharger des produits et plus encore. Il existe de nombreuses options pour créer une boutique en ligne comme http://shopify.com/[Shopify], http://spreecommerce.com/[Spree] ou http://magento.com/[Magento].
 
-Tout au long de ce voyage (cela dépend de votre expertise), vous allez vous améliorer et être en mesure de mieux comprendre le fonctionnement des frameworks modernes. J’ai aussi pris certaines des pratiques de mon expérience de développeur Ruby.
-
+Tout au long de ce voyage (cela dépend de votre expertise), vous allez vous améliorer et être en mesure de mieux comprendre le fonctionnement des frameworks modernes. J’ai aussi pris certaines des pratiques de mon expérience de développeur.
 
 == Conventions sur ce livre
 
@@ -54,7 +53,7 @@ class User {
 }
 ----
 
-J’utiliserai quelques principes spécifiques à Ruby. C’est-à-dire:
+J’utiliserai quelques principes comme:
 
 * _"Éviter"_ signifie que vous n’êtes pas censé le faire.
 * _"Préférer"_ indique que parmi les deux options, la première est la plus appropriée.
@@ -153,8 +152,6 @@ $ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
 
 Maintenant que votre poste de travail est prêt, nous sommes maintenant en mesure de créer notre projet !
 
-// TODO reduce scope of what we'll do
-
 Dans cette section, nous allons poser l'architecture de notre application. Cela veut dire :
 
 * mise en place de l'ORM avec le connexion à la base de données
@@ -229,7 +226,7 @@ Nous installons donc Typescript en tant que dépendance de développement car il
 $ npm add typescript @types/node --save-dev
 ----
 
-Nous avons ajouté dex librairies :
+Nous avons ajouté deux librairies :
 
 * `typescript` qui va nous offrir les outils de *transpilation*
 * `@types/node` qui va ajouter la définition des types de Node.js
@@ -450,9 +447,7 @@ const app = express();
 const port = 3000;
 
 app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
-app.listen(port, () => {
-  console.log(`Server listen on http://localhost:${port}/`);
-);
+app.listen(port, () => console.log(`listen on http://localhost:${port}/`));
 ----
 
 Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `npm run start:watch` et vous allez avoir le résultat suivant :
