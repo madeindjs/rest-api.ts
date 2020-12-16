@@ -43,10 +43,6 @@ export class Product {
 
   @IsInt()
   @Min(0)
-  // @ValidateIf((product, value) => {
-  //   console.log(product);
-  //   return product.quantity >= 0;
-  // })
   @Column({type: 'integer', default: 0})
   quantity: number = 0;
 

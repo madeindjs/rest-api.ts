@@ -8,12 +8,13 @@ import {
   requestBody,
 } from 'inversify-express-utils';
 import {TYPES} from '../core/types.core';
-import {Order, OrderRepository} from '../entities/order.entity';
+import {Order} from '../entities/order.entity';
 import {Placement} from '../entities/placement.entity';
 import {Product} from '../entities/product.entity';
 import {User} from '../entities/user.entity';
 import {DatabaseService} from '../services/database.service';
 import {MailerService} from '../services/mailer.service';
+import {paginate} from '../services/paginate.service';
 import {ordersSerializer} from '../utils/serializers.utils';
 
 @controller('/orders', TYPES.FetchLoggedUserMiddleware)
@@ -25,12 +26,16 @@ export class OrdersController {
   ) {}
 
   @httpGet('/')
-  public async index({user}: Request & {user: User}) {
-    const repository = await this.databaseService.getRepository(
-      OrderRepository,
+  public async index(req: Request & {user: User}) {
+    const {manager} = await this.databaseService.getConnection();
+
+    return paginate(
+      manager
+        .createQueryBuilder(Order, 'o')
+        .where('o.user = :user', {user: req.user.id}),
+      ordersSerializer,
+      req,
     );
-    const orders = await repository.find({user});
-    return ordersSerializer.serialize(orders);
   }
 
   @httpPost('/')

@@ -19,7 +19,6 @@ export class DatabaseService {
     try {
       DatabaseService.connection = await createConnection();
       this.logger.log('INFO', `Connection established`);
-      console.log(process.env.TYPEORM_ENTITIES);
     } catch (e) {
       console.error(e);
       this.logger.log('ERROR', 'Cannot establish database connection', e);

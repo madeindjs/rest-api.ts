@@ -45,7 +45,7 @@ describe('ProductsController', () => {
       agent.get('/products').expect(200, done);
     });
 
-    it.only('should paginate results', async () => {
+    it('should paginate results', async () => {
       for (let i = 0; i < 20; i++) {
         await productRepository.save(generateProduct({published: true}));
       }

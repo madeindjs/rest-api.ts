@@ -22,7 +22,7 @@ export async function paginate<T>(
     .clone()
     .offset(offset)
     .limit(PER_PAGE)
-    .getRawMany();
+    .getMany();
 
   const getUrlForPage = page =>
     `${baseUrl}?${new URLSearchParams({...query, page})}`;

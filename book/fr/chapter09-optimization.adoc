@@ -122,7 +122,7 @@ export async function getPaginatedJSONResponse<T>(
     .clone()
     .offset(offset)
     .limit(PER_PAGE)
-    .getRawMany();
+    .getMany();
 
   const getUrlForPage = page =>
     `${baseUrl}?${new URLSearchParams({...query, page})}`;
@@ -186,7 +186,7 @@ Commitons tout cela et passons à la suite
 $ git add . && git commit -m "Paginate products"
 ----
 
-Maintenant que nous avons fait une superbe optimisation pour la route de la liste des produits, c’est au client de récupérer la `page` avec le bon paramètre `per_page` pour les enregistrements.
+Maintenant que nous avons fait une superbe optimisation pour la route de la liste des produits, c’est au client de parcourir les pages.
 
 _Commitons_ ces changements et continuons avec la liste des commandes.
 
@@ -196,81 +196,94 @@ $ git add .
 $ git commit -m "Adds pagination for products index action to optimize response"
 ----
 
-// -- current
-
 === Liste des commandes
 
-Maintenant, il est temps de faire exactement la même chose pour la route de la liste des commandes. Cela devrait être très facile à mettre en œuvre. Mais d’abord, ajoutons quelques tests au fichier `orders_controller_test.rb`:
+Maintenant, il est temps de faire exactement la même chose pour la route de la liste des commandes. Cela devrait être très facile à mettre en œuvre. Mais d’abord, ajoutons quelques tests:
 
-[source,ruby]
-.test/controllers/api/v1/orders_controller_test.rb
+[source,ts]
 ----
-# ...
-class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test 'should show orders' do
-    get api_v1_orders_url, headers: { Authorization: JsonWebToken.encode(user_id: @order.user_id) }, as: :json
-    assert_response :success
+// src/controllers/orders.controller.spec.ts
+// ...
+describe('OrderController', () => {
+  // ...
+  describe('index', () => {
+    // ...
+    it('should paginate results', async () => {
+      for (let i = 0; i < 20; i++) {
+        await orderRepository.save(generateOrder({user}));
+      }
 
-    json_response = JSON.parse(response.body)
-    assert_equal @order.user.orders.count, json_response['data'].count
-    assert_not_nil json_response.dig(:links, :first)
-    assert_not_nil json_response.dig(:links, :last)
-    assert_not_nil json_response.dig(:links, :prev)
-    assert_not_nil json_response.dig(:links, :next)
-  end
-  # ...
-end
+      await agent
+        .get('/orders')
+        .set('Authorization', jwt)
+        .expect(200)
+        .then(response => {
+          assert.strictEqual(response.body.data.length, 20);
+          assert.ok(response.body.links);
+        });
+    });
+  });
+  // ...
+});
 ----
 
 Et, comme vous vous en doutez peut-être déjà, nos tests ne passent plus:
 
 [source,bash]
 ----
-$ rake test
-......................................F
+$ npm test
+...
+  1 failing
 
-Failure:
-Api::V1::OrdersControllerTest#test_should_show_orders [test/controllers/api/v1/orders_controller_test.rb:28]:
-Expected nil to not be nil.
+  1) OrderController
+       index
+         should paginate results:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+21 !== 20
+
+      + expected - actual
+
+      -21
+      +20
 ----
 
-Transformons le rouge en vert:
+Faire passe ce test est là encore assez facile.
 
-[source,ruby]
-.app/controllers/api/v1/orders_controller.rb
+.Implémentation de la pagination pour les commandes
+[source,ts]
 ----
-class Api::V1::OrdersController < ApplicationController
-  include Paginable
-  # ...
+// src/controllers/orders.controller.ts
+// ...
+@controller('/orders', TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+  @httpGet('/')
+  public async index(req: Request & {user: User}) {
+    const {manager} = await this.databaseService.getConnection();
 
-  def index
-    @orders = current_user.orders
-                          .page(current_page)
-                          .per(per_page)
-
-    options = {
-      links: {
-        first: api_v1_orders_path(page: 1),
-        last: api_v1_orders_path(page: @orders.total_pages),
-        prev: api_v1_orders_path(page: @orders.prev_page),
-        next: api_v1_orders_path(page: @orders.next_page),
-      }
-    }
-
-    render json: OrderSerializer.new(@orders, options).serializable_hash
-  end
-  # ...
-end
+    return paginate(
+      manager
+        .createQueryBuilder(Order, 'o')
+        .where('o.user = :user', {user: req.user.id}),
+      ordersSerializer,
+      req,
+    );
+  }
+  // ...
+}
 ----
+
+La seule différence par rapport à l'implémentation du controleur des produit est que ici nous avons eu besoin de transformer `repository.find` en `queryBuilder`.
 
 Les tests devraient maintenant passer:
 
 [source,bash]
 ----
-$ rake test
-..........................................
-42 runs, 67 assertions, 0 failures, 0 errors, 0 skips
+$ npm test
+...
+  46 passing (781ms)
 ----
 
 Faisons un _commit_ avant d’avancer
@@ -280,176 +293,15 @@ Faisons un _commit_ avant d’avancer
 $ git commit -am "Adds pagination for orders index action"
 ----
 
-=== Factorisation de la pagination
-
-Si vous avez suivi ce tutoriel ou si vous êtes un développeur Rails expérimenté, vous aimez probablement garder les choses DRY. Vous avez sûrement remarqué que le code que nous venons d’écrire est dupliqué. Je pense que c’est une bonne habitude de nettoyer un peu le code une fois la fonctionnalité implémentée.
-
-Nous allons d’abord commencer par nettoyer ces tests que nous avons dupliqués dans le fichier `orders_controller_test.rb` et `products_controller_test.rb`:
-
-[source,ruby]
-----
-assert_not_nil json_response.dig(:links, :first)
-assert_not_nil json_response.dig(:links, :last)
-assert_not_nil json_response.dig(:links, :next)
-assert_not_nil json_response.dig(:links, :prev)
-----
-
-Afin de le factoriser, nous allons déplacer ces assertions dans le fichier `test_helper.rb` dans une méthode que nous utiliserons:
-
-[source,ruby]
-.test/test_helper.rb
-----
-# ...
-class ActiveSupport::TestCase
-  # ...
-  def assert_json_response_is_paginated json_response
-    assert_not_nil json_response.dig(:links, :first)
-    assert_not_nil json_response.dig(:links, :last)
-    assert_not_nil json_response.dig(:links, :next)
-    assert_not_nil json_response.dig(:links, :prev)
-  end
-end
-----
-
-Cet exemple partagé peut maintenant être utilisé pour remplacer les cinq tests des fichiers `orders_controller_test.rb` et `products_controller_test.rb`:
-
-[source,ruby]
-.test/controllers/api/v1/orders_controller_test.rb
-----
-# ...
-class Api::V1::OrdersControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test 'should show orders' do
-    get api_v1_orders_url, headers: { Authorization: JsonWebToken.encode(user_id: @order.user_id) }, as: :json
-    assert_response :success
-
-    json_response = JSON.parse(response.body, symbolize_names: true)
-    assert_equal @order.user.orders.count, json_response[:data].count
-    assert_json_response_is_paginated json_response
-  end
-  # ...
-end
-----
-
-[source,ruby]
-.test/controllers/api/v1/products_controller_test.rb
-----
-# ...
-class Api::V1::ProductsControllerTest < ActionDispatch::IntegrationTest
-  # ...
-  test 'should show products' do
-    get api_v1_products_url, as: :json
-    assert_response :success
-
-    json_response = JSON.parse(response.body, symbolize_names: true)
-    assert_not_nil json_response.dig(:links, :first)
-    assert_not_nil json_response.dig(:links, :last)
-    assert_not_nil json_response.dig(:links, :next)
-    assert_not_nil json_response.dig(:links, :prev)
-  end
-  # ...
-end
-----
-
-Et les deux tests devraient passer.
-
-[source,bash]
-----
-$ rake test
-..........................................
-42 runs, 71 assertions, 0 failures, 0 errors, 0 skips
-----
-
-Maintenant que nous avons fait cette simple factorisation pour les tests, nous pouvons passer à l’implémentation de la pagination pour les contrôleurs et nettoyer les choses. Si vous vous souvenez de l’action d’indexation pour les deux contrôleurs de produits et de commandes, ils ont tous les deux le même format de pagination. Alors déplaçons cette logique dans une méthode appelée `get_links_serializer_options` sous le fichier `paginable.rb`, de cette façon nous pouvons y accéder sur tout contrôleur qui aurait besoin de pagination.
-
-[source,ruby]
-.app/controllers/concerns/paginable.rb
-----
-module Paginable
-  protected
-
-  def get_links_serializer_options links_paths, collection
-    {
-      links: {
-        first: send(links_paths, page: 1),
-        last: send(links_paths, page: collection.total_pages),
-        prev: send(links_paths, page: collection.prev_page),
-        next: send(links_paths, page: collection.next_page),
-      }
-    }
-  end
-  # ...
-end
-----
-
-Il suffit ensuite d’utiliser cette méthode dans nos deux contrôleurs:
-
-[source,ruby]
-.app/controllers/api/v1/orders_controller.rb
-----
-class Api::V1::OrdersController < ApplicationController
-  include Paginable
-  # ...
-
-  def index
-    @orders = current_user.orders
-                          .page(current_page)
-                          .per(per_page)
-
-    options = get_links_serializer_options('api_v1_orders_path', @orders)
-
-    render json: OrderSerializer.new(@orders, options).serializable_hash
-  end
-  # ...
-end
-----
-
-[source,ruby]
-.app/controllers/api/v1/products_controller.rb
-----
-class Api::V1::ProductsController < ApplicationController
-  include Paginable
-  # ...
-
-  def index
-    @products = Product.page(current_page)
-                       .per(per_page)
-                       .search(params)
-
-    options = get_links_serializer_options('api_v1_products_path', @products)
-
-    render json: ProductSerializer.new(@products, options).serializable_hash
-  end
-  # ...
-end
-----
-
-Lançons les tests pour nous assurer que tout fonctionne:
-
-[source,bash]
-----
-$ rake test
-..........................................
-42 runs, 71 assertions, 0 failures, 0 errors, 0 skips
-----
-
-Ce serait un bon moment pour _commiter_ les changements et passer à la prochaine section sur la mise en cache.
-
-[source,bash]
-----
-$ git commit -am "Factorize pagination"
-----
-
-
 == Mise en cache
 
-Il y a actuellement une implémentation pour faire de la mise en cache avec la gemme `fast_jsonapi` qui est vraiment facile à manipuler. Bien que dans les anciennes versions de la gemme, cette implémentation peut changer, elle fait le travail.
+Nous pouvons facilement mettre e place une mise en cache simple pour certains de nos _endpoint_. L'implémentation sera vraiment très facile grâce à TypeORM.
 
-Si nous effectuons une demande à la liste des produits, nous remarquerons que le temps de réponse prend environ 174 millisecondes en utilisant cURL
+Si nous effectuons une demande à la liste des produits, nous remarquerons que le temps de réponse prend environ 20 millisecondes en utilisant cURL
 
 [source,bash]
 ----
-$ curl -w 'Total: %{time_total}\n' -o /dev/null -s http://localhost:3000
+$ curl -w 'Total: %{time_total}\n' -o /dev/null -s http://localhost:3000/products
 Total: 0,137088
 ----
 

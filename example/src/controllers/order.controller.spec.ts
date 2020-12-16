@@ -60,6 +60,21 @@ describe('OrderController', () => {
         .then(({body}) =>
           assert.ok(body.data.some(({id}) => id === String(order.id))),
         ));
+
+    it('should paginate results', async () => {
+      for (let i = 0; i < 20; i++) {
+        await orderRepository.save(generateOrder({user}));
+      }
+
+      await agent
+        .get('/orders')
+        .set('Authorization', jwt)
+        .expect(200)
+        .then(response => {
+          assert.strictEqual(response.body.data.length, 20);
+          assert.ok(response.body.links);
+        });
+    });
   });
 
   describe('show', () => {
