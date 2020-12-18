@@ -134,7 +134,7 @@ $ nvm install node
 
 ==== Bases de données
 
-Je vous recommande fortement d’installer http://www.postgresql.org/[Postgresql] pour gérer vos bases de données. Mais ici, pour plus de simplicité, nous allons utiliser http://www.sqlite.org/[SQlite]. Si vous utilisez Mac OS vous n’avez pas de bibliothèques supplémentaires à installer. Si vous êtes sous Linux, ne vous inquiétez pas, je vous guide:
+Je vous recommande fortement d’installer http://www.postgresql.org/[Postgresql] pour gérer vos bases de données. Mais ici, pour plus de simplicité, nous allons utiliser http://www.sqlite.org/[SQLite]. Si vous utilisez Mac OS vous n’avez pas de bibliothèques supplémentaires à installer. Si vous êtes sous Linux, ne vous inquiétez pas, je vous guide:
 
 [source,bash]
 ----

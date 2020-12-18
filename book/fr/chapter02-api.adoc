@@ -3,13 +3,6 @@
 
 Dans ce chapitre, je vais vous donner les grandes lignes de l’application. Vous devriez avoir lu le chapitre précédent. Si ce n’est pas le cas, je vous recommande de le faire.
 
-Vous pouvez cloner le projet jusqu’ici avec:
-
-[source,bash]
-----
-$ git checkout tags/checkpoint_chapter02
-----
-
 Pour résumer, nous avons simplement généré notre application Rails et réalisé notre premier commit.
 
 
@@ -66,10 +59,7 @@ Cela peut sembler compliqué mais au fur et à mesure que nous avancerons dans l
 
 === L'injection de dépendance
 
-
 Dans cette section nous allons mettre en place le système d'*injection de dépendance*. Si vous n'en avez jamais entendu parler, il s'agit très certainement de la partie la plus abstraite de ce chapitre.
-
-// === Présentation de l'injection de dépendance
 
 Je vais essayer ici de vous résumer ce qu'est l'injection de dépendance et à quoi ça sert. Imaginons une classe `User` qui a besoin d'une classe `Database` pour être sauvegardé. On serait tenter d'initialiser la connection à la base de donnée dans le constructeur de l'utilisateur :
 
@@ -188,7 +178,7 @@ const container = new Container();
 const user = container.getUser();
 ----
 
-Le code est plus long mais tout devient découpé. Rassurez-vous, nous n'allons pas implémenter tout cela à la mains. De très bonne librairies existent. Celle que j'ai choisi est https://github.com/inversify/InversifyJS[Inversify].
+Le code est plus long mais tout devient découpé. Rassurez-vous, nous n'allons pas implémenter tout cela à la main. De très bonne librairies existent. Celle que j'ai choisi est https://github.com/inversify/InversifyJS[Inversify].
 
 Dans cette section nous allons mettre en place concrètement un système d'injection de dépendance complet.
 
@@ -379,14 +369,6 @@ Si tout fonctionne comme avant, vous pouvez commiter les changements :
 $ git add .
 $ git commit -m "Add inversify"
 ----
-
-== Mise en place des tests
-
-// TODO
-
-== Les variables de configuration
-
-
 
 == Conclusion
 

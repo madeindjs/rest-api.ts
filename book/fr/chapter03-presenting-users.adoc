@@ -1,17 +1,9 @@
 [#chapter03-presenting-users]
 = Présentation des utilisateurs
 
-
-Dans le chapitre précédent, nous avons réussi à mettre en place les bases de la configuration de notre application.
+Dans le chapitre précédent, nous avons réussi à mettre en place les bases de la configuration de notre application. Ce chapitre va perfectionner cette base et ajouter la couche _Model_ qui sera en charge de stocker les données et aussi d'ajouter les premiers tests.
 
 Dans les prochains chapitres, nous traiterons l’authentification des utilisateurs à l’aide de jetons d’authentification ainsi que la définition de permissions pour limiter l’accès aux utilisateurs connectés. Nous relierons ensuite les produits aux utilisateurs et leur donnerons la possibilité de passer des commandes.
-
-// Vous pouvez cloner le projet jusqu’à ce point avec:
-
-// [source,bash]
-// ----
-// $ git checkout tags/checkpoint_chapter03
-// ----
 
 Comme vous pouvez déjà l’imaginer, il existe de nombreuses solutions d’authentification pour Node.js comme http://www.passportjs.org/[Passport.js], https://github.com/ianstormtaylor/permit[Permit] et https://github.com/simov/grant[Devise]. Ces solutions sont des librairies clé en main, c'est à dire qu'elles permettent de gérer tout un tas de choses comme l'authentification, la fonctionnalité d'oubli de mot de passe, la validation, etc..
 
@@ -19,19 +11,11 @@ Nous ne les utiliserons pas afin de mieux appréhender le mécanisme d'authentif
 
 Ce chapitre sera complet. Il sera peut-être long mais je vais essayer d’aborder autant de sujets que possible. N’hésitez pas à vous prendre un café et allons-y. A la fin de ce chapitre, vous aurez construit toute la logique des utilisateurs ainsi que la validation et la gestion des erreurs.
 
-// Nous voulons suivre ce chapitre, c’est donc un bon moment pour créer une nouvelle branche:
-
-// [source,bash]
-// ----
-// $ git checkout -b chapter03
-// ----
-
-// NOTE: Assurez-vous simplement d’être sur la branche `master` avant.
 == Mise en place de TypeORM
 
 Ici nous allons mettre e place la couche _Model_ du _design patern_ MVC. Il s'agit de la couche relative à la base de données.
 
-Afin d'accéder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main. Il nous permet aussi d'ajouter une couche d'abstraction au type de base de données et nous permet de ne pas nous soucier des différences entre PostgreSQL et SQlite par exemple.
+Afin d'accéder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main. Il nous permet aussi d'ajouter une couche d'abstraction au type de base de données et nous permet de ne pas nous soucier des différences entre PostgreSQL et SQLite par exemple.
 
 Il existe plusieurs ORM pour Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] et https://typeorm.io/[TypeORM]. J'ai choisis le dernier car c'est celui qui s'intègre le mieux avec Typescript. Il propose aussi une approche https://typeorm.io/#/active-record-data-mapper[Active Record ET Data Mapper] que j'apprécie beaucoup.
 
@@ -55,9 +39,9 @@ Nous allons maintenant générer notre fichier de configuration. Par défault, `
 $ touch .env
 ----
 
-Et commençons par définir https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables[les variables d'environnement de TypeORM] pour une connexion basique à une base de donnée SQlite:
+Et commençons par définir https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables[les variables d'environnement de TypeORM] pour une connexion basique à une base de donnée SQLite:
 
-.La configuration de base de TypeORM pour une connexion à SQlite
+.La configuration de base de TypeORM pour une connexion à SQLite
 [source,env]
 ----
 TYPEORM_CONNECTION=sqlite
@@ -71,7 +55,7 @@ Comme vous pouvez le voir on définis que nous utiliserons Sqlite et que la base
 
 Il ne nous reste plus qu'a configurer `dotenv` pour charger ce fichier. Pour faire cela, j'utilise le _flag_ `--require` de Node.js qui permet de pré-charger une librairie. Il suffit donc de modifier le `package.json`:
 
-.La configuration de base de TypeORM pour une connexion à SQlite
+.La configuration de base de TypeORM pour une connexion à SQLite
 [source,json]
 ----
 {
@@ -241,6 +225,8 @@ export class UsersController {
   }
 }
 ----
+
+// current
 
 Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau contrôleur dans le container:
 
@@ -904,7 +890,7 @@ Quelques explications sur cette commande:
 * `-r dotenv/config` charge la librairie `dotenv` pour ainsi avoir les variables d'environnement de TypeORM
 * `dotenv_config_path` va charger un fichier `.env` particulier que nous allons voir juste après
 
-Lorsque nous testons notre application, nous ne voulons pas polluer notre database avec des données que nous utilisons pour des tests. C'est donc une bonne pratique de créer une base dédiée. Dans notre cas, nous allons utiliser une base SQlite _in memory_. C'est a dire qu'elle n'est pas stockée sur lke disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
+Lorsque nous testons notre application, nous ne voulons pas polluer notre database avec des données que nous utilisons pour des tests. C'est donc une bonne pratique de créer une base dédiée. Dans notre cas, nous allons utiliser une base SQLite _in memory_. C'est a dire qu'elle n'est pas stockée sur lke disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
 
 [source,env]
 ----

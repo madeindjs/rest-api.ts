@@ -135,7 +135,7 @@ nvm install node
 
 ==== Database
 
-I strongly recommend that you install http://www.postgresql.org/[Postgresql] to manage your databases. But here, for simplicity, we will use http://www.sqlite.org/[SQlite]. If you are using Mac OS you don't have any additional libraries to install. If you are using Linux, don't worry, I'll guide you:
+I strongly recommend that you install http://www.postgresql.org/[Postgresql] to manage your databases. But here, for simplicity, we will use http://www.sqlite.org/[SQLite]. If you are using Mac OS you don't have any additional libraries to install. If you are using Linux, don't worry, I'll guide you:
 
 [source,bash]
 ----

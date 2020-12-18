@@ -1,217 +1,374 @@
 [#chapter02-api]
 = The API
+In this chapter, I will give you an overview of the application. You should have read the previous chapter. If you haven't, I recommend you do so.
 
-In this section, I’ll outline the application. By now you should have read the previous chapter. If you did not read it I recommend you to do it.
-
-You can clone the project until this point with:
-
-[source,bash]
-----
-$ git checkout tags/checkpoint_chapter02
-----
-
-To summarize, we simply generated our Rails application and made our first commit.
-
+To summarize, we simply generated our Rails application and performed our first commit.
 
 == Planning the application
 
-As we want to go simple with the application it consists of five models. Don’t worry if you don’t fully understand what is going on. We will review and build each of these resources as we move on with the tutorial.
+Our application will be quite simple. It will consist of five models. Don't worry if you don't understand what's going on. We will review and develop each of these resources as we move forward with the tutorial.
 
-image:data_model.png[Schema of links betweens models]
+image:data_model.png[Diagram of the links between the different models]
 
-In brief, the `user` will be able to place many `orders`, upload multiple `products` which can have many `images` or `comments` from other users on the app.
+In short, we have the user (`User`) who will be able to place multiple orders (`Order`), download multiple products (`Product`) that may have many images (`Image`) or comments (`Comment`) of other users on the application.
 
-We are not going to build views for displaying or interacting with the API, so not to make this a huge tutorial, I’ll let that to you. There are plenty of options out there like javascript frameworks (https://angularjs.org/[Angular], https://vuejs.org/[Vue.js], https://reactjs.org/[React.js]).
+We are not going to build an interface for interaction with the API to not overload the tutorial. If you want to build views, there are many options, such as JavaScript frameworks (https://angularjs.org/ [Angular], https://vuejs.org/ [Vue.JS], https://reactjs.org/ [React]) or mobile libraries (https://github.com/AFNetworking/AFNetworking [AFNetworking]).
 
-By this point you must be asking yourself:
+At this stage, you should ask yourself this question:
 
-> all right but I need to explore or visualize the API we are going to be building?
+> Okay, but I need to explore and visualize the API I'm going to build, right?
 
-That’s fair. Probably if you google something related to API exploring, an application called https://www.getpostman.com/[Postman] will pop. It is great software but we won’t be using that anyway because we'll use *cURL* which allows anybody to reproduce requests on any computer.
+That's right. If you _google_ something related to exploring an API, you'll find many results. For example, you can use https://www.getpostman.com/ [Postman], which has become a must-have. But we're not going to use it. In our case, we will use *cURL*, which is a command line tool available almost everywhere.
 
-== Setting the API
+== Set up the API
 
-An API is defined by http://en.wikipedia.org/wiki/Application_programming_interface[wikipedia] as _an application programming interface (API) specifies how some software components should interact with each other._ In other words, the way systems interact with each other through a common interface, in our case a web service built with JSON. There are other kinds of communication protocols like SOAP, but we are not covering that in here.
+An API is defined by https://fr.wikipedia.org/wiki/Interface_de_programmation [wikipedia] as _an Application Programming Interface (API) standardized set of components that serves as a front end through which one software provides services to other software_. In other words, it is a way in which systems interact with each other via an interface (in our case, a web service built with JSON). There are other communication protocols, such as SOAP, but we are not talking about them here.
 
-JSON, as the Internet media type standard, is widely accepted, readable, extensible, and easy to implement. Many of the current frameworks consume JSON APIs by default (https://angularjs.org/[Angular] or https://vuejs.org/[Vue.js] for example). There are also great libraries for Objective-C too like https://github.com/AFNetworking/AFNetworking[AFNetworking] or http://restkit.org/[RESTKit]. There are probably good solutions for Android but because of my lack of experience on that development platform, I might not be the right person to recommend something.
+JSON has become a must as a file format for the Internet because of its readability, scalability, and ease of implementation. Many JavaScript frameworks use it as a default protocol, such as https://angularjs.org/ [Angular] or http://emberjs.com/ [EmberJS]. Other large Objective-C libraries use it like https://github.com/AFNetworking/AFNetworking [AFNetworking] or http://restkit.org/ [RESTKit]. There are probably good solutions for Android, but I can't recommend anything due to my lack of experience on this development platform.
 
-All right. So we are building our API with JSON. There are many ways to achieve this. The first thing that comes to mind would be just to start adding routes defining the endpoints. This may be bad because they may not have a http://www.w3.org/2005/Incubator/wcl/matching.html[URI pattern] clear enough to know which resource is being exposed. The protocol or structure I’m talking about is http://en.wikipedia.org/wiki/Representational_state_transfer[REST] which stands for Representational State Transfer and by Wikipedia definition
+So we will use the JSON format to build our API. The first idea that might come to your mind would be to start creating bulk routes. The problem is that they wouldn't be standardized. A user wouldn't be able to guess what resource is returned by a route.
+
+That's why a standard exists: *REST* _(Representational State Transfer)_. REST imposes a standard for routes that create, read, update, or delete information on a server using simple HTTP calls. It is an alternative to more complex mechanisms such as SOAP, CORBA, and RPC. A REST call is simply an HTTP GET request to the server.
 
 [source,soap]
 ----
 aService.getUser("1")
 ----
 
-And in REST you may call a URL with a specific HTTP request, in this case with a GET request: <http://domain.com/resources_name/uri_pattern>
+And with REST, you can call a URL with a specific HTTP request. In this case, with a GET request:
 
-RESTful APIs must follow at least three simple guidelines:
+....
+http://domain.com/resources_name/uri_pattern
+....
 
-* A base http://en.wikipedia.org/wiki/Uniform_resource_identifier[URI], such as `http://example.com/resources/`.
-* An Internet media type to represent the data, it is commonly JSON and is commonly set through headers exchange.
-* Follows the standard http://en.wikipedia.org/wiki/HTTP_method#Request_methods[HTTP Methods] such as GET, POST, PUT, DELETE.
-** *GET*: Reads the resource or resources defined by the URI pattern
-** *POST*: Creates a new entry into the resources collection
-** *PUT*: Updates a collection or member of the resources
-** *DELETE*: Destroys a collection or member of the resources
+The _RESTful_ APIs must follow at least three rules:
 
-This might not be clear enough or may look like a lot of information to digest but as we move on with the tutorial, hopefully, it’ll get a lot easier to understand.
+* A basic URI like http://example.com/resources/
+* A type of Internet media to represent data is commonly JSON and is commonly defined by the exchange of headers.
+* Follow standard https://fr.wikipedia.org/wiki/Hypertext_Transfer_Protocol [HTTP] methods such as GET, POST, PUT, DELETE.
+** *GET*: Reads the resource(s) defined by the URI model.
+* *POST*: Creates a new entry in the resource collection
+*PUT*: Update a collection or resource member
+* *DELETE*: Destroys a collection or a member of the resources.
 
-=== Routes, Constraints and Namespaces
+This may sound complicated, but it will become much easier to understand as we go through the tutorial.
 
-Before start typing any code, we prepare the code with git. We’ll be using a branch per chapter, upload it to GitHub and then merge it on `master` branch. So let’s get started open the terminal, `cd` to the `market_place_api` directory and type in the following:
+== Initialization of the application
+
+=== Dependency injection
+
+In this section, we will set up the *dependency injection* system. If you have never heard of it, this is probably the most abstract part of this chapter.
+
+Here I will try to summarize what Addiction Injection is and what it is used for. Let's imagine a `User' class that needs a `Database' class to be saved. We would try to initialize the database connection in the user's constructor:
+
+
+.Une mauvaise implémentation n'utilisant pas l'injection de dépendance
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    // do some stuff here
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+This causes several problems:
+
+1. The `User` class depends on the `Database` class. If you change the implementation of the `Database` class, you will have to change the `User` class.
+2. the code is much less testable because to test a user, I need to know how the user class works.
+
+To accentuate the problem, let's add a `Logger` class that allows you to log events in the app. Let's say we need to log the database connection. The code becomes
+
+
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    const logger = new Logger();
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+We can see that the situation is getting worse because all classes are becoming dependent on each other. To correct this, we are going to inject the `Database` class directly into the `User` constructor:
+
+.The `Database' class is now injected in the constructor.
+[source,ts]
+----
+class Logger {/* ... */}
+
+class Database {
+  constructor(logger: Logger, connectionString: string) {
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  constructor(private database: Database) {}
+}
+
+const logger = new Logger();
+const database = new Database(logger, "db.sqlite");
+const user = new User(database);
+----
+
+This code becomes stronger because the `User`, `Database`, and `Logger` classes are decoupled.
+
+> OK, but it becomes harder to instantiate a `User`.
+
+Yes, it does. That's why we use a `Container` that will record the classes that can be injected and offer us to create instances easily:
+
+
+[source,ts]
+----
+class Logger {/* ... */}
+class Database {/* ... */}
+class User {/* ... */}
+
+class Container {
+  getLogger(): Logger {
+    return new Logger();
+  }
+
+  getDatabase(): Database {
+    return new Database(this.getLogger(), "db.sqlite");
+  }
+
+  getUser(): User {
+    return new User(this.getDatabase());
+  }
+}
+
+const container = new Container();
+const user = container.getUser();
+----
+
+The code is longer, but everything gets cut out. Rest assured, we are not going to implement all this by hand. Excellent libraries exist. The one I chose is https://github.com/inversify/InversifyJS [Inversify].
+
+In this section, we are going to concretely implement a complete addiction injection system.
+
+We will set up a Logger that can be injected into all the classes of our application. It will allow us to handle HTTP requests, for example, but also many other events.
+
+So let's install `inversify`:
 
 [source,bash]
 ----
-$ git checkout -b chapter02
-Switched to a new branch 'chapter02'
+npm install inversify --save
 ----
 
-We are only going to be working on the `config/routes.rb`, as we are just going to set the constraints and the default response `format` for each request.
+And let's create a simple event logging class:
 
-[source,ruby]
-.config/routes.rb
+NOTE: We could use a library like https://github.com/winstonjs/winston[Winston] or https://www.npmjs.com/package/morgan[Morgan], but for the example, I will create a fairly basic class:
+
+
+[source,ts]
 ----
-Rails.application.routes.draw do
-  # ...
-end
+// src/services/logger.service.ts
+export class Logger {
+  public log(
+    level: 'DEBUG' | 'INFO' | 'ERROR',
+    message: string,
+    meta: any = {},
+  ): void {
+    const dateStr = new Date().toISOString();
+    const metaStr = JSON.stringify(meta);
+    console.log(`${dateStr} - ${level} - ${message} - ${metaStr}`);
+  }
+}
 ----
 
-First of all, erase all commented code that comes within the file, we are not gonna need it. Then commit it, just as a warm-up:
+To make it injectable, you need to add a `@injectable` decorator to it. This decorator will simply https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[add metadata] to our class so that it can be injected into our future dependencies.
+
+[source,ts]
+----
+import {injectable} from 'inversify';
+
+@injectable()
+export class Logger {/* ... */}
+----
+
+And there you go. Now we just have to create the container that will register this service. https://github.com/inversify/InversifyJS#installation [The documentation] recommends creating a `TYPES` object that will simply store the identifiers of our services. We will create a `core` folder that will contain all the code that is transversal to our entire application.
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {Logger: Symbol.for('Logger')};
+----
+
+NOTE: A https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol[`Symbol`] is a primitive type that allows you to have a unique reference.
+
+Now we can use this symbol to save our logger in a new `container.core.ts` file. Just instantiate a `Container` and add our service with the `bind()` method. We then export this instance for use in the application:
+
+[source,ts]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
+import {Logger} from '../services/logger.service';
+import {TYPES} from './types.core';
+
+export const container = new Container();
+container.bind(TYPES.Logger).to(Logger);
+----
+
+And there you go.
+
+=== Creating a controller
+
+Let's leave aside this class that we will use later in our first controller. Controllers are part of the _design patern_ *MVC: Model, View, Controller*. Their purpose is to intercept the request and call the dedicated services. There is an official Inversify library to integrate dependency injection directly into our controllers: https://github.com/inversify/inversify-express-utils[`inverisfy-express-utils`].
+
+We start by installing the library. We'll also add `body-parser`, which will allow us to process the HTTP request parameters (we'll talk about this later).
+
+To install it, it's straightforward. Just follow the https://github.com/inversify/inversify-express-utils[official documentation]. So we start by installing some libraries.
 
 [source,bash]
 ----
-$ git add config/routes.rb
-$ git commit -m "Removes comments from the routes file"
+npm install inversify-express-utils reflect-metadata body-parse --save
 ----
 
-We are going to isolate the API controllers under a namespace. With Rails this is fairly simple: you just have to create a folder under the `app/controllers` named `api`. The name is important because that's the namespace we’ll use for managing the controllers for the API endpoints.
+* `reflet-metadata` allows Inversify to add metadata on our class. This import must be located at the very beginning of the first file.
+* `body-parse` will give us the possibility to extract parameters from HTTP requests (we'll talk about it later).
+
+Before writing our first controller, it is necessary to make some modifications to the creation of our HTTP server. Let's create a new file `core/server.core.ts`, which will simply define our HTTP server with `inversify-express-utils`:
+
+.The definition of our HTTP server with `inversify-express-utils`.
+[source,ts]
+----
+// src/core/server.ts
+import * as bodyParser from 'body-parser';
+import {InversifyExpressServer} from 'inversify-express-utils';
+import {container} from './container.core';
+
+export const server = new InversifyExpressServer(container);
+server.setConfig(app => {
+  app.use(bodyParser.urlencoded({extended: true}));
+  app.use(bodyParser.json());
+});
+----
+
+As you can see, we are now using an instance of `InversifyExpressServer`. The `setConfig` method allows you to add _middleware_ (we'll return to this later). Let's move on to the `main.ts` file, which we'll modify a bit:
+
+[source,ts]
+----
+// src/main.ts
+import 'reflect-metadata';
+import {container} from './core/container.core';
+import {server} from './core/server';
+import {TYPES} from './core/types.core';
+
+const port = 3000;
+
+server
+  .build()
+  .listen(port, () => console.log(`Listen on http://localhost:${port}/`));
+----
+
+And there you go. Now we can tackle our first controller.
+
+The controller is a class like any other. It simply goes to the `@controller` decorator. This decorator will also declare this controller as `@injectable` but also offer us special features.
+
+Let's go straight to the implementation to make it more meaningful:
+
+. Creating the first controller with a single route
+[source,ts]
+----
+// src/controllers/home.controller.ts
+import {controller, httpGet} from 'inversify-express-utils';
+
+@controller('/')
+export class HomeController {
+
+  @httpGet('')
+  public index(req: Request, res: Response) {
+    return res.send('Hello world');
+  }
+}
+----
+
+As you can see, the implementation is obvious, thanks to the decorators:
+
+* The `@controller("/")` tells us that all the routes of this controller will be prefixed with `/'.
+* The second decorator `@httpGet("/")` defines that this method will be accessible on the URL `/` via the HTTP POST verb.
+
+Now let's try to inject the `Logger` to display a message when this route is used:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {TYPES} from '../core/types.core';
+import {Logger} from '../services/logger.service';
+
+@controller("/")
+export class HomeController {
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  @httpGet('')
+  public index(req: Request, res: Response) {
+    this.logger.log('INFO', 'Get Home.index');
+    return res.send('Hello world');
+  }
+}
+----
+
+There you go!
+
+The `@inject` decorator takes care of everything. Just specify the symbol. It's magic.
+
+The last step is to manually import this controller into the container. It's really very easy to do:
+
+[source,diff]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
++ import '../controllers/home.controller';
+import '../controllers/users.controller';
+// ...
+----
+
+You can now start the server with `npm run start` or wait for the transpilation to be done automatically if you have not stopped the previous server.
+
+If everything works as before, you can commit the changes:
 
 [source,bash]
 ----
-$ mkdir app/controllers/api
-----
-
-Then we add that namespace into our _routes.rb_ file:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  # API definition
-  namespace :api do
-    # We are going to list our resources here
-  end
-end
-----
-
-By defining a namespace under the `routes.rb` file. Rails will automatically map that namespace to a directory matching the name under the _controllers_ folder, in our case the `api/`` directory.
-
-.Rails media types supported
-****
-Rails can handle up to 35 different media types, you can list them by accessing the SET class under de Mime module:
-
-[source,bash]
-----
-$ rails c
-2.6.3 :001 > Mime::SET.collect(&:to_s)
- => ["text/html", "text/plain", "text/javascript", "text/css", "text/calendar", "text/csv", "text/vcard", "text/vtt", "image/png", "image/jpeg", "image/gif", "image/bmp", "image/tiff", "image/svg+xml", "video/mpeg", "audio/mpeg", "audio/ogg", "audio/aac", "video/webm", "video/mp4", "font/otf", "font/ttf", "font/woff", "font/woff2", "application/xml", "application/rss+xml", "application/atom+xml", "application/x-yaml", "multipart/form-data", "application/x-www-form-urlencoded", "application/json", "application/pdf", "application/zip", "application/gzip"]
-----
-****
-
-This is important because we are going to be working with JSON, one of the built-in http://en.wikipedia.org/wiki/Internet_media_type[MIME types] accepted by Rails, so we just need to specify this format as the default one:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  # API definition
-  namespace :api, defaults: { format: :json }  do
-    # We are going to list our resources here
-  end
-end
-----
-
-Up to this point, we have not made anything crazy. What we want to generate is a _base_uri_ which includes the API version. But let's commit changes before going to the next section:
-
-[source,bash]
-----
-$ git add config/routes.rb
-$ git commit -m "Set the routes constraints for the api"
-----
-
-== Api versioning
-
-At this point, we should have a nice routes mapping using a namespace. Your `routes.rb` file should look like this:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  # API definition
-  namespace :api, defaults: { format: :json }  do
-    # We are going to list our resources here
-  end
-end
-----
-
-Now it is time to set up some other constraints for versioning purposes. You should care about versioning your application from the beginning since this will give a better structure to your API, and when changes need to be done, you can give developers who are consuming your API the opportunity to adapt for the new features while the old ones are being deprecated. There is an excellent http://railscasts.com/episodes/350-rest-api-versioning[railscast] explaining this.
-
-In order to set the version for the API, we first need to add another directory under the `api` we created:
-
-[source,bash]
-----
-$ mkdir app/controllers/api/v1
-----
-
-This way we can namespace our api into different versions very easily, now we just need to add the necessary code to the `routes.rb` file:
-
-[source,ruby]
-.config/routes.rb
-----
-Rails.application.routes.draw do
-  # Api definition
-  namespace :api, defaults: { format: :json }  do
-    namespace :v1 do
-      # We are going to list our resources here
-    end
-  end
-end
-----
-
-By this point, the API is now scoped via the URL. For example, with the current configuration, an endpoint for retrieving a product would be like <http://localhost:3000/v1/products/1>.
-
-
-.Common API patterns
-****
-You can find many approaches to set up the _base_uri_ when building an API following different patterns, assuming we are versioning our api:
-
-* `api.example.com/`: In my opinion, this is the way to go, gives you a better interface and isolation, and in the long term can help you to http://www.makeuseof.com/tag/optimize-your-dns-for-faster-internet/[quickly scalate]
-* `example.com/api/`: This pattern is very common, and it is actually a good way to go when you don’t want to namespace your API under a subdomain
-* `example.com/api/v1`: it seems like a good idea, by setting the version of the API through the URL seems like a more descriptive pattern, but this way you enforce the version to be included on URL on each request, so if you ever decide to change this pattern, this becomes a problem of maintenance in the long-term
-
-There are some practices in API building that recommend not to version the API via the URL. That's true. The developer should not be aware of the version he's using. For the sake of simplicity, I have chosen to set aside this convention, which we will be able to apply in a second phase.
-****
-
-It is time to _commit_:
-
-[source,bash]
-----
-$ git commit -am "Set the versioning namespaces for API"
-----
-
-We are at the end of our chapter. It is therefore time to apply all our modifications to the master branch by making a _merge_. To do this, we place ourselves on the `master` branch and we _merge_ `chapter02`:
-
-[source,bash]
-----
-$ git checkout master
-$ git merge chapter02
+git add .
+git commit -m "Add inversify"
 ----
 
 == Conclusion
 
-It’s been a long way, I know, but you made it, don’t give up this is just our small scaffolding for something big, so keep it up. In the meantime and if you feel curious there are some gems that handle this kind of configuration:
-
-* https://github.com/Sutto/rocket_pants[RocketPants]
-* https://github.com/bploetz/versionist[Versionist]
-
-I’m not covering those in this book, since we are trying to learn how to actually implement this kind of functionality, but it is good to know though. By the way, the code up to this point is https://github.com/madeindjs/market_place_api_6/releases/tag/checkpoint_chapter03[here].
+It took a bit long, I know, but you did it! Don't give up. It's just our little foundation for something big, so keep going.
