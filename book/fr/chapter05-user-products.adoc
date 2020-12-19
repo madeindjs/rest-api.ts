@@ -263,6 +263,10 @@ Maintenant que notre test est en place, il est temps de faire passer le test.
 
 Tout comme nous l'avons fait avec les utilisateurs, nous allons créer un _middleware_ `FetchProductMiddleware`. Il s'occupera juste de récupérer le produit en fonction du paramètre `productId` et de l'injecter dans la requête:
 
+
+// -- current
+
+
 [source,ts]
 ----
 // src/middlewares/fetchUser.middleware.ts

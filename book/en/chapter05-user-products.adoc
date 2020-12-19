@@ -1,2 +1,264 @@
 [#chapter05-user-products]
 = User's products
+
+In the previous chapter, we implemented the authentication mechanism that we will use throughout the application.
+
+At the moment, we have a straightforward implementation of the `User' model, but the moment of truth has come. We are going to customize the JSON output and add a second resource: the user's products. These are the elements that the user will sell in the application.
+
+If you are familiar with an ORM, you may already know what I'm talking about. But for those who don't, we will combine the `User` model with the `Product` model using the `@ManyToOne` and `@OneToMany` decorators _TypeORM_.
+
+In this chapter, we will build the `Product` model from scratch, associate it with the user, and create the necessary entries so that any client can access the information.
+
+You can clone the project up to this point:
+
+[source,bash]
+----
+git checkout tags/checkpoint_chapter05
+----
+
+Before we start, and as usual, when we start new features, we create a new branch:
+
+[source,bash]
+----
+git checkout -b chapter05
+----
+
+
+== The product model
+
+We will first create a `Product' model, then we will add some validations to it, and finally, we will associate it with the `User' model. Like the `User` template, the `Product` will be fully tested and automatically deleted if the user is deleted.
+
+
+=== Product basics
+
+The `Product` template will need several fields: a `price` attribute for the price of the product, a `published` boolean to know if the product is ready to be sold or not, a `title` to define a sexy product title, and last but not least a `userId` to associate that particular product to a user:
+
+Let's go directly to the implementation.
+
+Creation of the entity `Product`.
+[source,ts]
+----
+// src/entities/product.entity.ts
+import {validateOrReject} from 'class-validator';
+import {BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn,} from 'typeorm"; import {User} from "./user.entity";
+
+@Entity()
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "text" })
+  title: string;
+
+  @Column({ type: "float" })
+  price: number;
+
+  @Column({ type: "boolean" })
+  published: boolean;
+
+  @Index()
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {}
+----
+
+As you can see, this is very readable. The only new thing here is the appearance of the `ManyToOne' relationship. This is a decorator that will create a `userId` column of type `int`. It takes three parameters:
+
+1. a function that returns the class corresponding to the association
+2. a function that defines how the connection in the other direction is specified
+3. an object containing various parameters
+
+NOTE: I also added a `@Index` decorator to make this column indexed. This is a good practice for association keys because it optimizes database queries. It is not mandatory, but I highly recommend it.
+
+Before we move on, we also need to define the `OneToMany` association in the `User` entity.
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+  // ...
+}
+// ...
+----
+
+And there you go. Our association is done, and if you start the server with the TypeORM query logs, you should see the SQL query that creates the table:
+
+.server logs in the terminal
+[source,sql]
+----
+...
+query: BEGIN TRANSACTION
+...
+query: CREATE TABLE "product" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "title" text NOT NULL, "price" float NOT NULL, "published" boolean NOT NULL, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), 'userId' integer)
+...
+query: CREATE INDEX "IDX_329b8ae12068b23da547d3b479" ON "product" ('userId')
+query: COMMIT
+----
+
+And there you go. Let's make a _commit_:
+
+[source, bash]
+----
+git add . && git commit -m "Generate product model"
+----
+
+=== Product Validations
+
+
+As we have seen with the user, validations are an important part of building any application. This allows us to prevent unwanted data from being recorded in the database. For the product, we need to make sure, for example, that a price is a number and that it is not negative.
+
+
+For this part, we don't need to set up tests because everything is already available and tested by the library https://github.com/typestack/class-validator/[`class-validator`]. We just need to add the corresponding decorators. Here is the result:
+
+[source,ts]
+.test/models/product_test.rb
+----
+// src/entities/product.entity.ts
+import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
+// ...
+@Entity()
+export class Product {
+  // ...
+  @IsDefined()
+  @Column({ type: "text", nullable: false })
+  title: string;
+
+  @IsPositive()
+  @IsDefined()
+  @Column({ type: "float", nullable: false })
+  price: number;
+
+  @Column({ type: "boolean", default: false })
+  published: boolean;
+
+  @Index()
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+  // ...
+}
+// ...
+----
+
+The decorators document the code, and there is not much to add here. I added the `nullable: false` property, which will modify the database schema and add a `NOT NULL` constraint.
+
+
+Let's make these changes and keep moving forward:
+
+[source,bash]
+----
+$ git commit -am "Adds some validations to products"
+----
+
+
+== Entry point for our products
+
+Now is the time to start building product entry points. For now, we will just build five REST actions.
+
+First, we need to create the `ProductsController`. As a warm-up, we'll start by building the `show' action for the product.
+
+=== Product Show Action
+
+==== Tests
+
+As usual, we start by adding some tests from the product controller. The purpose here is straightforward. Just display a single product and make sure that the server response is what we expect.
+
+But to do this, we will first create a product and a user in the `before' method. So we're going to refine our utility to create templates by adding `generateProduct`:
+
+.Creating the `generateProduct' method
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+import {Product} from '../entities/product.entity';
+
+export function randomString(size: number = 8): string {
+  return randomBytes(size).toString("hex");
+}
+// ...
+export function generateProduct(product?: Partial<Product>): Product {
+  const newProduct = new Product();
+  newProduct.price = product?.price ?? Math.random() * 100;
+  newProduct.published = product?.published ?? randomBoolean();
+  newProduct.title = product?.title ?? randomString();
+  newProduct.user = product?.user ?? generateUser();
+
+  return newProduct;
+}
+----
+
+We will now use this method in the `before' of the new test below:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {Product, ProductRepository} from '../entities/product.entity';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+import {generateProduct, generateUser} from '../tests/faker.utils';
+import {agent} from '../tests/supertest.utils';
+
+describe("ProductsController", () => {
+  let productRepository: ProductRepository;
+  let product: Product;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>( TYPES.DatabaseService);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    product = await productRepository.save(generateProduct({ user }));
+  });
+});
+----
+
+And now we can use this product and to test if it is searchable:
+
+
+[source, ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("show", () => {
+    it("should show product", (done) => {
+      agent.get(`/products/${product.id}`).expect(200, done);
+    });
+  });
+  // ...
+});
+----
+
+
+==== Implementation
+
+Now that our test is in place, it's time to take the test.
+
+Just like we did with the users, we will create a _middleware_ `FetchProductMiddleware`. It will just fetch the product according to the `productId` parameter and inject it into the request:
+
+
+
