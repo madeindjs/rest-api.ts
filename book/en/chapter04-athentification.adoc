@@ -1,2 +1,839 @@
 [#chapter04-authentication]
-= Authenticating user
+= User authentication
+
+In this chapter, things will become more interesting. We are going to set up our authentication mechanism. In my opinion, this will be one of the most interesting chapters because we will introduce a lot of new concepts. In the end, you will have a simple but powerful authentication system. Don't panic. We'll get there.
+
+== Stateless Sessions
+
+Before going any further, something must be clear: an API does not manage sessions. This may sound a bit crazy if you don't have any experience creating this kind of application. An API should be stateless. By definition, this means that an API that provides an answer after your request requires no further attention. This means that no previous or future state is required for the system to work.
+
+The process of user authentication via an API is straightforward:
+
+. The client requests a session resource with the corresponding credentials (usually an e-mail and a password).
+. The server returns the user resource with its corresponding authentication token.
+. For each page that requires authentication, the client must send this authentication token.
+
+This section and the next will focus on building a session controller with its corresponding actions. We will then complete the request flow by adding the necessary authorization access.
+
+== Introducing JSON Web Token
+
+When it comes to authentication tokens, a standard exists for the JSON Web Token (JWT).
+
+____
+JWT is an open standard defined in RFC 75191. It allows the secure exchange of tokens between multiple parties. - https://fr.wikipedia.org/wiki/JSON_Web_Token [Wikipedia]
+____
+
+Overall, a JWT token is composed of three parts :
+
+* a header structured in JSON will contain, for example, the validity date of the token.
+* a payload structured in JSON, which can contain any data. In our case, it will contain the identifier of the "connected" user.
+* a signature that will allow us to verify that the token has been encrypted by our application and therefore that it is valid.
+
+These three parts are each encoded in base64 and then concatenated using dots (.). This gives us something like this:
+
+....
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+....
+
+Once decoded, this token gives us the following information:
+
+* the head
+
+[source,json]
+----
+{ "alg": "HS256", "typ": "JWT" }
+----
+
+* the payload
+
+[source,json]
+----
+{ "sub": "1234567890", "name": "John Doe", "iat": 1516239022 }
+----
+
+For more information about JWT tokens, I invite you to visit _jxt.io_.
+
+This has many advantages, such as sending information to the API consumer directly in the token. You can, for example, choose to integrate the user information in the payload.
+
+== Setting up the authentication token
+
+The JWT standard has many implementations in various languages and libraries. Of course, there is a Nodejs library on this subject: https://github.com/auth0/node-jsonwebtoken[node-jsonwebtoken].
+
+So let's start by installing it:
+
+[source,bash]
+----
+npm install jsonwebtoken
+npm install --save-dev @types/jsonwebtoken
+----
+
+The library is very easy to use with the `jwt.sign` and `jwt.verify` methods. Here is an example:
+
+[source,ts]
+----
+import {sign, verify} from 'jsonwebtoken';
+
+const JWT_PRIVATE_KEY = "123456789";
+const payload = { userId: 1 };
+const token = sign(payload, JWT_PRIVATE_KEY, { expiresIn: "1 day" });
+
+console.log(verify(token, JWT_PRIVATE_KEY)));
+// => { userId: 1, iat: 1605730716, exp: 1605817116 }
+----
+
+In the first line, we encoded a `payload` with the secret key `JWT_PRIVATE_KEY`. So we get a token that we can simply decode. The second line decodes the token, and we can see that we get our `payload` back.
+
+Now we're going to put all this logic into a `JsonWebTokenService` class. This will allow us to avoid duplicating the code. This class will just encode and decode the JWT tokens. Here is the implementation :
+
+[source,ts]
+----
+// src/services/jsonWebToken.service.ts
+import {injectable} from 'inversify';
+import {sign, verify} from 'jsonwebtoken';
+
+@injectable()
+export class JsonWebTokenService {
+  private readonly JWT_PRIVATE_KEY = "123456789";
+
+  encode(payload: Object): string {
+    return sign(payload, this.JWT_PRIVATE_KEY, { expiresIn: "1 day" });
+  }
+
+  decode(token: string): Object {
+    return verify(token, this.JWT_PRIVATE_KEY);
+  }
+}
+----
+
+The implementation is straightforward. One method encodes a payload. The other decodes it. As this service is injectable, we have to save it in the container.
+
+Add the `Symbol` for the `JsonWebTokenService` service.
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  JsonWebTokenService: Symbol.for("JsonWebTokenService"),
+};
+----
+
+Added the `JsonWebTokenService' service to the _container_.
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+
+export const container = new Container();
+// ...
+container.bind(TYPES.JsonWebTokenService).to(JsonWebTokenService);
+----
+
+And there you go. We can even add a little quick test that will encode and decode a _payload_ and check that we find the content:
+
+[source,ts]
+----
+// src/services/jsonWebToken.service.spec.ts
+import assert from 'assert';
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {JsonWebTokenService} from './jsonWebToken.service';
+
+describe("JsonWebTokenService", () => {
+  let jsonWebTokenService: JsonWebTokenService;
+
+  before(() => {
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
+  });
+
+  it("should encode and decode payload", () => {
+    const token = jsonWebTokenService.encode({ userId: 1 });
+    const payload = jsonWebTokenService.decode(token);
+    assert.strictEqual(payload.userId, 1);
+  });
+});
+----
+
+This test is a bit longer than the others because we have to *retrieve an instance* of `JsonWebTokenService` via the `container`. We use the `before' method that will be executed before our test battery.
+
+Now let's see if all our tests pass :
+
+[source,bash]
+----
+npm test
+...
+  JsonWebTokenService
+    ✓ should encode and decode payload
+...
+----
+
+It's perfect. Let's get started and move on:
+
+[source,bash]
+----
+git add . && git commit -m "Create JsonWebTokenService"
+----
+
+== The token controller
+
+So we set up the JWT token generation system. It is now time to create a route that will generate this token. The actions we will implement will be handled as _RESTful_ services: the connection will be handled by a `POST' request to the `create' action.
+
+Before moving on to the implementation, we will try to write a complete test.
+
+=== Setting up the functional test
+
+Here we will test the _endpoint_ that we will create next. This _endpoint_ will take the user's email and password as parameters. So we can test three things:
+
+1. the user has sent the right information, so we return a token
+2. the password is wrong, so we return the error `400 - Bad request`.
+3. the user does not exist, so we return the error `400 - Bad request`.
+
+NOTE: We return a code `400` without further explanation. Indeed, we do not want to tell the user that this email is not present in the database. This is a good practice that would make a brute force attack on a user a little more complicated.
+
+Obviously, the test will start by creating a user. This is what we will do in the `before' method.
+
+.Creation of a part of the functional test of `TokensController`.
+
+[source,ts]
+----
+// src/controllers/tokens.controller.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+
+describe("TokensController", () => {
+  let user: User;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    const userRepository = await databaseService.getRepository(UserRepository);
+
+    const newUser = new User();
+    newUser.email = `${new Date().getTime()}@test.io`;
+    newUser.password = "p@ssw0rd";
+    user = await userRepository.save(newUser);
+  });
+});
+----
+
+NOTE: we store the `user' variable outside the `before' method so that we can use it later.
+
+Now we just have to write our tests.
+
+[source,ts]
+----
+// src/controllers/tokens.controller.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {agent} from '../tests/supertest.utils';
+
+describe("TokensController", () => {
+  // ...
+  describe("create", () => {
+    it("should get token", (done) => {
+      agent
+        .post("/tokens")
+        .send({ email: user.email, password: "p@ssw0rd" })
+        .expect(200, done);
+    });
+
+    it("should not get token user with bad password", (done) => {
+      agent
+        .post("/tokens")
+        .send({ email: user.email, password: "bad password" })
+        .expect(400, done);
+    });
+
+    it("should not create token with nonexisting email", (done) => {
+      agent
+        .post("/tokens")
+        .send({ email: user.email, password: "bad password" })
+        .expect(400, done);
+    });
+  });
+});
+----
+
+And there you go. As we work in test-driven development, at this point our tests don't pass:
+
+[source,bash]
+----
+$ npm test
+...
+  1) TokensController
+       create
+         should get token:
+     Error: expected 200 "OK", got 404 "Not Found"
+...
+  2) TokensController
+       create
+         should not get token user with bad password:
+     Error: expected 400 "Bad Request", got 404 "Not Found"
+...
+  3) TokensController
+       create
+         should not create token with nonexisting email:
+     Error: expected 400 "Bad Request", got 404 "Not Found"
+...
+----
+
+Our goal in the next section will be to pass these tests.
+
+=== Implementation
+
+So we will create the `TokenController`. Let's start by creating the controller with the necessary dependencies:
+
+1. `DatabaseService` to retrieve the user that corresponds to the email
+2. JsonWebTokenService to create a JWT token
+
+.Creation of the TokensController with the necessary dependencies.
+[source,ts]
+----
+// src/controllers/tokens.controller.ts
+import {inject} from 'inversify';
+import {controller} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+
+@controller("/tokens")
+export class TokensController {
+  public constructor(
+    @inject(TYPES.JsonWebTokenService) private readonly jsonWebTokenService: JsonWebTokenService,
+    @inject(TYPES.DatabaseService) private readonly database: DatabaseService
+  ) {}
+}
+----
+
+And now we add this container controller so that it can be loaded:
+
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+import "../controllers/tokens.controller";
+// ...
+----
+
+Now all we have to do is focus on the `create' method of our controller.
+
+[source,ts]
+----
+// src/controllers/tokens.controller.ts
+// ...
+import {Request, Response} from 'express';
+import {controller, httpPost, requestBody} from 'inversify-express-utils';
+import {isPasswordMatch} from '../utils/password.utils';
+
+@controller("/tokens")
+export class TokensController {
+  // ...
+
+  @httpPost("")
+  public async create(
+    @requestBody() body: { email: string; password: string },
+    req: Request,
+    res: Response
+  ) {
+    const repository = await this.databaseService.getRepository(UserRepository);
+    const user = await repository.findOne({ email: body.email });
+
+    if (!user) {
+      return res.sendStatus(400);
+    }
+
+    if (isPasswordMatch(user.hashedPassword, body.password)) {
+      const token = this.jsonWebTokenService.encode({
+        userId: user.id,
+        email: user.email,
+      });
+      return res.json({ token });
+    }
+
+    return res.sendStatus(400);
+  }
+}
+----
+
+Wow! This code looks complicated, but it's actually straightforward:
+
+. we create a `create' method in the controller that will create a token for the requested user.
+. this method uses the `userRepository' to retrieve the user from the given email. If we can't find the user, we return a `400 - Bad request` error.
+. we use the `isPasswordMatch` method to check if the password matches the hash we have stored. If it does, we create and return a token with the `jsonWebTokenService.encode` method.
+
+Still there? Let's try to run the tests to see if our code works:
+
+[source,bash]
+----
+$ npm test
+...
+  TokensController
+    create
+      ✓ should get token (41ms)
+      ✓ should not get token user with bad password
+      ✓ should not create token with nonexisting email
+
+----
+
+Let's try the logic in the terminal. Let's create a user (if not already done) :
+
+
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
+{"email":"test@test.fr","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
+----
+
+Then let's ask for the token for this one:
+
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/tokens
+{"token": "eyJhbGciOiJIUzI1NiI..."}
+----
+
+Oura! Let's try with a wrong password :
+
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=azerty" http://localhost:3000/tokens
+Bad Request
+----
+
+It's perfect!
+
+Let's count and move on:
+
+[source,bash]
+----
+git add . && git commit -m "Create token controller"
+----
+
+== User logged in
+
+We set up the following logic: the API returns an authentication token if the authentication parameters passed are correct.
+
+We will now implement the following logic: Each time this client requests a protected page, we will have to retrieve the user from this authentication token that the user will have passed in the HTTP header.
+
+In our case, we will use the HTTP header `Authorization`, which is often used for this. I find this the best way because it gives context to the request without polluting the URL with extra parameters.
+
+This action will be central to our application and will be used everywhere. So it's quite logical to create a dedicated _middleware_. As we have it earlier. But before moving on to the code, we will define the behavior we want.
+
+=== Setting up the functional test
+
+The operation we wish to set up is as follows:
+
+- there is no need for a token to create a user because this is the registration step.
+- an authentication token is required to view or modify a user
+
+Now that we have defined that, we can create our functional test.
+
+We'll take the `users.controller.spec.ts` test, and we'll implement the tests for `show', `update', and `destroy'.
+
+These three tests require that we already have a basic user. We will create a `utils` method that will generate a random user:
+
+
+[source,ts]
+----
+// src/utils/faker.utils.ts
+import {randomBytes} from 'crypto';
+import {User} from '../entities/user.entity';
+
+export function randomString(size: number = 8): string {
+  return randomBytes(size).toString("hex");
+}
+
+export function generateUser(user?: User): User {
+  const newUser = new User();
+  newUser.email = user?.email ?? `${randomString()}@random.io`;
+  newUser.password = newUser.email;
+
+  return newUser;
+}
+----
+
+This method is straightforward and will rely on the `randomBytes` of https://nodejs.org/docs/latest-v14.x/api/crypto.html [module `crypto`] to generate a totally random email address.
+
+NOTE: there are libraries like https://github.com/marak/Faker.js/[Faker.js] that allow you to do this, but here I prefer to do without them to simplify the example.
+
+
+Now we can go back to our test and create a user in the `before' method:
+
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  let userRepository: UserRepository;
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+  });
+  // ...
+  describe("show", () => {
+    let user: User;
+
+    before(async () => {
+      user = await userRepository.save(generateUser());
+    });
+  });
+});
+----
+
+Now all we have to do is try to access this user via `GET /users/1` with and without a JWT token:
+
+.Functional tests of the method `UsersController.show`.
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  let jsonWebTokenService: JsonWebTokenService;
+  before(async () => {
+    // ...
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
+  });
+  // ...
+  describe("show", () => {
+    let user: User;
+    // ...
+    it("should not show user other user", (done) => {
+      agent.get(`/users/${user.id}`).expect(403, done);
+    });
+
+    it("should show my profile", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent
+        .get(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(200, done);
+    });
+  });
+});
+----
+
+As you can see, the tests are really very simple. We simply check the HTTP status code of the response.
+
+The principle is exactly the same for the `update` and `destroy` methods:
+
+
+.Functional tests of the method `UsersController.show`.
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  // ...
+  describe("update", () => {
+    // ... create user on `before`
+    it("should not update other user", (done) => {
+      agent.put(`/users/${user.id}`)
+        .send({ password: "test" })
+        .expect(403, done);
+    });
+
+    it("should update my profile", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent.put(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .send({ password: "test" })
+        .expect(200, done);
+    });
+  });
+
+  describe("destroy", () => {
+    // ... create user on `before`
+    it("should not destroy other user", (done) => {
+      agent.delete(`/users/${user.id}`).expect(403, done);
+    });
+
+    it("should delete my profile", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent.delete(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(204, done);
+    });
+  });
+});
+----
+
+And there you go. If you run the tests at this point you're going to get a bunch of errors:
+
+[source, bash]
+----
+$ npm test
+// ...
+UsersController
+    index
+      ✓ should respond 200
+    show
+      1) should not show user other user
+      2) should show my profile
+    create
+      ✓ should create user
+      ✓ should not create user with missing email
+    update
+      3) should not update other user
+      4) should update my profile
+    destroy
+      5) should not destroy other user
+      6) should delete my profile
+// ...
+  10 passing (226ms)
+  6 failing
+----
+
+This is quite normal because we haven't implemented the suite yet. Now let's move on to implementation.
+
+=== Creating _middleware_.
+
+So we are going to create a _Middleware_ `FetchLoggerUserMiddleware` to meet our needs. That is to say, find the user thanks his authentication token, which is sent on each request.
+
+// -- current
+The principle is pretty much the same as the previous _middleware_ we created earlier, so I'll go straight to the implementation. In the same way as the `TokenController`, we inject it with
+
+- the `jsonWebTokenService` to decode the JWT token
+- the `databaseService` to retrieve the user associated with the token
+
+[source,ts]
+----
+// src/middlewares/fetchLoggedUser.middleware.ts
+import {inject, injectable} from 'inversify';
+import {BaseMiddleware} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+
+@injectable()
+export class FetchLoggedUserMiddleware extends BaseMiddleware {
+  constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService,
+    @inject(TYPES.JsonWebTokenService)
+    private readonly jsonWebTokenService: JsonWebTokenService
+  ) {
+    super();
+  }
+}
+----
+
+And now here is the implementation of the `handler' method
+
+
+[source,ts]
+----
+// src/middlewares/fetchLoggedUser.middleware.ts
+// ...
+import {NextFunction, Request, Response} from 'express';
+import {User, UserRepository} from '../entities/user.entity';
+
+@injectable()
+export class FetchLoggedUserMiddleware extends BaseMiddleware {
+  // ...
+  public async handler(
+    req: Request & { user: User },
+    res: Response,
+    next: NextFunction
+  ): Promise<void | Response> {
+    const repository = await this.databaseService.getRepository(UserRepository);
+    const token = req.headers.authorization?.replace("bearer", "");
+
+    if (token === undefined) {
+      return res.status(403).send("You must provide an `Authorization` header");
+    }
+
+    try {
+      const payload = this.jsonWebTokenService.decode(token);
+      req.user = await repository.findOneOrFail(payload.userId);
+    } catch (e) {
+      return res.status(403).send("Invalid token");
+    }
+
+    next();
+  }
+}
+----
+
+Again the code seems long, but it is actually straightforward:
+
+. we extract the JWT token in the _header_ `Authorization`. If it is not defined, we return an error `403 - Forbidden` with a short explanation
+. we decode the JWT token and retrieve the associated user. If an error occurs (the token can't be decoded or the user doesn't exist), we return a `403` error as well.
+. we inject the user in the request so that it can be used in the controller
+
+Of course, we don't forget to add this _middleware_ to our conatiner :
+
+Add the `FetchLoggedUserMiddleware` symbol.
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  FetchLoggedUserMiddleware: Symbol.for("FetchLoggedUserMiddleware"),
+};
+----
+
+Added `FetchLoggedUserMiddleware` middleware in the container.
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+import {FetchLoggedUserMiddleware} from '../middlewares/fetchLoggedUser.middleware';
+
+export const container = new Container();
+// ...
+container.bind(TYPES.FetchLoggedUserMiddleware).to(FetchLoggedUserMiddleware);
+----
+
+And here is our _middleware_ ready to be used.
+
+=== Using the middleware
+
+And now we just have to use the _middleware_ in the `UsersController` . Here is an example for the `show' method:
+
+
+[source,diff]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/users')
+export class UsersController {
+  // ...
+-   @httpGet('/:userId', TYPES.FetchUserMiddleware)
++   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
+  public async show(/* ... */) {
++    if (Number(userId) !== req.user.id) {
++      return res.sendStatus(403);
++    }
+    return req.user;
+  }
+  // ...
+}
+----
+
+As you can see, the changes are minimal because part of the logic is *deported into the _middleware_*. You can also see that I put a straightforward check to prevent a user from viewing another user's information.
+
+*The _middleware_ allowed us to keep the logic in our controller very simple.
+
+The principle is exactly the same for the `update` and `destroy` method.
+
+[source,diff]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/users')
+export class UsersController {
+  // ...
+-   @httpGet('/:userId', TYPES.FetchUserMiddleware)
++   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
+  public async show(/* ... */)> {
++    if (Number(userId) !== req.user.id) {
++      return res.sendStatus(403);
++    }
+    return req.user;
+  }
+
+-  @httpPut('/:userId', TYPES.FetchUserMiddleware)
++  @httpPut('/:userId', TYPES.FetchLoggedUserMiddleware)
+  public async update(/* ... */)> {
++    if (Number(userId) !== req.user.id) {
++      return res.sendStatus(403);
++    }
+    // ...
+    return repository.save(req.user);
+  }
+
+-  @httpDelete('/:userId', TYPES.FetchUserMiddleware)
++  @httpDelete('/:userId', TYPES.FetchLoggedUserMiddleware)
+  public async destroy(/* ... */) {
++    if (Number(userId) !== req.user.id) {
++      return res.sendStatus(403);
++    }
+    const repository = await this.databaseService.getRepository(UserRepository);
+    await repository.delete(req.user);
+  }
+}
+----
+
+If all goes well. Our tests should pass:
+
+[source,bash]
+----
+npm test
+
+  TokensController
+    create
+      ✓ should get token (41ms)
+      ✓ should not get token user with bad password
+      ✓ should not create token with nonexisting email
+
+  UsersController
+    index
+      ✓ should respond 200
+    show
+      ✓ should not show user other user
+      ✓ should show my profile
+    create
+      ✓ should create user
+      ✓ should not create user with missing email
+    update
+      ✓ should not update other user
+      ✓ should update my profile
+    destroy
+      ✓ should not destroy other user
+      ✓ should delete my profile
+
+  User
+    ✓ should hash password
+
+  JsonWebTokenService
+    ✓ should encode and decode payload
+
+  isPasswordMatch
+    ✓ should match
+    ✓ should not match
+
+
+  16 passing (201ms)
+----
+
+It's beautiful all this green, isn't it?
+
+Let's try to do the same thing with `cURL`:
+
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/tokens
+{"token": "eyJhbGciOiJIUzI1NiI..."}
+$ curl -H "Authorization: eyJhbGciOiJIUzI1NiI..." http://localhost:3000/users/1
+{"id":1,"email":"test@test.fr","hashedPassword":"8574a23599216d7752ef4a2f62..."}
+----
+
+Perfect! And what happens if we try to access this road without an authorization?
+
+[source,bash]
+----
+$ curl http://localhost:3000/users/1
+You must provide an `Authorization` header
+----
+
+And there you go. We were denied access as planned.
+
+It's time to commit all our changes:
+
+[source, bash]
+----
+git add . && git commit -m "Add JWT middleware"
+----
+
+== Conclusion
+
+You did it! You're halfway there! This chapter has been long and difficult, but it's a big step forward in setting up a solid mechanism to handle user authentication. We're even starting to scratch the surface for simple authorization rules.
+
+In the next chapter, we will focus on customizing JSON output for the user and adding a product template by giving the user the ability to create a product and publish it for sale.
+
+
