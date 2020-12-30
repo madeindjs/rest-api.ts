@@ -133,7 +133,6 @@ Comme nous l’avons vu avec l’utilisateur, les validations sont une partie im
 Pour cette partie là, nous n'avons pas besoin de mettre en place des tests car tout est déjà disponible et testé par la librairie https://github.com/typestack/class-validator/[`class-validator`]. Il nous suffit de simplement ajouter les décorateurs correspondants. Voici donc le résultat:
 
 [source,ts]
-.test/models/product_test.rb
 ----
 // src/entities/product.entity.ts
 import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
@@ -357,7 +356,6 @@ $ npm test
 
 Parfait, nous pouvons maintenant passer à la suite.
 
-
 [source,bash]
 ----
 $ git add . && git commit -m "Add logic to show product"
@@ -371,7 +369,6 @@ Il est maintenant temps de créer une entrée pour une liste de produits qui pou
 ----
 // src/controllers/products.controller.spec.ts
 // ...
-
 describe("ProductsController", () => {
   // ...
   describe("index", () => {
@@ -445,7 +442,6 @@ describe("ProductsController", () => {
   // ...
 });
 ----
-
 
 Nous allons maintenant créer trois tests:
 
@@ -592,7 +588,7 @@ describe("ProductsController", () => {
 });
 ----
 
-Cela peut parraitre abstrait mais regardez l'implémentation des tests qui vont utiliser ces variables:
+Cela peut paraître abstrait mais regardez l'implémentation des tests qui vont utiliser ces variables:
 
 [source,ts]
 ----
@@ -739,7 +735,6 @@ describe("ProductsController", () => {
 Maintenant, ajoutons simplement le code nécessaire pour faire passer les tests:
 
 [source,ts]
-.app/controllers/api/v1/products_controller.rb
 ----
 // src/controllers/home.controller.ts
 // ...
@@ -865,5 +860,4 @@ $ git merge chapter05
 
 J'espère que vous avez apprécié ce chapitre. C'est un long travail, mais le code que nous avons créé est une excellente base pour l'application principale.
 
-// TODO
-Dans le chapitre suivant, nous allons nous concentrer sur la personnalisation de la sortie des modèles utilisateur et produits à l’aide de la gemme https://github.com/Netflix/fast_jsonapi[fast_jsonapi]. Elle nous permettra de filtrer facilement les attributs à afficher et à gérer les associations comme des objets embarqués par exemple.
+Dans le chapitre suivant, nous allons nous concentrer sur la personnalisation de la sortie des modèles utilisateur et produits à l’aide de la librairie https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer]. Elle nous permettra de filtrer facilement les attributs à afficher et à gérer les associations comme des objets embarqués par exemple.

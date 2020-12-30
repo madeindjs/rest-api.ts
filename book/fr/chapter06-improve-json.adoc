@@ -11,7 +11,7 @@ Maintenant, vous devriez être satisfaits de tout ce travail. Mais nous avons en
   {
     "id": 1,
     "title": "Tag Case",
-    "price": "98.7761933800815",
+    "price": 98.77,
     "published": false,
     "user_id": 1,
     "created_at": "2018-12-20T12:47:26.686Z",
@@ -409,7 +409,6 @@ Nous allons simplement modifier le test `Products#show` afin de vérifier que no
 
 .Ajout d'un test pour controller l'ajout du `include` dans la sortie JSON
 [source,ts]
-.test/controllers/api/v1/products_controller_test.rb
 ----
 // src/controllers/users.controller.spec.ts
 // ...
@@ -459,7 +458,6 @@ Vous pouvez aussi remarquer que j'ai créer et lier un produit à l'utilisateur 
 Pour faire passer ce test nous allons commencer par inclure la relation dans le _serializer_:
 
 [source,ts]
-.app/serializers/product_serializer.rb
 ----
 // src/utils/serializers.utils.ts
 // ...
@@ -481,7 +479,7 @@ Cet ajout aura pour effet de rajouter une clé `relationship` contenant l’iden
 
 
 .Exemple de sortie JSON avec un utilisateur possédant un produit
-[source,json]
+[source,js]
 ----
 {
   data: {
@@ -597,12 +595,11 @@ export class ProductController {
   }
   // ...
 }
-
 ----
 
 Et voilà. Nous obtenons un JSON de cette forme:
 
-[source,json]
+[source,js]
 ----
 {
   data: {
@@ -640,6 +637,8 @@ C'était vraiment facile. Faisons un _commit_:
 ----
 $ git commit -am "Add user relationship to ProductsController.show"
 ----
+
+// current
 
 == Rechercher les produits
 

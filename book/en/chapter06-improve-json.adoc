@@ -1,2 +1,629 @@
 [#chapter06-improve-json]
 = Building JSON
+
+In the previous chapter, we added the products to the application and built all the necessary roads. We also associated a product with a user and restricted some of the actions of `ProductsController`.
+
+Now you should be satisfied with all this work. But we still have a lot of work ahead of us. Right now, we have a JSON output that is not perfect. The JSON output looks like this one:
+
+[source,json]
+----
+[
+  {
+    "id": 1,
+    "title": "Tag Case",
+    "price": 98.77,
+    "published": false,
+    "user_id": 1,
+    "created_at": "2018-12-20T12:47:26.686Z",
+    "updated_at": "2018-12-20T12:47:26.686Z"
+  },
+]
+----
+
+We want an output that does not contain the `user_id`, `created_at`, and `updated_at` fields.
+
+Moreover, an important and difficult part of creating your API is to decide on the output format. Fortunately, some organizations have already faced this kind of problem and have established certain conventions you will discover in this chapter.
+
+You can clone the project up to this point with:
+
+[source,bash]
+----
+git checkout tags/checkpoint_chapter06
+----
+
+Let's start a new branch for this chapter:
+
+== Presentation of https://jsonapi.org/[JSON:API]
+
+As I said earlier, an important and difficult part of creating your API is to decide the output format. Fortunately, some conventions already exist.
+
+One of them, certainly the most used, is https://jsonapi.org/[JSON:API]. The https://jsonapi.org/format/#document-structure[JSON:API documentation] gives us some rules to follow regarding the JSON document formatting.
+
+Thus, our document *must* contain these keys:
+
+* `data` which must contain the data we return
+* `errors` which should contain a table of errors that have occurred.
+* `meta` which contains a https://jsonapi.org/format/#document-meta[meta object]
+
+The content of the `data' key is also quite strict:
+
+* it must have a `type` key that describes the JSON model's type (if it's an article, a user, etc.).
+* the object properties must be placed in an `attribute' key, and the _undescore_ (`_`) is replaced by dashes (`-`).
+* the links of the objects must be placed in a `relationships` key
+
+In this chapter we will customize the JSON output using the library https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] which complies with all the standards https://jsonapi.org/[JSON:API].
+
+So let's install this dependency:
+
+[source,bash]
+----
+npm install jsonapi-serializer
+npm install @types/jsonapi-serializer --save-dev
+----
+
+You should be ready to continue with this tutorial.
+
+== Serialize user
+
+`jsonapi-serializer` uses *serializers*. Serializers represent methods that will be responsible for converting one object into another object that complies with the JSON:API standard.
+
+We first need to add a `serializers.utils.ts` file that will contain all the serializers. And in the meantime, I start directly with the implementation of `userSerializer`:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+import {Serializer} from 'jsonapi-serializer';
+
+export const userSerializer = new Serializer("users", {
+  attributes: ["email"],
+  dataLinks: {
+    self: (user) => `/users/${user.id}`,
+  },
+});
+----
+
+This _serializer_ will allow us to convert our `User` object to JSON, which correctly implements the JSON:API standard. We have specified the `email` attribute to present in the `data` table. By listing the fields that we want to appear in, this library fixes the problem with our API's `hashedPassword' attribute.
+
+
+Now we just have to use this instance in our controller:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {userSerializer} from '../utils/serializers.utils';
+
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return userSerializer.serialize(users);
+  }
+  // ...
+  @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
+  public async show(/* ... */) {
+    // ...
+    return userSerializer.serialize(req.user);
+  }
+  // ...
+}
+----
+
+As you can see, it doesn't change much! We simply import our serializer and use its `serialize` method.
+
+Let's try all this with `cURL`:
+
+[source,sh]
+----
+$ curl http://localhost:3000/users
+----
+.Sortie JSON des utilisateurs
+[source,json]
+----
+{
+  "data": [
+    {
+      "type": "users",
+      "id": "1",
+      "attributes": {
+        "email": "test@test.io"
+      }
+    }
+  ]
+}
+----
+
+Let's make these changes and keep moving forward:
+
+[source,bash]
+----
+$ git add .
+$ git commit -am "Adds user serializer for customizing the json output"
+----
+
+== Serialize products
+
+Now that we understand how the serialization gem works, it's time to customize the output. The first step is the same as for the user, we need a product serializer, so let's do it:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const productsSerializer = new Serializer("products", {
+  attributes: ["title", "price", "published", "user"],
+});
+----
+
+And there you go. It's as simple as that. Let's modify our controller a little bit.
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {productsSerializer} from '../utils/serializers.utils';
+
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return productsSerializer.serialize(products);
+  }
+  // ...
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(req: Request & { product: Product }) {
+    return productsSerializer.serialize(req.product);
+  }
+  // ...
+}
+----
+
+You can run the tests to check but they should still be good. Let's make these small changes:
+
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Adds product serializer for custom json output"
+----
+
+=== Serialize associations
+
+We have worked with serializers and you may notice that it is very simple. In some cases, the difficult decision is how to name your routes or how to structure the JSON output so that your solution is future-proof. When working with associations between models on an API, there are many approaches you can take.
+
+We don't have to worry about this in our case, the JSON:API standard did it for us!
+
+To summarize, we have a `has_many' type association between the user and the product model.
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+  // ...
+}
+// ...
+----
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+  // ...
+}
+// ...
+----
+
+It's a good idea to integrate users into the JSON outputs of the products. This will make the output heavier, but it will save the API client from executing further requests to retrieve user information related to the products. This method can really save you a huge bottleneck.
+
+== Relationship Injection Theory
+
+Imagine a scenario where you will search for products in the API, but in this case, you need to display some of the user information.
+
+A possible solution would be to add the `user_id` attribute to the `product_serializer` to retrieve the corresponding user later. This may sound like a good idea, but if you are concerned about performance or if your database transactions are not fast enough, you should reconsider this approach. You should understand that for each product you recover, you will need to recover its corresponding user.
+
+Faced with this problem, there are several possible alternatives.
+
+=== Embedding in a meta attribute
+
+A good solution, in my opinion is to integrate the user IDs linked to the products in a meta attribute, so we would have a JSON output as:
+
+
+[source,json]
+----
+{
+  "meta": { "user_ids": [1,2,3] },
+  "data": [
+
+  ]
+}
+----
+
+This may require additional configuration on the user's terminal to retrieve its users from these `user_ids`.
+
+=== Incorporate the object into the attribute
+
+Another solution is to incorporate the `user' object into the `product' object. This can make the first request a little slower, but this way, the client doesn't need to make another request. An example of the expected results is shown below:
+
+[source,json]
+----
+{
+  "data":
+  [
+    {
+        "id": 1,
+        "type": "product",
+        "attributes": {
+          "title": "First product",
+          "price": "25.02",
+          "published": false,
+          "user": {
+            "id": 2,
+            "attributes": {
+              "email": "stephany@lind.co.uk",
+              "created_at": "2014-07-29T03:52:07.432Z",
+              "updated_at": "2014-07-29T03:52:07.432Z",
+              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+            }
+          }
+        }
+    }
+  ]
+}
+----
+
+The problem with this approach is that we have to duplicate `User` objects for all products that belong to the same user:
+
+[source,json]
+----
+{
+  "data":
+  [
+    {
+        "id": 1,
+        "type": "product",
+        "attributes": {
+          "title": "First product",
+          "price": "25.02",
+          "published": false,
+          "user": {
+            "id": 2,
+            "type": "user",
+            "attributes": {
+              "email": "stephany@lind.co.uk",
+              "created_at": "2014-07-29T03:52:07.432Z",
+              "updated_at": "2014-07-29T03:52:07.432Z",
+              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+            }
+          }
+        }
+    },
+    {
+        "id": 2,
+        "type": "product",
+        "attributes": {
+          "title": "Second product",
+          "price": "25.02",
+          "published": false,
+          "user": {
+            "id": 2,
+            "type": "user",
+            "attributes": {
+              "email": "stephany@lind.co.uk",
+              "created_at": "2014-07-29T03:52:07.432Z",
+              "updated_at": "2014-07-29T03:52:07.432Z",
+              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+            }
+          }
+        }
+    }
+  ]
+}
+----
+
+=== Incorporate relationships into `include`.
+
+The third solution, chosen by the JSON:API standard, is a mixture of the first two.
+
+We will include all relations in an `include` key, which will contain all relations of the previously mentioned objects. Each object will also include a `relationships` key defining the relationship, which must be found in the `include` key.
+
+One JSON is worth a thousand words:
+
+[source,json]
+----
+{
+  "data":
+  [
+    {
+        "id": 1,
+        "type": "product",
+        "attributes": {
+          "title": "First product",
+          "price": "25.02",
+          "published": false
+        },
+        "relationships": {
+          "user": {
+            "id": 1,
+            "type": "user"
+          }
+        }
+    },
+    {
+        "id": 2,
+        "type": "product",
+        "attributes": {
+          "title": "Second product",
+          "price": "25.02",
+          "published": false
+        },
+        "relationships": {
+          "user": {
+            "id": 1,
+            "type": "user"
+          }
+        }
+    }
+  ],
+  "include": [
+    {
+      "id": 2,
+      "type": "user",
+      "attributes": {
+        "email": "stephany@lind.co.uk",
+        "created_at": "2014-07-29T03:52:07.432Z",
+        "updated_at": "2014-07-29T03:52:07.432Z",
+        "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+      }
+    }
+  ]
+}
+----
+
+You see the difference? This solution drastically reduces the size of the JSON and, therefore, the bandwidth used.
+
+== Application of the relations injection
+
+We will, therefore, incorporate the user object into the product. Let's start by adding some tests.
+
+We will simply modify the `Products#show` test to verify that we recover:
+
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  // ...
+  let productRepository: ProductRepository;
+
+  before(async () => {
+    // ...
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    const product = await productRepository.save(generateProduct({ user }));
+    user.products = [product];
+    // ...
+  });
+
+  // ...
+
+  describe("show", () => {
+    // ...
+    it("should show my profile", () => {
+      return agent
+        .get(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(200)
+        .then((response) => {
+          assert.strictEqual(response.body.data.attributes.email, user.email);
+          assert.strictEqual(response.body.included[0].attributes.title, user.products[0].title);
+        });
+    });
+  });
+// ...
+});
+----
+
+We are now checking two things on the JSON that is returned:
+
+. It contains the title of the product
+. user data is included in the `include` key
+
+You may also notice that I have created and linked a product to the user saved in the `beforeEach` method.
+
+To pass this test, we will start by including the relationship in the serializer:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const userSerializer = new Serializer("users", {
+  attributes: ["email", "products"],
+  included: true,
+  products: {
+    ref: "id",
+    attributes: ["title", "price", "published"],
+    included: true,
+  },
+} as any);
+// ...
+----
+
+NOTE: at the time of this writing, I have not found any other way to get around the TypeScript typing error other than `as any`. Maybe the library will be updated soon.
+
+This will add a `relationship` key containing the user's ID and add an `include` key containing the relationship. Here is an example:
+
+[source,js]
+----
+{
+  data: {
+    type: 'users',
+    id: '16',
+    attributes: {
+      email: 'ddf1bbe99c3a7ee8@random.io'
+    },
+    relationships: {
+      products: {
+        data: [
+          { type: 'products', id: '15' }
+        ]
+      }
+    }
+  },
+  included: [
+    {
+      type: 'products',
+      id: '15',
+      attributes: {
+        title: 'adc643eaa6bc1748',
+        price: 72.45882186217555,
+        published: false
+      }
+    }
+  ],
+}
+----
+
+The implementation is very simple: just add a line to the product serializer:
+
+[source,bash]
+----
+$ npm test
+
+  ProductsController
+...
+    show
+      ✓ should show product
+...
+----
+
+Let's make a commit to celebrate:
+
+[source,bash]
+----
+$ git commit -am "Add user relationship to product"
+----
+
+=== Retrieve the user of a product
+
+Have you understood the principle? We have included user information in the JSON of the products.
+
+Let's start with the test:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("show", () => {
+    it("should show product", () => {
+      agent
+        .get(`/products/${product.id}`)
+        .expect(200)
+        .then((response) => {
+          assert.strictEqual(response.body.data.attributes.title, product.title);
+          assert.strictEqual(response.body.included[0].attributes.email, product.user.email);
+        });
+    });
+  });
+  // ...
+});
+----
+
+Then build serializer:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const productsSerializer = new Serializer("products", {
+  attributes: ["title", "price", "published", "user"],
+  included: true,
+  user: {
+    ref: "id",
+    included: true,
+    attributes: ["email"],
+  },
+} as any);
+----
+
+And finally build controller:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return productsSerializer.serialize(products);
+  }
+  // ...
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(/* ... */) {
+    return productsSerializer.serialize(req.product);
+  }
+  // ...
+}
+----
+
+And there you go. We get a JSON of this shape:
+
+[source,js]
+----
+{
+  data: {
+    type: 'products',
+    id: '2',
+    attributes: {
+      title: 'd358a5c96b94a562',
+      price: 56.85800753546402,
+      published: false
+    },
+    relationships: {
+      user: {
+        data: {
+          type: 'users',
+          id: '3'
+        }
+      }
+    }
+  },
+  included: [
+    {
+      type: 'users',
+      id: '3',
+      attributes: {
+        email: 'ddaf230c3d15a057@random.io'
+      }
+    }
+  ]
+}
+----
+
+It was really easy. Let's make a commit:
+
+[source,bash]
+----
+$ git commit -am "Add user relationship to ProductsController.show"
+----
+

@@ -55,7 +55,6 @@ Nous devons fournir les informations de pagination sur la balise meta dans le fo
 Maintenant que nous avons la structure finale de la balise meta, il ne nous reste plus qu’à la sortir sur la réponse JSON. Ajoutons d’abord quelques tests:
 
 [source,ts]
-.test/controllers/api/v1/products_controller_test.rb
 ----
 // src/controllers/products.controller.spec.ts
 // ...
