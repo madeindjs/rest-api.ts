@@ -9,14 +9,7 @@ Dans ce chapitre, nous allons faire plusieurs choses:
 * Gérer l’association de sortie JSON entre l’utilisateur de la commande et les modèles de produits
 * Envoyer un courriel de confirmation avec le récapitulatif de la commande
 
-Maintenant que tout est clair, nous pouvons commencer à travailler. Vous pouvez cloner le projet jusqu’à ce point avec:
-
-[source,bash]
-----
-$ git checkout tags/checkpoint_chapter07
-----
-
-Créons une nouvelle branche afin de commencer à travailler:
+Maintenant que tout est clair, nous pouvons commencer à travailler. Créons une nouvelle branche afin de commencer à travailler:
 
 [source,bash]
 ----
@@ -250,9 +243,9 @@ export function generateOrder(order?: Partial<Order>): Order {
 
 L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparaît bien dans le retour JSON.
 
-NOTE: Vous avez certainement remarqué la syntaxe `({body}) => ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préférer l'utiliser qu'à partir de ce chapitre.
+NOTE: Vous avez certainement remarqué la syntaxe `({body}) => ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préféré l'utiliser qu'à partir de ce chapitre.
 
-Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur ni même le sérializeur spécifique aux commandes. Alors faisons le.
+Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur ni même le sérialiseur spécifique aux commandes. Alors faisons le.
 
 Alors commençons par le sérialiseur:
 
@@ -396,7 +389,6 @@ export const TYPES = {
   // ...
   FetchOrderMiddleware: Symbol.for("FetchOrderMiddleware"),
 };
-
 ----
 
 .Ajout `FetchOrderMiddleware` dans le container
@@ -423,7 +415,7 @@ $ npm test
       ✓ should show orders
 ----
 
-_Commitons_ les changements et passons à l’action `Product#create`.
+_Commitons_ les changements et passons à la suite.
 
 [source,bash]
 ----
@@ -496,6 +488,7 @@ Comme vous pouvez le voir dans le premier cas, l'utilisateur envoie un tableau d
 
 Cela parait compliqué mais voyez l'implémentation:
 
+// -- current
 
 [source,ts]
 ----

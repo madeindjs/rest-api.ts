@@ -1,2 +1,485 @@
 [#chapter07-placing-orders]
 = Placing Orders
+
+In the previous chapters, we have dealt with associations between products and users. We have also seen how to serialize them well by optimizing them to be able to _scale_, (i.e., easily adapt to high demand on our application). Now it's time to start placing orders. This will be a more complex situation because we are going to manage the associations between the three models. We need to be smart enough to handle the JSON output we provide.
+
+In this chapter, we're going to do several things:
+
+* Create an order template with the corresponding specifications
+* Manage the JSON output association between the order user and product models
+* Send a confirmation email with the order summary
+
+Now that everything is clear, we can start working. Let's create a new branch to start working:
+
+[source,bash]
+----
+git checkout -b chapter07
+----
+
+== Order modeling
+
+If you remember the templates' associations, you should remember that the `Order` template is associated with the `User` and `Product` templates. It's actually straightforward to manage this with Rails. The tricky part is when serializing these objects. I'll talk about it in more detail later.
+
+Let's start by creating the model of the command. It will have two `ManyToOne' relationships: `User' and `Product'. It will also have a `total' column for the command's total cost and then the classic `createdAt' and `updatedAt' columns. Here is the full implementation.
+
+[source,ts]
+----
+// src/entities/order.entity.ts
+import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
+import {/* ... */} from 'typeorm';
+import {Product} from './product.entity';
+import {User} from './user.entity';
+
+@Entity()
+export class Order {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => User, (user) => user.orders)
+  user: User;
+
+  @IsNumber()
+  @ValidateIf((total) => total >= 0)
+  @Column({ type: "number", unsigned: true })
+  total: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Order)
+export class OrderRepository extends Repository<Order> {}
+----
+
+As you can see, the implementation brings nothing new compared to what we have already seen.
+
+I took the opportunity to add the `ValidateIf' constraint on the `total' field, which is a `number unsigned'. This means that it cannot be negative.
+
+But before we forget, we must also define the relationship on the `User' side:
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+import {Order} from './order.entity';
+
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];
+  // ...
+}
+----
+
+Perfect! We are ready to move on. Let's make a commit before:
+
+[source,bash]
+----
+$ git add . && git commit -m "Generate orders"
+----
+
+=== Orders and products
+
+We have to establish the link between the order and the products. This is done with a _many-to-many_ association because many products will be placed on several orders, and the orders will have several products. In this case, we, therefore, need an additional template that will join these two other objects and map the appropriate association. Here is the implementation:
+
+[source,ts]
+----
+// src/entities/placement.entity.ts
+import {IsDefined, validateOrReject} from 'class-validator';
+import {/* ... */} from 'typeorm';
+import {Order} from './order.entity';
+import {Product} from './product.entity';
+import {User} from './user.entity';
+
+@Entity()
+export class Placement {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => Product, (product) => product.placements)
+  product: Product;
+
+  @ManyToOne(() => Order, (order) => order.placements)
+  order: User;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Placement)
+export class PlacementRepository extends Repository<Placement> {}
+----
+
+.Addition of the `Placements` relationship to the `Product` model.
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @OneToMany(() => Placement, (placement) => placement.product)
+  placements: Placement[];
+  // ...
+}
+// ...
+----
+
+.Addition of the `Placements` relationship to the `Order` model.
+[source,ts]
+----
+// src/entities/order.entity.ts
+// ...
+@Entity()
+export class Order {
+  // ...
+  @OneToMany(() => Placement, (placement) => placement.order)
+  placements: Placement[];
+  // ...
+}
+// ...
+----
+
+Good! Let's commit changes:
+
+[source,bash]
+----
+$ git add . && git commit -m "Associates products and orders with a placements model"
+----
+
+== Expose the user model
+
+Now it's time to prepare the order controller to expose the right orders. If you remember the previous chapters where we used https://github.com/SeyZ/jsonapi-serializer/[jsonapi-serializer] you have to remember that it was straightforward.
+
+Let's first define what actions we are going to implement:
+
+. An indexing action to retrieve current user commands
+. A show action to retrieve a particular command from the current user
+. Creative action to actually place the order
+
+Let's start with the `index' action. First, we need to create the command controller. But before we start typing code, we need to ask ourselves:
+
+> Should I leave my command routes nested in the `UsersController', or should I isolate them?
+
+The answer is straightforward: it depends on how much information you want to expose to the developer.
+
+In our case, we're not going to do that because we will retrieve the user commands on the `/orders' route. Let's start with some tests:
+
+.Functional tests of the method `OrdersController.index`.
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrdersController", () => {
+  let userRepository: UserRepository;
+  let orderRepository: OrderRepository;
+  let jsonWebTokenService: JsonWebTokenService;
+  let user: User;
+  let stranger: User;
+  let jwt: string;
+  let strangerJwt: string;
+  let order: Order;
+
+  before(async () => {
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
+
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+    orderRepository = await databaseService.getRepository(OrderRepository);
+
+    stranger = await userRepository.save(generateUser());
+    strangerJwt = jsonWebTokenService.encode({ userId: stranger.id });
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    order = await orderRepository.save(generateOrder({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
+
+  describe("index", () => {
+    it("should forbid orders without auth", () => agent.get("/orders").expect(403));
+
+    it("should get orders of user", () =>
+      agent
+        .get("/orders")
+        .set("Authorization", jwt)
+        .expect(200)
+        .then(({ body }) => assert.ok(body.data.some(({ id }) => id === String(order.id)))));
+  });
+});
+----
+
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+export function randomInteger(min: number = 0, max: number = 100): number {
+  return Math.floor(Math.random() * (max - min) + min);
+}
+// ...
+export function generateOrder(order?: Partial<Order>): Order {
+  const newOrder = new Order();
+  newOrder.user = order?.user ?? generateUser();
+  newOrder.total = randomInteger(1); // TODO
+
+  return newOrder;
+}
+----
+
+The implementation of this test should remind you of `product.controller.spec.ts`. We try to access the new `endpoint' with a user with an `Order' and check that this command appears in the JSON return.
+
+NOTE: You may have noticed the syntax `({body}) => ...`. This is the functionality of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax[spread syntax]. It simply allows you to retrieve a property contained in an object directly from a variable of the same name. Thus `const data = {a: 1}; const a = data.a;` can be simplified to `const { a } = {a: 1}`. This syntax can be confusing at first so I preferred to use it rather than from this chapter on.
+
+If we run the test suite now, as you might expect, both tests will fail. This is normal because we haven't even defined the controller or even the command-specific serializer. So let's do it.
+
+So let's start with the serializer:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const ordersSerializer = new Serializer("orders", {
+  attributes: ["total", "createdAt", "updatedAt"],
+} as any);
+----
+
+And now we can use it in our brand new controller:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+import {Request, response, Response} from 'express';
+import {inject} from 'inversify';
+import {controller, httpGet} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {Order, OrderRepository} from '../entities/order.entity';
+import {User} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {ordersSerializer} from '../utils/serializers.utils';
+
+@controller("/orders", TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  public constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
+
+  @httpGet("/")
+  public async index({ user }: Request & { user: User }) {
+    const repository = await this.databaseService.getRepository(OrderRepository);
+    const orders = await repository.find({ user });
+    return ordersSerializer.serialize(orders);
+  }
+}
+----
+
+In the first decorator `@controller`, we globally inject the middleware `FetchLoggedUserMiddleware`. This means that we will have to give a JWT token to access all this controller's actions. This allows us to retrieve the user in the `index` method and use it directly in the `find` method. We use the serializer to format the data and return it.
+
+Let's not forget to load our controller since it is a brand new controller:
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+import "../controllers/orders.controller";
+// ...
+----
+
+And now our tests should pass:
+
+[source, bash]
+----
+npm test
+...
+  OrderController
+    index
+      ✓ should forbid orders without auth (44ms)
+      ✓ should get orders of user
+...
+----
+
+We like our commits very small. So let's commit now:
+
+[source,bash]
+----
+$ git add . && git commit -m "Adds the index action for order"
+----
+
+=== Display a single command
+
+As you can already imagine, this route is straightforward. We just have to set up some configurations (routes, controller action) and a new _middleware_ that will take care of retrieving the command, and that will be all for this section. Later we will include the products related to this order in the output JSON.
+
+Let's start by adding some tests:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrdersController", () => {
+  // ...
+  describe("show", () => {
+    it("should forbid show order for other users", () => {
+      agent.get(`/orders/${order.id}`).set("Authorization", strangerJwt).expect(403);
+    });
+
+    it("should show order", () => {
+      agent
+        .get(`/orders/${order.id}`)
+        .set("Authorization", jwt)
+        .expect(200)
+        .then(({ body }) => assert.strictEqual(body.data.id, String(order.id)));
+    });
+  });
+  // ...
+});
+----
+
+Let's move on to implementation. We will start by creating a middleware that will search for the command according to the parameter. The code is really very similar to `FetchProductMiddleware` so I'll skip over it a bit faster:
+
+.Creating the `FetchOrderMiddleware`.
+[source,ts]
+----
+// src/middlewares/fetchUser.middleware.ts
+// ...
+@injectable()
+export class FetchOrderMiddleware extends BaseMiddleware {
+  constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {
+    super();
+  }
+
+  public async handler(req: Request & { order: Order }, res: Response, next: NextFunction): Promise<void | Response> {
+    const orderId = req.query.orderId ?? req.params.orderId;
+    const repository = await this.databaseService.getRepository(OrderRepository);
+    req.order = await repository.findOne(Number(orderId), {
+      relations: ["user"],
+    });
+
+    if (!req.order) {
+      return res.status(404).send("order not found");
+    }
+    next();
+  }
+}
+----
+
+.Addition of `Symbol` for injection into the container.
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  FetchOrderMiddleware: Symbol.for("FetchOrderMiddleware"),
+};
+----
+
+.Adding `FetchOrderMiddleware` into container.
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+export const container = new Container();
+// ...
+container.bind(TYPES.FetchOrderMiddleware).to(FetchOrderMiddleware);
+----
+
+All our tests now pass:
+
+[source,bash]
+----
+$ npm test
+  OrderController
+    index
+      ✓ should forbid orders without auth (44ms)
+      ✓ should get orders of user
+    show
+      ✓ should forbid show order for other users
+      ✓ should show orders
+----
+
+Let's commit changes and move on.
+
+[source,bash]
+----
+$ git commit -am "Adds the show action for order"
+----
+
+=== Placement and commands
+
+Now it is time to give the user the possibility to place some orders. This will add complexity to the application but don't worry. We'll take it one step at a time.
+
+Before launching this feature, let's take some time to think about the implications of creating a command in the application. I'm not talking about setting up a transaction service like https://stripe.com/[Stripe] or https://www.braintreepayments.com/[Braintree] but things like:
+
+* the management of out-of-stock products
+* Decrease in product inventory
+* add some validation for order placement to ensure that there are enough products at the time the order is placed
+
+It looks like there's still a lot to do but trust me: you're closer than you think, and it's not as hard as it looks. For now, let's keep things simple and assume we still have enough products to place any number of orders. We're just concerned about the response from the server at the moment.
+
+If you remember the order template, we need three things: a total for the order, the user placing the order, and the order's products. Given this information, we can start adding some tests:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  describe('create', () => {
+    let product1: Product;
+    let product2: Product;
+
+    before(async () => {
+      product1 = await manager.save(generateProduct());
+      product2 = await manager.save(generateProduct());
+    });
+
+    it('should create order', () =>
+      agent
+        .post('/orders')
+        .set('Authorization', jwt)
+        .send({productIds: [product1.id, product2.id]})
+        .expect(201));
+
+    it('should not create product without auth', () =>
+      agent
+        .post('/orders')
+        .send({productIds: [product1.id, product2.id]})
+        .expect(403));
+
+    it('should not create order with missing title', () =>
+      agent.post('/orders').set('Authorization', jwt).send({productIds: []}).expect(400));
+  });
+  // ...
+});
+----
+
+Once again, we will create tests that cover all possible cases. Respectively:
+
+* the case where everything goes well
+* the case where the user has not sent the necessary parameters
+* the case where the user has not specified his JWT token
+
+As you can see in the first case, the user sends a table of the products he wants to add to his order. So we go to the controller:
+
+1. retrieve the list of associated products via the IDs
+2. calculate the total sum of these products
+3. Create the `Order`.
+4. create the `Placements` associated with this command
+
+It sounds complicated, but look at the implementation:
