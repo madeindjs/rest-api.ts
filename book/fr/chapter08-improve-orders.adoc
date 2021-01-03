@@ -219,14 +219,14 @@ Oula. Le code devient un peu plus long et mérite quelques explications:
 - nous créons la commande avec un total égal à 0 (Nous verrons dans la prochaine section comment faire en sorte que ce total se mette à jour automatiquement.)
 - nous vérifiions les données de l'utilisateur en vérifiant que `req.body.products` contient des valeurs
 - nous faisons une boucle sur `req.body.products` dans lequel nous récupérons le produit, nous créons un `Placement` et nous l'ajoutons au tableau `order.placements`
-- la suite reste inchangées
+- la suite reste inchangée
 
 
 === Le _subscriber_
 
 Il est maintenant temps de mettre à jour la quantité du produit une fois qu'une commande est placée.
 
-Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de garder les contrôleurs petits.
+Nous serions tenté de le faire rapidement dans l'action `OrderController.create` mais cela serait une mauvaise idée car il faudrait dupliquer cette logique sur l'action `OrderController.update` et `OrderController.destroy` qui doivent aussi mettre a jour la quantité de produits. Cela va aussi a l'encontre de la bonne pratique qui est de réduire au maximum la responsabilité des contrôleurs.
 
 C'est pour cela que je pense que un https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[`Subscriber` de TypeORM] est un bien meilleur endroit pour la simple raison que nous sommes certains que notre _subscriber_ sera appelé quoiqu'il arrive sans que nous aillons à nous en soucier.
 
@@ -259,7 +259,7 @@ export interface EntitySubscriberInterface<Entity = any> {
 }
 ----
 
-Nous pouvons donc créer notre classe qui étends de `EntitySubscriberInterface`:
+Nous pouvons donc créer notre classe qui implémente `EntitySubscriberInterface`:
 
 [source,ts]
 ----
@@ -414,9 +414,7 @@ export class PlacementSubscriber
     // ...
     await this.updateOrderTotal(manager, entity.order);
   }
-
   // ...
-
   async afterRemove({entity, manager}: RemoveEvent<Placement>) {
     await this.updateOrderTotal(manager, entity.order);
   }
@@ -435,7 +433,6 @@ export class PlacementSubscriber
     await manager.save(Order, order);
   }
 }
-
 ----
 
 Regardons de plus près la méthode `updateOrderTotal`:
