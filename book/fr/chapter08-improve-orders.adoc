@@ -1,10 +1,10 @@
 [#chapter08-improve_orders]
 = Améliorer les commandes
 
-Précédemment nous avons amélioré notre API pour passer des commandes et envoyer un e-mail de confirmation à l’utilisateur (juste pour améliorer l’expérience utilisateur). Ce chapitre va s’occuper de quelques validations sur le modèle de commande afin de s’assurer qu’elle est valide. C’est-à-dire:
+Précédemment nous avons amélioré notre API pour passer des commandes et envoyer un e-mail de confirmation à l’utilisateur (juste pour améliorer l’expérience utilisateur). Ce chapitre va s’occuper de quelques validations sur le modèle de commande afin de s’assurer qu’il est valide. C’est-à-dire:
 
 * Diminuer la quantité du produit en cours lors de la création d’une commande
-* Que se passe-t-il lorsque les produits ne sont pas disponibles?
+* gérer le cas ou le produit n'est pas disponible
 
 Nous aurons aussi besoin de mettre à jour un peu la sortie JSON pour les commandes. Mais ne divulgâchons pas la suite.
 
@@ -95,7 +95,6 @@ describe('ProductRepository', () => {
 ----
 
 Faire passer le test est très facile gràce aux décorateurs de `class-validator`. Il suffit d'ajouter le décorateur `@IsInt` et `@Min` comme cela:
-
 
 [source,ts]
 ----
@@ -200,13 +199,12 @@ export class OrdersController {
     } as Order);
 
     for (const {id, quantity} of body.products) {
-      const product = await manager.findOneOrFail(Product, {id});
-      const placement = await manager.save(Placement, {
-        product,
-        order,
-        quantity,
-      } as Placement);
-      order.placements.push(placement);
+      const placement = new Placement();
+      placement.product = await manager.findOneOrFail(Product, {id});
+      placement.order = order;
+      placement.quantity = quantity;
+
+      order.placements.push(await manager.save(Placement, placement));
     }
     // ...
   }
@@ -214,10 +212,14 @@ export class OrdersController {
 }
 ----
 
+// Current
+
 Oula. Le code devient un peu plus long et mérite quelques explications:
 
-- nous créons la commande avec un total égal à 0. Nous verrons dans la prochaine sections comment faire en sorte que ce total se mette à jour automatiquement.
-- `body.products.map(product => ({product, order}))` va construire des objet `Placement` sans passer par la classe `Placement`. Ces objet seront convertis en instance de `Placement` une fois sauvegardé et nous les attachons directement à la commande.
+- nous créons la commande avec un total égal à 0 (Nous verrons dans la prochaine section comment faire en sorte que ce total se mette à jour automatiquement.)
+- nous vérifiions les données de l'utilisateur en vérifiant que `req.body.products` contient des valeurs
+- nous faisons une boucle sur `req.body.products` dans lequel nous récupérons le produit, nous créons un `Placement` et nous l'ajoutons au tableau `order.placements`
+- la suite reste inchangées
 
 
 === Le _subscriber_

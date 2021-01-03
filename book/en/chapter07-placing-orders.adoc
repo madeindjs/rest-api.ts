@@ -483,3 +483,267 @@ As you can see in the first case, the user sends a table of the products he want
 4. create the `Placements` associated with this command
 
 It sounds complicated, but look at the implementation:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller("/orders", TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+
+  @httpPost('/')
+  public async create(@requestBody() body: {productIds: number[]}, {user}: Request & {user: User}, res: Response) {
+    const productRepository = await this.databaseService.getRepository(ProductRepository);
+    const orderRepository = await this.databaseService.getRepository(OrderRepository);
+    const placementRepository = await this.databaseService.getRepository(PlacementRepository);
+
+    if (!body.productIds?.length) {
+      return res.status(400).json({errors: {productIds: 'should be an array of products ids'}});
+    }
+
+    const products = await productRepository.findByIds(body.productIds);
+
+    const total = products.reduce((sum, product) => sum + product.price, 0);
+    const order = await orderRepository.save({user, total});
+
+    const placements = products.map((product) => ({order, product}));
+    order.placements = await placementRepository.save(placements);
+
+    return res.sendStatus(201);
+  }
+  // ...
+}
+----
+
+And now our tests should all pass:
+
+
+[source,bash]
+----
+$ npm test
+...
+  OrderController
+...
+    create
+      ✓ should create order
+      ✓ should not create product without auth
+      ✓ should not create order with missing title
+----
+
+Let's commit our changes:
+
+
+[source,bash]
+----
+$ git commit -am "Adds the create method for the orders controller"
+----
+
+== Send a confirmation email
+
+The last section of this chapter will send a confirmation email to the user who has just created an order. If you want, you can skip this step and go to the next chapter! This section is more of a bonus.
+
+So we will use the library https://nodemailer.com/ [nodemailer].
+
+
+So let's install the library:
+
+[source,bash]
+----
+npm install nodemailer
+$ npm install --save-dev @types/nodemailer
+----
+
+Now let's create a new service that will interface between the library and our code. As I said before, it's always a good idea to do this because it will allow us to **Mock** this feature during our tests. Don't worry, we'll talk about it later.
+
+.Implementation of a service interfacing to nodemailer.
+[source,ts]
+----
+// src/services/mailer.service.ts
+import {inject, injectable} from 'inversify';
+import {createTestAccount, createTransport, SendMailOptions, Transporter} from 'nodemailer';
+import {TYPES} from '../core/types.core';
+import {Logger} from './logger.service';
+
+@injectable()
+export class MailerService {
+  private static transporter: Transporter;
+
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  public async sendEmail(options: SendMailOptions): Promise<void> {
+    await this.initializeTransporter();
+
+    await MailerService.transporter.sendMail(options);
+
+  }
+
+  private async initializeTransporter() {
+    if (MailerService.transporter !== undefined) {
+      return;
+    }
+
+    let { user, pass } = await createTestAccount();
+
+    MailerService.transporter = createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: { user, pass },
+    });
+  }
+}
+----
+
+As you can see, our service does not do much. We just initialize here a `transporter` that allows you to connect to an SMTP account. You can use the mail account of your choice and move the values to the `.env` file, but I chose to use the `createTestAccount` method, which allows you to create a test account on the fly.
+
+And since we just created a service, we need to add it to the container:
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  MailerService: Symbol.for("MailerService"),
+  // ...
+};
+
+----
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+container.bind(TYPES.MailerService).to(MailerService);
+// ...
+----
+
+And there you go. I think it's a good idea to add the product's mail in the `MailerService`. On the other hand, we have to be careful that this service doesn't become too big as we extend our application and don't hesitate to cut it again if necessary. In our case, this is not a problem. So here is the method:
+
+
+[source,ts]
+----
+// src/services/mailer.service.ts
+// ...
+@injectable()
+export class MailerService {
+  // ...
+  public async sendNewOrderEmail(order: Order): Promise<void> {
+    const productText = order.placements.map((p) => `- ${p.product.title}`);
+    const text = `Details of products:\n${productText}\nTOTAL:${order.total}€`;
+
+    await this.sendEmail({
+      to: order.user.email,
+      text,
+      subject: "Thanks for order",
+    });
+  }
+  // ...
+}
+----
+
+We can now call this method directly to our controller:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller("/orders", /* ... */)
+export class OrdersController {
+  // ...
+  @httpPost("/")
+  public async create(/* ... */) {
+    // ...
+    await this.mailerService.sendNewOrderEmail(order);
+    return res.sendStatus(201);
+  }
+  // ...
+}
+----
+
+And there it is!
+
+NOTE: If our application grows, it would be more interesting to use a library specialized in job management such as https://github.com/graphile/worker[graphile-worker] to postpone the email sending. This would also allow us to prioritize the tasks and restart later the tasks that didn't work. In our case, I didn't set it up to keep this tutorial simpler.
+
+Let's run the tests to be sure:
+
+[source,sh]
+----
+$ npm test
+...
+  OrderController
+...
+    create
+      1) should create order
+      ✓ should not create product without auth
+      ✓ should not create order with missing title
+...
+
+  1) OrderController
+       create
+         should create order:
+     Error: Timeout of 2000ms exceeded.
+----
+
+We find that our test no longer works because it exceeds the time allotted for a test. We could increase the time allocated to this test with the time-out method, but it is not optimal. But don't worry, we have a straightforward solution offered by the dependency injection we have implemented since the beginning: a _Mock_.
+
+So the idea is to create a class that implements the features of the `MailerService' but behaves the way we want it to specifically in the given context. That is, we want the emails not to be sent during tests. It sounds complicated, but it's actually effortless:
+
+[source,ts]
+----
+// src/tests/fakeMailer.service.ts
+import {injectable} from 'inversify';
+import {SendMailOptions} from 'nodemailer';
+import {MailerService} from '../services/mailer.service';
+
+@injectable()
+export class FakeMailerService extends MailerService {
+  public async sendEmail(options: SendMailOptions): Promise<void> {}
+  protected async initializeTransporter() {}
+}
+----
+
+And just `rebind` the service at the beginning of our test:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  before(async () => {
+    container.rebind(TYPES.MailerService).to(FakeMailerService);
+    // ...
+  });
+    // ...
+});
+----
+
+There you go, our tests should pass again.
+
+Let's do everything we just did to finish this section:
+
+[source,bash]
+----
+$ git add . && git commit -m "Adds order confirmation mailer"
+----
+
+
+And as we come to the end of our chapter, it's time to apply all our changes to the master branch by doing a _merge_:
+
+[source,bash]
+----
+$ git checkout master
+$ git merge chapter07
+----
+
+== Conclusion
+
+That's it! You did it! You can applaud each other. I know it's been a long time, but it's almost over, believes me.
+
+In the chapters to come, we will continue to work on the order template to add validations when placing an order. Some scenarios are:
+
+* What happens when the products are not available?
+* Decrease the quantity of the current product when placing an order.
+
+The next chapter will be short, but it is essential for the health of the application. So don't skip it.

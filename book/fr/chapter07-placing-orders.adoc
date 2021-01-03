@@ -599,7 +599,7 @@ export class MailerService {
 }
 ----
 
-Comme vous le voyez, notre service ne fais pas grand chose. Nous initialisons juste ici un `transporteur` qui permet de se connecter à un compte SMTP. Vous pouvez utiliser le compte mail de votre choix et de déplacer les valeurs dans le fichier `.env` mais ici j'ai choisi d'utiliser la méthode `createTestAccount` qui permet de créer un compte test à la volée.
+Comme vous le voyez, notre service ne fais pas grand chose. Nous initialisons juste ici un `transporter` qui permet de se connecter à un compte SMTP. Vous pouvez utiliser le compte mail de votre choix et de déplacer les valeurs dans le fichier `.env` mais ici j'ai choisi d'utiliser la méthode `createTestAccount` qui permet de créer un compte test à la volée.
 
 Et comme nous venons de créer un service, nous devons l'ajouter au container:
 
@@ -622,7 +622,7 @@ container.bind(TYPES.MailerService).to(MailerService);
 // ...
 ----
 
-Et voilà. Je trouve aussi que c'est une bonne idée d'ajouter la création du mail du produit dans le `MailerService`. En revanche, il faut faire attention à ce que ce service ne devienne pas trop gros au fur et à mesure de l'extension de notre application et ne pas hésiter à le redécouper si nécessaire. Dans notre cas cela ne pose pas de problème. Voici donc la méthode:
+Et voilà. Je trouve que c'est une bonne idée d'ajouter la création du mail du produit dans le `MailerService`. En revanche, il faut faire attention à ce que ce service ne devienne pas trop gros au fur et à mesure de l'extension de notre application et ne pas hésiter à le redécouper si nécessaire. Dans notre cas cela ne pose pas de problème. Voici donc la méthode:
 
 [source,ts]
 ----
@@ -730,7 +730,6 @@ _Commitons_ tout ce que nous venons de faire pour terminer cette section:
 ----
 $ git add . && git commit -m "Adds order confirmation mailer"
 ----
-
 
 Et comme nous arrivons à la fin de notre chapitre, il est temps d'appliquer toutes nos modifications sur la branche master en faisant un _merge_:
 

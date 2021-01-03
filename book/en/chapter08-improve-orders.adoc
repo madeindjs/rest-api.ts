@@ -1,2 +1,211 @@
 [#chapter08-improve_orders]
 = Improving orders
+
+Previously we improved our API to place orders and send a confirmation email to the user (just to improve the user experience). This chapter will take care of some validations on the order template to make sure it is valid. That is:
+
+* Decrease the quantity of the current product when creating an order
+* manage the case where the product is not available
+
+We will also need to update the JSON output for orders a little bit. But let's not divulge the rest.
+
+Let's create a new branch to start working:
+
+[source,bash]
+----
+$ git checkout -b chapter08
+----
+
+== Decrease the quantity of product
+
+In this part, we will update the product quantity to ensure that each order will deliver the actual product.
+
+=== Adding the `product.total` attribute
+
+We will first add a `total` field on the product, representing the available stock of the product.
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @Column({type: 'integer', default: 0})
+  quantity: number = 0;
+  // ...
+}
+// ...
+----
+
+This field must also be available when creating the product. So we need to update our controller:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/products')
+export class ProductController {
+  // ...
+  public async create(/* ... */) {
+    // ...
+    const product = new Product();
+    product.quantity = Number(body.quantity);
+    // ...
+  }
+  // ...
+}
+----
+
+We also need to update the =generateProduct= method, which must handle this new attribute:
+
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+export function generateProduct(product?: Partial<Product>): Product {
+  // ...
+  newProduct.quantity = product?.quantity ?? randomInteger(1);
+  // ...
+}
+// ...
+----
+
+Now we have to check that the total can never be less than zero. This will secure our application and prevent an order from being placed if there is no stock on the product.
+
+So let's start by adding a test that will describe the desired behavior:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe('ProductRepository', () => {
+  // ...
+  describe('validate', () => {
+    it('should have a positive quantity', async () => {
+      const product = generateProduct({quantity: -1});
+      try {
+        await productRepository.save(product);
+        assert.fail('Should not validate product');
+      } catch (errors) {
+        assert.ok(errors.some(error => error.property === 'quantity'));
+      }
+    });
+  });
+});
+----
+
+Passing the test is very easy thanks to the `class-validator` decorators. Just add the decorators `@IsInt` and `@Min` like this:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @IsInt()
+  @Min(0)
+  @Column({type: 'integer', default: 0})
+  quantity: number = 0;
+  // ...
+}
+// ...
+----
+
+As you can see it's really very simple and the code is very readable. And that's it. Let's start the changes:
+
+[source,sh]
+----
+$ git commit -am "Add quantity to products"
+----
+
+=== Setting up the functional test
+
+Before we start going further, we need to change the way we handle order creation because we now have to consider a quantity for each product. If you remember, until now, we have been waiting for a table of product identifiers. I'll try to keep things simple, and we will now accept an object table containing the attributes `id` and `quantity`. A quick example would be something like this:
+
+[source,ts]
+----
+const productOrderParams = [
+  { id: 1, quantity: 4 },
+  { id: 3, quantity: 5 }
+]
+----
+
+So let's start by modifying our functional test about the command controller:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  describe("create", () => {
+    let productsParams;
+
+    before(async () => {
+      const product1 = await productRepository.save(generateProduct());
+      const product2 = await productRepository.save(generateProduct());
+
+      productsParams = [
+        {id: product1.id, quantity: 1},
+        {id: product2.id, quantity: 1},
+      ];
+    });
+
+    it('should create order', () =>
+      agent
+        .post('/orders')
+        .set('Authorization', jwt)
+        .send({products: productsParams})
+        .expect(201));
+    // ...
+  });
+  // ...
+});
+----
+
+As you can see, we have simply updated the parameters we pass to the query.
+
+Let's recap what we need to change in the controller. We need to find the product associated with the `id` in the table that creates the `placements`. Let's see the implementation of the controller:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller('/orders', TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+  @httpPost('/')
+  public async create(
+    @requestBody() body: {products: {id: number; quantity: number}[]},
+    // ...
+  ) {
+    const {manager} = await this.databaseService.getConnection();
+
+    if (!body.products?.length) {
+      return res.status(400).json({
+        errors: {
+          products: 'should be an array of `{id, quantity}`',
+        },
+      });
+    }
+
+    const order = await manager.save(Order, {
+      user,
+      total: 0,
+      placements: [],
+    } as Order);
+
+    for (const {id, quantity} of body.products) {
+      const placement = new Placement();
+      placement.product = await manager.findOneOrFail(Product, {id});
+      placement.order = order;
+      placement.quantity = quantity;
+
+      order.placements.push(await manager.save(Placement, placement));
+    }
+    // ...
+  }
+  // ...
+}
+----

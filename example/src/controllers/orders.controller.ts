@@ -61,13 +61,12 @@ export class OrdersController {
     } as Order);
 
     for (const {id, quantity} of body.products) {
-      const product = await manager.findOneOrFail(Product, {id});
-      const placement = await manager.save(Placement, {
-        product,
-        order,
-        quantity,
-      } as Placement);
-      order.placements.push(placement);
+      const placement = new Placement();
+      placement.product = await manager.findOneOrFail(Product, {id});
+      placement.order = order;
+      placement.quantity = quantity;
+
+      order.placements.push(await manager.save(Placement, placement));
     }
 
     await this.mailerService.sendNewOrderEmail(order);
