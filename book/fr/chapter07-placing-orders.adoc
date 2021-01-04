@@ -422,8 +422,6 @@ _Commitons_ les changements et passons à la suite.
 $ git commit -am "Adds the show action for order"
 ----
 
-// -- current
-
 === Placement et commandes
 
 Il est maintenant temps de donner la possibilité à l’utilisateur de passer quelques commandes. Cela ajoutera de la complexité à l’application, mais ne vous inquiétez pas, nous allons faire les choses une étape à la fois.

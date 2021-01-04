@@ -638,8 +638,6 @@ C'était vraiment facile. Faisons un _commit_:
 $ git commit -am "Add user relationship to ProductsController.show"
 ----
 
-// current
-
 == Rechercher les produits
 
 Dans cette dernière section, nous continuerons à renforcer l’action `Products#index` en mettant en place un mécanisme de recherche très simple pour permettre à n’importe quel client de filtrer les résultats. Cette section est facultative car elle n’aura aucun impact sur les modules de l’application. Mais si vous voulez pratiquer davantage avec le TDD, je vous recommande de compléter cette dernière étape.

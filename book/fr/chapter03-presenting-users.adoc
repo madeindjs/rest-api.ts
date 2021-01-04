@@ -390,7 +390,7 @@ Et voilà. Comme tout à l'heure, essayons de voir si cela fonctionne :
 $ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
 ----
 
-Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que Type ORM a effectué dans les logs du terminal
+Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que TypeORM a effectué dans les logs du terminal
 
 [source,sql]
 ----
@@ -678,13 +678,13 @@ Pas mal non ? Commitons les modifications avant d'aller plus loin :
 $ git add . && git commit -m "Factorise user controller with middleware"
 ----
 
+// current
+
 == Hashage du mot de passe
 
 === La théorie
 
-Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto] .
-
-Voici un exemple d'une méthode pour hasher le mot de pass
+Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto]. Voici un exemple d'une méthode pour hasher le mot de pass
 
 [source,ts]
 ----
