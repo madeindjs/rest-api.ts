@@ -2,38 +2,42 @@
 = The API
 In this chapter, I will give you an overview of the application. You should have read the previous chapter. If you haven't, I recommend you do so.
 
-To summarize, we simply generated our Rails application and performed our first commit.
+To summarize, we simply generated our Node.js application, setup Typescript, and performed our first commit.
 
 == Planning the application
 
 Our application will be quite simple. It will consist of five models. Don't worry if you don't understand what's going on. We will review and develop each of these resources as we move forward with the tutorial.
 
-image:data_model.png[Diagram of the links between the different models]
+----
++---------+     +---------+
+| User    +---->+Product  |
++---------+     +---------+
+     |               |
+     v               v
++---------+     +---------+
+|Order    +---->+Placement|
++---------+     +---------+
+----
 
-In short, we have the user (`User`) who will be able to place multiple orders (`Order`), download multiple products (`Product`) that may have many images (`Image`) or comments (`Comment`) of other users on the application.
+In short, we have the `User` who will be able to create `Product`. He also make an `Order` who link multiples `Product`s into a `Placement`.
 
-We are not going to build an interface for interaction with the API to not overload the tutorial. If you want to build views, there are many options, such as JavaScript frameworks (https://angularjs.org/ [Angular], https://vuejs.org/ [Vue.JS], https://reactjs.org/ [React]) or mobile libraries (https://github.com/AFNetworking/AFNetworking [AFNetworking]).
+We are not going to build an interface for interaction with the API to not overload the tutorial. If you want to build views, there are many options, such as JavaScript frameworks (https://angularjs.org/[Angular], https://vuejs.org/[Vue.JS], https://reactjs.org/[React]) or mobile libraries (https://github.com/AFNetworking/AFNetworking[AFNetworking]).
 
 At this stage, you should ask yourself this question:
 
 > Okay, but I need to explore and visualize the API I'm going to build, right?
 
-That's right. If you _google_ something related to exploring an API, you'll find many results. For example, you can use https://www.getpostman.com/ [Postman], which has become a must-have. But we're not going to use it. In our case, we will use *cURL*, which is a command line tool available almost everywhere.
+That's right. If you _google_ something related to exploring an API, you'll find many results. For example, you can use https://www.getpostman.com/[Postman], which has become a must-have. But we're not going to use it. In our case, we will use *cURL*, which is a command line tool available almost everywhere. This will allow us to have reproductible commands whatever your development environment.
 
 == Set up the API
 
 An API is defined by https://fr.wikipedia.org/wiki/Interface_de_programmation [wikipedia] as _an Application Programming Interface (API) standardized set of components that serves as a front end through which one software provides services to other software_. In other words, it is a way in which systems interact with each other via an interface (in our case, a web service built with JSON). There are other communication protocols, such as SOAP, but we are not talking about them here.
 
-JSON has become a must as a file format for the Internet because of its readability, scalability, and ease of implementation. Many JavaScript frameworks use it as a default protocol, such as https://angularjs.org/ [Angular] or http://emberjs.com/ [EmberJS]. Other large Objective-C libraries use it like https://github.com/AFNetworking/AFNetworking [AFNetworking] or http://restkit.org/ [RESTKit]. There are probably good solutions for Android, but I can't recommend anything due to my lack of experience on this development platform.
+JSON has become a must as a file format for the Internet because of its readability, scalability, and ease of implementation. Many JavaScript frameworks use it as a default protocol, such as https://angularjs.org/[Angular] or http://emberjs.com/[EmberJS]. Other large Objective-C libraries use it like https://github.com/AFNetworking/AFNetworking [AFNetworking] or http://restkit.org/[RESTKit]. There are probably good solutions for Android, but I can't recommend anything due to my lack of experience on this development platform.
 
-So we will use the JSON format to build our API. The first idea that might come to your mind would be to start creating bulk routes. The problem is that they wouldn't be standardized. A user wouldn't be able to guess what resource is returned by a route.
+So we will use the JSON format to build our API. The first idea that might come to your mind would be to start creating bulk routes. The problem is that they wouldn't be standardized. A user wouldn't be able to guess what resource is returned by an endpoint.
 
 That's why a standard exists: *REST* _(Representational State Transfer)_. REST imposes a standard for routes that create, read, update, or delete information on a server using simple HTTP calls. It is an alternative to more complex mechanisms such as SOAP, CORBA, and RPC. A REST call is simply an HTTP GET request to the server.
-
-[source,soap]
-----
-aService.getUser("1")
-----
 
 And with REST, you can call a URL with a specific HTTP request. In this case, with a GET request:
 
@@ -44,25 +48,25 @@ http://domain.com/resources_name/uri_pattern
 The _RESTful_ APIs must follow at least three rules:
 
 * A basic URI like http://example.com/resources/
-* A type of Internet media to represent data is commonly JSON and is commonly defined by the exchange of headers.
-* Follow standard https://fr.wikipedia.org/wiki/Hypertext_Transfer_Protocol [HTTP] methods such as GET, POST, PUT, DELETE.
-** *GET*: Reads the resource(s) defined by the URI model.
-* *POST*: Creates a new entry in the resource collection
-*PUT*: Update a collection or resource member
-* *DELETE*: Destroys a collection or a member of the resources.
+* A mime type to represent data is commonly JSON and is commonly defined by the exchange of headers.
+* Follow standard https://fr.wikipedia.org/wiki/Hypertext_Transfer_Protocol[HTTP] methods such as GET, POST, PUT, DELETE.
+  * *GET*: Reads the resource(s) defined by the URI model.
+  * *POST*: Creates a new entry in the resource collection
+  * *PUT*: Update a collection or resource member
+  * *DELETE*: Destroys a collection or a member of the resources.
 
 This may sound complicated, but it will become much easier to understand as we go through the tutorial.
 
 == Initialization of the application
 
+Now that we know what conventions we're going to follow, we can start building our application's architecture. Therefore, we will continue to set up Typescript and certain libraries, which will help us respect best practices in terms of software development.
+
 === Dependency injection
 
 In this section, we will set up the *dependency injection* system. If you have never heard of it, this is probably the most abstract part of this chapter.
 
-Here I will try to summarize what Addiction Injection is and what it is used for. Let's imagine a `User' class that needs a `Database' class to be saved. We would try to initialize the database connection in the user's constructor:
+Here I will try to summarize what dependency injection is and what it is used for. Let's imagine a `User` class that needs a `Database` class to be saved. We would try to initialize the database connection in the user's constructor:
 
-
-.Une mauvaise implémentation n'utilisant pas l'injection de dépendance
 [source,ts]
 ----
 class Logger {
@@ -92,9 +96,9 @@ const user = new User('john@doe.io', './user.sqlite')
 This causes several problems:
 
 1. The `User` class depends on the `Database` class. If you change the implementation of the `Database` class, you will have to change the `User` class.
-2. the code is much less testable because to test a user, I need to know how the user class works.
+2. the code is much less testable because to test a user, I need to know how `User` class works.
 
-To accentuate the problem, let's add a `Logger` class that allows you to log events in the app. Let's say we need to log the database connection. The code becomes
+To accentuate the problem, let's add a `Logger` class that allows you to log events in the app. Let's say we need to log the database connection. The code becomes:
 
 
 [source,ts]
@@ -126,7 +130,7 @@ const user = new User('john@doe.io', './user.sqlite')
 
 We can see that the situation is getting worse because all classes are becoming dependent on each other. To correct this, we are going to inject the `Database` class directly into the `User` constructor:
 
-.The `Database' class is now injected in the constructor.
+.The `Database` class is now injected in the constructor.
 [source,ts]
 ----
 class Logger {/* ... */}
@@ -177,11 +181,11 @@ const container = new Container();
 const user = container.getUser();
 ----
 
-The code is longer, but everything gets cut out. Rest assured, we are not going to implement all this by hand. Excellent libraries exist. The one I chose is https://github.com/inversify/InversifyJS [Inversify].
+The code is longer, but everything gets cut out. Rest assured, we are not going to implement all this by hand. Excellent libraries exist. The one I chose is https://github.com/inversify/InversifyJS[Inversify].
 
-In this section, we are going to concretely implement a complete addiction injection system.
+In this section, we are going to concretely implement a complete dependency injection system.
 
-We will set up a Logger that can be injected into all the classes of our application. It will allow us to handle HTTP requests, for example, but also many other events.
+We will set up a Logger that can be injected into all classes of our application. It will allow us to handle HTTP requests, for example, but also many other events.
 
 So let's install `inversify`:
 
@@ -199,14 +203,9 @@ NOTE: We could use a library like https://github.com/winstonjs/winston[Winston] 
 ----
 // src/services/logger.service.ts
 export class Logger {
-  public log(
-    level: 'DEBUG' | 'INFO' | 'ERROR',
-    message: string,
-    meta: any = {},
-  ): void {
-    const dateStr = new Date().toISOString();
-    const metaStr = JSON.stringify(meta);
-    console.log(`${dateStr} - ${level} - ${message} - ${metaStr}`);
+  public log(level: 'DEBUG' | 'INFO' | 'ERROR', message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} - ${level} - ${message}`);
   }
 }
 ----
@@ -221,7 +220,7 @@ import {injectable} from 'inversify';
 export class Logger {/* ... */}
 ----
 
-And there you go. Now we just have to create the container that will register this service. https://github.com/inversify/InversifyJS#installation [The documentation] recommends creating a `TYPES` object that will simply store the identifiers of our services. We will create a `core` folder that will contain all the code that is transversal to our entire application.
+And there you go. Now we just have to create the container that will register this service. https://github.com/inversify/InversifyJS#installation[The documentation] recommends creating a `TYPES` object that will simply store the identifiers of our services. We will create a `core` folder that will contain all the code that is transversal to our entire application.
 
 [source,ts]
 ----
@@ -256,7 +255,7 @@ To install it, it's straightforward. Just follow the https://github.com/inversif
 
 [source,bash]
 ----
-npm install inversify-express-utils reflect-metadata body-parse --save
+$ npm install inversify-express-utils reflect-metadata body-parse --save
 ----
 
 * `reflet-metadata` allows Inversify to add metadata on our class. This import must be located at the very beginning of the first file.
@@ -302,7 +301,7 @@ The controller is a class like any other. It simply goes to the `@controller` de
 
 Let's go straight to the implementation to make it more meaningful:
 
-. Creating the first controller with a single route
+.Creating the first controller with a single route
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -320,7 +319,7 @@ export class HomeController {
 
 As you can see, the implementation is obvious, thanks to the decorators:
 
-* The `@controller("/")` tells us that all the routes of this controller will be prefixed with `/'.
+* The `@controller("/")` tells us that all the routes of this controller will be prefixed with `/`.
 * The second decorator `@httpGet("/")` defines that this method will be accessible on the URL `/` via the HTTP POST verb.
 
 Now let's try to inject the `Logger` to display a message when this route is used:
@@ -365,8 +364,8 @@ If everything works as before, you can commit the changes:
 
 [source,bash]
 ----
-git add .
-git commit -m "Add inversify"
+$ git add .
+$ git commit -m "Add inversify"
 ----
 
 == Conclusion

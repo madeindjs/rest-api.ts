@@ -17,7 +17,7 @@ Here we will put the _Model_ layer of the _design patern_ MVC. This is the layer
 
 To access the database, we will use an ORM (Object Relational Mapper). The purpose of an ORM is to interact with the database and save you from writing SQL queries by hand. It also allows us to add an abstraction layer to the database type and not worry about the differences between PostgreSQL and SQLite, for example.
 
-There are several ORMs for Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] and https://typeorm.io/[TypeORM]. I chose the last one because it is the one that integrates best with Typescript. It also offers a https://typeorm.io/#/active-record-data-mapper [Active Record AND Data Mapper] approach that I like very much.
+There are several ORMs for Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] and https://typeorm.io/[TypeORM]. I chose the last one because it is the one that integrates best with Typescript. It also offers a https://typeorm.io/#/active-record-data-mapper[Active Record AND Data Mapper] approach that I like very much.
 
 To install it is straightforward. We are going to install the TypeORM library but also two additional libraries :
 
@@ -39,7 +39,7 @@ We will now generate our configuration file. By default, `dotenv` will look for 
 touch .env
 ----
 
-And let's start by defining https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables [TypeORM environment variables] for a basic connection to an SQLite database:
+And let's start by defining https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables[TypeORM environment variables] for a basic connection to an SQLite database:
 
 The basic configuration of TypeORM for a connection to SQLite
 [source,env]
@@ -53,7 +53,7 @@ TYPEORM_ENTITIES=src/entities/*.entity.ts,dist/entities/*.entity.js
 
 As you can see, we define that we will use SQLite and that the database will be stored in the `db/` folder. `TYPEORM_SYNCHRONIZE` allows us to avoid not worrying about migrations and so let TypeORM do the modifications on our database schema if necessary. We then specify where our entities are located with `TYPEORM_ENTITIES`.
 
-All we have to do is configure `dotenv` to load this file. To do this, I use Node.js' _flag_ `--require`, which allows us to pre-load a library. You just have to modify the `package.json`:
+All we have to do is configure `dotenv` to load this file. To do this, I use Node.js flag `--require`, which allows us to pre-load a library. You just have to modify the `package.json`:
 
 .the basic TypeORM configuration for a connection to SQLite
 [source,json]
@@ -69,7 +69,7 @@ All we have to do is configure `dotenv` to load this file. To do this, I use Nod
 }
 ----
 
-We will now create a `DatabaseService` that will take care of connecting TypeORM to our database. As we have implemented addiction injection, this service will also be injectable. Here is the complete implementation. Don't panic. I'll detail the logic next.
+We will now create a `DatabaseService` that will take care of connecting TypeORM to our database. As we have implemented dependency injection, this service will also be injectable. Here is the complete implementation. Don't panic. I'll detail the logic next.
 
 [source,ts]
 ----
@@ -94,7 +94,7 @@ export class DatabaseService {
       DatabaseService.connection = await createConnection();
       this.logger.log('INFO', `Connection established`);
     } catch (e) {
-      this.logger.log('ERROR', 'Cannot establish database connection', e);
+      this.logger.log('ERROR', 'Cannot establish database connection');
       process.exit(1);
     }
 
@@ -115,9 +115,9 @@ This class has two methods:
 
 NOTE: It is good practice to hide the logic of the library from our own class. This will allow us to depend on the library and to be able to migrate more easily if one day, we want to change.
 
-Now that our service is created, we need to add it to our container :
+Now that our service is created, we need to add it to our container:
 
-Add the `Symbol` linked to the `DatabaseService` service.
+.Add the `Symbol` linked to the `DatabaseService` service.
 [source,ts]
 ----
 // src/core/types.core.ts
@@ -143,8 +143,8 @@ And there you go.
 
 We can now create our first `User` model. Using the _patern Data Mapper_, we will have to create two classes :
 
-- the _entity_ : it will define the fields' attributes to be saved in the database. In our case, I will simply create two attributes: `email` and `password` (the password will be encrypted later).
-- the _repository_: it will add some logic to save our entities.
+- the *entity* : it will define fields attributes to be saved in the database. In our case, I will simply create two attributes: `email` and `password` (the password will be encrypted later).
+- the *repository*: it will add some logic to save our entities.
 
 To simplify the example, I will put these two classes in the same file, but you can separate them very well :
 
@@ -193,14 +193,12 @@ Now it's time to get to the concrete part and create the controller to manage th
 
 === List users
 
-We will start with the `index' method, which is the simplest.
+We will start with the `index` method, which is the simplest.
 
 As we saw earlier, controllers can inject our services. So we will inject the `DatabaseService` to be able to retrieve the `UserRepository`. Then we will just have to call the `userRepository.find` method to get the list of all users (which is empty for the moment).
 
 Here is the implementation of our controller:
 
-
-.Création du `UserController` avec la méthode `index`
 [source,ts]
 ----
 // src/controllers/users.controller.ts
@@ -227,15 +225,11 @@ export class UsersController {
 
 And of course, don't forget to add the import of this new controller in the container:
 
-[source,diff]
+[source,ts]
 ----
 // src/core/container.core.ts
-import {Container} from 'inversify';
-import "../controllers/home.controller";
-+ import "../controllers/users.controller";
-import {DatabaseService} from '../services/database.service';
-import {Logger} from '../services/logger.service';
 // ...
+import "../controllers/users.controller";
 ----
 
 And there you go. Run the command `npm run start:watch` to start the server if you have stopped it and let's test the functionality with `cURL`:
@@ -245,9 +239,10 @@ And there you go. Run the command `npm run start:watch` to start the server if y
 $ curl http://localhost:3000/users
 ----
 
-Command's output indicates an empty table: this is normal because there is no user yet. On the other hand, the server terminal tells us that a lot has happened:
+Command's output indicates an empty result: this is normal because there is no user yet. On the other hand, the server terminal tells us that a lot has happened:
 
 
+[source,sql]
 ....
 query: BEGIN TRANSACTION
 query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" IN ('user')
@@ -261,7 +256,7 @@ query: SELECT "User". "id" AS "User_id", "User". "email" AS "User_email", "User"
 
 These are TypeORM logs. These tell us that:
 
-. TypeORM tried to see if there was a table named `user'.
+. TypeORM tried to see if there was a table named `user`.
 . TypeORM created this table since it didn't exist
 . the connection to the database has been established
 . The SQL query to retrieve all users has been executed.
@@ -272,7 +267,7 @@ This tells us that everything is working perfectly! But I feel a bit disappointe
 
 Now that our entire structure has been put in place, the rest will go much faster. Let's go straight to the implementation, and I'll explain the code next:
 
-.Adding the `create' method to the `UserRepository' class.
+.Adding the `create` method to the `UserRepository` class.
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -316,11 +311,11 @@ Let's move on to retrieve the information of this user.
 
 === Show
 
-The `show` method will take care of retrieving a user's information. This method will take the user's ID. We will then use the `repository' to retrieve the user.
+The `show` method will take care of retrieving a user's information. This method will take the user's ID. We will then use the `repository` to retrieve the user.
 
 Here is the implementation :
 
-.Adding the `create' method to the `UserRepository' class.
+.Adding the `create` method to the `UserRepository` class.
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -346,7 +341,7 @@ $ curl http://localhost:3000/users/1
 {"id":1, "email": "test@test.fr", "password": "test"}.
 ----
 
-And there you go. Everything is working properly. Now let's try to modify this user.
+And there you go. Everything is working properly. Now let's try to update this user.
 
 === Update
 
@@ -448,14 +443,16 @@ $ git commit -am "Implement CRUD actions on user"
 
 Everything seems to work, but there is still one problem: we do not validate the data we insert in the database. Thus, it is possible to create a user with a fake email:
 
+[source,sh]
 ....
 $ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
 ....
 
-Once again, we will use a ready-made library: `class-validator`. This library will offer us https://github.com/typestack/class-validator/#table-of-contents [a ton of decorators] to check our `User` instance very easily.
+Once again, we will use a ready-made library: `class-validator`. This library will offer us https://github.com/typestack/class-validator/#table-of-contents[a ton of decorators] to check our `User` instance very easily.
 
 Let's install it with NPM :
 
+[source,sh]
 ....
 $ npm install class-validator --save
 ....
@@ -555,7 +552,7 @@ $ git commit -am "Validate user"
 
 Now that we have a code that works, it's time to make a pass to *make it all*.
 
-During setup, you may have noticed that the `show', `update', and `destroy' methods have a common logic: they all get the whole user.
+During setup, you may have noticed that the `show`, `update`, and `destroy` methods have a common logic: they all get the whole user.
 
 To factorize this code, there would be two solutions:
 
@@ -602,45 +599,36 @@ Here are some explanations about this code :
 
 . `inversify-express-utils` gives us access to an abstract class `BaseMiddleware`. We also need to add the `@injectable` decorator to use it later in our controller.
 . a middleware is a simple `handle` method that takes :
-+
-Wrong:
-  the request sent by the user
-`res`::
-  the HTTP response to return.
-`next`::
-  a callback to call once our processing is complete.
+  - `req`: the request sent by the user
+  - `res`: the HTTP response to return.
+  - `next`: a callback to call once our processing is complete.
 . the `handle` method takes care of retrieving the user and adding it to the `req` object for later use.
 . if the user does not exist, we use `res` to return a 404 response directly without even going through the user
 
-Since we have defined a new injectable, we need to add it to our container :
+Since we have defined a new injectable, we need to add it to our container:
 
 
-[source,diff]
+[source,ts]
 ----
 // src/core/types.core.ts
 export const TYPES = {
-  Logger: Symbol.for("Logger"),
-  DatabaseService: Symbol.for("DatabaseService"),
-+   // Middlewares
-+   FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
+  // ...
+  // Middlewares
+  FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
 };
 ----
 
-[source,diff]
+[source,ts]
 ----
 // src/core/container.core.ts
 // ...
-+ import {FetchUserMiddleware} from '../middlewares/fetchUser.middleware';
-
-export const container = new Container();
-// services
-container.bind(TYPES.Logger).to(Logger);
-container.bind(TYPES.DatabaseService).to(DatabaseService);
-+ // middlewares
-+ container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
+import {FetchUserMiddleware} from '../middlewares/fetchUser.middleware';
+// ...
+// middlewares
+container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
 ----
 
-Now we can use this middleware in our controller by adding `TYPE.FetchUserMiddleware` to the decorator. So here is the modification :
+Now we can use this middleware in our controller by adding `TYPE.FetchUserMiddleware` to the decorator. So here is the modification:
 
 [source,ts]
 ----
@@ -720,7 +708,7 @@ Impeccable. However, there is a small problem with this type of method.
 
 If your passwords leak, it will be quite easy to retrieve the corresponding password by building a *hash library*. Concretely, the malicious person would use the current passwords, hash them one by one with the same algorithm, and compare them to ours. To correct this, a hash salt must be used.
 
-The hash salt consists of adding a defined text to each password. Here is the modification :
+The hash salt consists of adding a defined text to each password. Here is the modification:
 
 [source,ts]
 ----
@@ -913,7 +901,7 @@ $ npm test
   1 passing (5ms)
 ----
 
-And while we're at it, we can also add another unit test on the `isPasswordMatch' password comparison method:
+And while we're at it, we can also add another unit test on the `isPasswordMatch` password comparison method:
 
 [source,ts]
 ----
@@ -980,7 +968,7 @@ import {server} from '../core/server';
 export const agent: SuperTest<Test> = supertest(server.build());
 ----
 
-And now let's start creating our first test for the `index' method for example:
+And now let's start creating our first test for the `index` method for example:
 
 [source,ts]
 ----
@@ -1038,7 +1026,7 @@ describe("UsersController", () => {
 });
 ----
 
-NOTE: `new Date().getTime()` returns a `Number' of the number of milliseconds since 01/01/1970. I use it to get a unique number. We'll see later how to improve this.
+NOTE: `new Date().getTime()` returns a `Number` of the number of milliseconds since 01/01/1970. I use it to get a unique number. We'll see later how to improve this.
 
 Here we test two things:
 

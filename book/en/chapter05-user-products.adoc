@@ -3,7 +3,7 @@
 
 In the previous chapter, we implemented the authentication mechanism that we will use throughout the application.
 
-At the moment, we have a straightforward implementation of the `User' model, but the moment of truth has come. We are going to customize the JSON output and add a second resource: the user's products. These are the elements that the user will sell in the application.
+At the moment, we have a straightforward implementation of the `User` model, but the moment of truth has come. We are going to customize the JSON output and add a second resource: the user's products. These are the elements that the user will sell in the application.
 
 If you are familiar with an ORM, you may already know what I'm talking about. But for those who don't, we will combine the `User` model with the `Product` model using the `@ManyToOne` and `@OneToMany` decorators _TypeORM_.
 
@@ -26,7 +26,7 @@ git checkout -b chapter05
 
 == The product model
 
-We will first create a `Product' model, then we will add some validations to it, and finally, we will associate it with the `User' model. Like the `User` template, the `Product` will be fully tested and automatically deleted if the user is deleted.
+We will first create a `Product` model, then we will add some validations to it, and finally, we will associate it with the `User` model. Like the `User` template, the `Product` will be fully tested and automatically deleted if the user is deleted.
 
 
 === Product basics
@@ -77,7 +77,7 @@ export class Product {
 export class ProductRepository extends Repository<Product> {}
 ----
 
-As you can see, this is very readable. The only new thing here is the appearance of the `ManyToOne' relationship. This is a decorator that will create a `userId` column of type `int`. It takes three parameters:
+As you can see, this is very readable. The only new thing here is the appearance of the `ManyToOne` relationship. This is a decorator that will create a `userId` column of type `int`. It takes three parameters:
 
 1. a function that returns the class corresponding to the association
 2. a function that defines how the connection in the other direction is specified
@@ -173,7 +173,7 @@ $ git commit -am "Adds some validations to products"
 
 Now is the time to start building product entry points. For now, we will just build five REST actions.
 
-First, we need to create the `ProductsController`. As a warm-up, we'll start by building the `show' action for the product.
+First, we need to create the `ProductsController`. As a warm-up, we'll start by building the `show` action for the product.
 
 === Product Show Action
 
@@ -181,9 +181,9 @@ First, we need to create the `ProductsController`. As a warm-up, we'll start by 
 
 As usual, we start by adding some tests from the product controller. The purpose here is straightforward. Just display a single product and make sure that the server response is what we expect.
 
-But to do this, we will first create a product and a user in the `before' method. So we're going to refine our utility to create templates by adding `generateProduct`:
+But to do this, we will first create a product and a user in the `before` method. So we're going to refine our utility to create templates by adding `generateProduct`:
 
-.Creating the `generateProduct' method
+.Creating the `generateProduct` method
 [source,ts]
 ----
 // src/utils/faker.utils.ts
@@ -205,7 +205,7 @@ export function generateProduct(product?: Partial<Product>): Product {
 }
 ----
 
-We will now use this method in the `before' of the new test below:
+We will now use this method in the `before` of the new test below:
 
 [source,ts]
 ----
@@ -287,7 +287,7 @@ export class FetchProductMiddleware extends BaseMiddleware {
 }
 ----
 
-The small novelty here is the appearance of the `relation' parameter of the `findOne' method. This parameter also allows the user to retrieve the product and fill in the `product.user` property, which will be useful a little further on.
+The small novelty here is the appearance of the `relation` parameter of the `findOne` method. This parameter also allows the user to retrieve the product and fill in the `product.user` property, which will be useful a little further on.
 
 Now we can switch to the controller:
 
@@ -404,7 +404,7 @@ Creating products is a bit more tricky because we'll need an additional configur
 
 ==== Tests
 
-So our first stop will be the `products.controller.spec.ts` file. We will first create a specific user in the `before' and retrieve his JWT token:
+So our first stop will be the `products.controller.spec.ts` file. We will first create a specific user in the `before` and retrieve his JWT token:
 
 [source,ts]
 ----
@@ -435,7 +435,7 @@ describe("ProductsController", () => {
 });
 ----
 
-The small novelty here is the appearance of the `relation' parameter of the `findOne' method.
+The small novelty here is the appearance of the `relation` parameter of the `findOne` method.
 
 . the case where we create a product with a user
 . the case where a product cannot be created because it is incomplete
@@ -689,7 +689,7 @@ $ npm test
 
 === Deleting products
 
-Our last stop for the product road will be the `destroy` action. Now you can imagine what that would look like. The strategy here will be quite similar to the `create' and `update' action. This means that we will retrieve the logged-in user, then verify that the user has the product, and finally remove it by returning a 204 code.
+Our last stop for the product road will be the `destroy` action. Now you can imagine what that would look like. The strategy here will be quite similar to the `create` and `update` action. This means that we will retrieve the logged-in user, then verify that the user has the product, and finally remove it by returning a 204 code.
 
 Let's start by adding some tests:
 

@@ -45,10 +45,10 @@ Thus, our document *must* contain these keys:
 * `errors` which should contain a table of errors that have occurred.
 * `meta` which contains a https://jsonapi.org/format/#document-meta[meta object]
 
-The content of the `data' key is also quite strict:
+The content of the `data` key is also quite strict:
 
 * it must have a `type` key that describes the JSON model's type (if it's an article, a user, etc.).
-* the object properties must be placed in an `attribute' key, and the _undescore_ (`_`) is replaced by dashes (`-`).
+* the object properties must be placed in an `attribute` key, and the _undescore_ (`_`) is replaced by dashes (`-`).
 * the links of the objects must be placed in a `relationships` key
 
 In this chapter we will customize the JSON output using the library https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] which complies with all the standards https://jsonapi.org/[JSON:API].
@@ -82,7 +82,7 @@ export const userSerializer = new Serializer("users", {
 });
 ----
 
-This _serializer_ will allow us to convert our `User` object to JSON, which correctly implements the JSON:API standard. We have specified the `email` attribute to present in the `data` table. By listing the fields that we want to appear in, this library fixes the problem with our API's `hashedPassword' attribute.
+This _serializer_ will allow us to convert our `User` object to JSON, which correctly implements the JSON:API standard. We have specified the `email` attribute to present in the `data` table. By listing the fields that we want to appear in, this library fixes the problem with our API's `hashedPassword` attribute.
 
 
 Now we just have to use this instance in our controller:
@@ -255,7 +255,7 @@ This may require additional configuration on the user's terminal to retrieve its
 
 === Incorporate the object into the attribute
 
-Another solution is to incorporate the `user' object into the `product' object. This can make the first request a little slower, but this way, the client doesn't need to make another request. An example of the expected results is shown below:
+Another solution is to incorporate the `user` object into the `product` object. This can make the first request a little slower, but this way, the client doesn't need to make another request. An example of the expected results is shown below:
 
 [source,json]
 ----

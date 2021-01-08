@@ -20,7 +20,7 @@ git checkout -b chapter07
 
 If you remember the templates' associations, you should remember that the `Order` template is associated with the `User` and `Product` templates. It's actually straightforward to manage this with Rails. The tricky part is when serializing these objects. I'll talk about it in more detail later.
 
-Let's start by creating the model of the command. It will have two `ManyToOne' relationships: `User' and `Product'. It will also have a `total' column for the command's total cost and then the classic `createdAt' and `updatedAt' columns. Here is the full implementation.
+Let's start by creating the model of the command. It will have two `ManyToOne` relationships: `User` and `Product`. It will also have a `total` column for the command's total cost and then the classic `createdAt` and `updatedAt` columns. Here is the full implementation.
 
 [source,ts]
 ----
@@ -62,9 +62,9 @@ export class OrderRepository extends Repository<Order> {}
 
 As you can see, the implementation brings nothing new compared to what we have already seen.
 
-I took the opportunity to add the `ValidateIf' constraint on the `total' field, which is a `number unsigned'. This means that it cannot be negative.
+I took the opportunity to add the `ValidateIf` constraint on the `total` field, which is a `number unsigned'. This means that it cannot be negative.
 
-But before we forget, we must also define the relationship on the `User' side:
+But before we forget, we must also define the relationship on the `User` side:
 
 [source,ts]
 ----
@@ -170,9 +170,9 @@ Let's first define what actions we are going to implement:
 . A show action to retrieve a particular command from the current user
 . Creative action to actually place the order
 
-Let's start with the `index' action. First, we need to create the command controller. But before we start typing code, we need to ask ourselves:
+Let's start with the `index` action. First, we need to create the command controller. But before we start typing code, we need to ask ourselves:
 
-> Should I leave my command routes nested in the `UsersController', or should I isolate them?
+> Should I leave my command routes nested in the `UsersController`, or should I isolate them?
 
 The answer is straightforward: it depends on how much information you want to expose to the developer.
 
@@ -240,7 +240,7 @@ export function generateOrder(order?: Partial<Order>): Order {
 }
 ----
 
-The implementation of this test should remind you of `product.controller.spec.ts`. We try to access the new `endpoint' with a user with an `Order' and check that this command appears in the JSON return.
+The implementation of this test should remind you of `product.controller.spec.ts`. We try to access the new `endpoint` with a user with an `Order` and check that this command appears in the JSON return.
 
 NOTE: You may have noticed the syntax `({body}) => ...`. This is the functionality of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax[spread syntax]. It simply allows you to retrieve a property contained in an object directly from a variable of the same name. Thus `const data = {a: 1}; const a = data.a;` can be simplified to `const { a } = {a: 1}`. This syntax can be confusing at first so I preferred to use it rather than from this chapter on.
 
@@ -543,7 +543,7 @@ $ git commit -am "Adds the create method for the orders controller"
 
 The last section of this chapter will send a confirmation email to the user who has just created an order. If you want, you can skip this step and go to the next chapter! This section is more of a bonus.
 
-So we will use the library https://nodemailer.com/ [nodemailer].
+So we will use the library https://nodemailer.com/[nodemailer].
 
 
 So let's install the library:
@@ -687,7 +687,7 @@ $ npm test
 
 We find that our test no longer works because it exceeds the time allotted for a test. We could increase the time allocated to this test with the time-out method, but it is not optimal. But don't worry, we have a straightforward solution offered by the dependency injection we have implemented since the beginning: a _Mock_.
 
-So the idea is to create a class that implements the features of the `MailerService' but behaves the way we want it to specifically in the given context. That is, we want the emails not to be sent during tests. It sounds complicated, but it's actually effortless:
+So the idea is to create a class that implements the features of the `MailerService` but behaves the way we want it to specifically in the given context. That is, we want the emails not to be sent during tests. It sounds complicated, but it's actually effortless:
 
 [source,ts]
 ----
