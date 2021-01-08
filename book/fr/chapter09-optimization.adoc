@@ -426,7 +426,7 @@ Et voilà. Le cache a été utilisé et ... rien de plus! Maintenant c'est à vo
 
 L’amélioration est donc énorme! _Committons_ une dernière fois nos changements.
 
-[source,ruby]
+[source,sh]
 ----
 $ git commit -am "Adds caching for the serializers"
 ----

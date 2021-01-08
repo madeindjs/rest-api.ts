@@ -8,23 +8,22 @@ When you are finished with this book, you will create your own API and integrate
 This book intends not only to teach you how to build an API but rather to teach you how to build a scalable and maintainable API with Typescript. In this journey, you will learn how to:
 
 - Using Git for version control
-- Building JSON Answers
-- Test your entry points with unit and functional tests
+- Building JSON responses
+- use test-driven development
+- Test your entry points with functional tests
 - Set up authentication with JSON Web Tokens (JWT)
 - Use JSON:API specifications
-- Optimize and cache the API
+- Optimize your application
 
-I strongly recommend that you follow all the steps in this book. Try not to skip any chapters, as I will offer you tips and tricks to improve yourself throughout the book. You can think of yourself as the main character in a video game that gets a higher level with each chapter.
+I strongly recommend that you follow all the steps in this book. Try not to skip any chapters, as I will give you tips and tricks to improve yourself throughout the book. You can think of yourself as the main character in a video game that gets a higher level with each chapter.
 
-In this first chapter, I will explain how to configure your environment (if you haven't already done so). We will then create an application called =market_place=. I will make sure to teach you the best practices I have learned from my experience. This means that after initializing the project, we will start using Git.
+In this first chapter, I will explain how to configure your environment (if you haven't already done so). We will then create an application called `market_place`. I will make sure to teach you the best practices I have learned from my experience. This means that after initializing the project, we will start using Git.
 
-In the next chapters, we will build the application following a simple working method daily. We will develop the entire application using test-driven development (TDD). I will also explain the interest in using an API for your next project and choosing a suitable response format such as JSON or XML. Later on, we will get our hands on the code and complete the application's basics by building all the necessary roads. We will also secure access to the API by building authentication through HTTP header exchange. Finally, in the last chapter, we will add some optimization techniques to improve the server's structure and response times.
+In next chapters, we will build the application using test-driven development (TDD) workflow. I will also explain the interest in using an API for your next project and choosing a suitable response format such as JSON or XML. Later on, we will get our hands on the code and complete the application's basics by building all the necessary endpoints. We will also secure access to the API by building authentication through HTTP header exchange. Finally, in the last chapter, we will add some optimization techniques to improve the server's structure and response times.
 
-The final application will be a marketplace application that will allow sellers to set up their own online store. Users will be able to place orders, download products, and more. There are many options to create an online store, such as http://shopify.com/ [Shopify], http://spreecommerce.com/ [Spree], or http://magento.com/ [Magento].
+The final application will be a marketplace application that will allow sellers to set up their own online store. Users will be able to place orders, download products, and more. There are many options to create an online store, such as http://shopify.com/[Shopify], http://spreecommerce.com/[Spree], or http://magento.com/[Magento].
 
-Throughout this journey (it depends on your expertise), you will improve and better understand how modern frameworks work. I have also taken some of the practices from my experience as a developer..
-
-// -- current
+Throughout this journey (it depends on your expertise), you will improve and better understand how modern frameworks work. I have also taken some of the practices from my experience as a developer.
 
 == Conventions on this book
 
@@ -55,7 +54,7 @@ class User {
 }
 ----
 
-I will use some principles like:
+Also, I will use some terms like:
 
 * _"Avoid"_ means you're not supposed to.
 * _"Prefer"_ indicates that the first is the most appropriate of the two options.
@@ -72,19 +71,19 @@ For almost all developers, one of the most painful parts is setting up a comfort
 There are two categories of code editors :
 
 - the *text editors* like https://atom.io/[Atom], https://www.sublimetext.com/[Sublime Text], https://www.vim.org/[VIM] and many others.
-- the complete *development environments* like https://www.eclipse.org/ [Eclipse], https://netbeans.org/[Netbeans]], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
+- the complete *development environments* like https://www.eclipse.org/[Eclipse], https://netbeans.org/[Netbeans], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
 
 Development environments are more complete and offer more features but are often much heavier.
 
 There is no bad choice, and it's really a matter of taste.
 
-I use https://code.visualstudio.com/[Visual Studio Code] from Microsoft, which is at the crossroads between a text editor and a development environment. Its auto-completion is really very powerful when using https://www.typescriptlang.org/[Typescript]]. If you don't know what to use, you can't go wrong by using this editor.
+I use https://code.visualstudio.com/[Visual Studio Code] from Microsoft, which is at the crossroads between a text editor and a development environment. Its auto-completion is really very powerful when using https://www.typescriptlang.org/[Typescript]. If you don't know what to use, you can't go wrong by using this editor.
 
 === Web browser
 
 As for the browser, I will advise directly http://www.mozilla.org/en-US/firefox/new/[Firefox]. But other developers use https://www.google.com/intl/en/chrome/browser/[Chrome] or even https://www.apple.com/safari/[Safari]. Any of them will help you build the application you want. They all offer a good inspector for the DOM, a network analyzer, and many other features you may already be familiar with.
 
-However, I advise you to use at least two web browsers. There are some nuances in the interpretation of Javascript or CSS. By using two browsers, you make sure that your developments work correctly for most of your users.
+However, I advise you to use at least two web browsers. There are some differences in the interpretation of Javascript or CSS. By using two browsers, you make sure that your developments work correctly for most of your users.
 
 Personally, I use Firefox in everyday life, and I check the proper functioning of my features on https://www.chromium.org/[Chromium], a derivative of Google Chrome.
 
@@ -115,9 +114,9 @@ There are many ways to install and manage Node.js. You may even already have a v
 $ node -v
 ----
 
-If you haven't installed it, you can do it with your package manager. However, I recommend that you use https://github.com/nvm-sh/nvm [Node Version Manager (NVM)]. The principle of this tool is to allow you to install several versions of Node.js on the same machine, in an environment sealed to a possible version installed on your operating system, and to be able to switch from one to the other easily.
+If you haven't installed it, you can do it with your package manager. However, I recommend that you use https://github.com/nvm-sh/nvm[Node Version Manager (NVM)]. The principle of this tool is to allow you to install several versions of Node.js on the same machine, in an environment sealed to a possible version installed on your operating system, and to be able to switch from one to the other easily.
 
-To install it, go to https://github.com/nvm-sh/nvm#installing-and-updating [follow the official documentation]. You have to launch the following script :
+To install it, go to https://github.com/nvm-sh/nvm#installing-and-updating[follow the official documentation]. You have to launch the following script :
 
 [source,bash]
 ----
@@ -130,12 +129,12 @@ Once the installation is complete, you can install the latest version of Node.js
 
 [source,bash]
 ----
-nvm install node
+$ nvm install node
 ----
 
 ==== Database
 
-I strongly recommend that you install http://www.postgresql.org/[Postgresql] to manage your databases. But here, for simplicity, we will use http://www.sqlite.org/[SQLite]. If you are using Mac OS you don't have any additional libraries to install. If you are using Linux, don't worry, I'll guide you:
+I strongly recommend that you install http://www.postgresql.org/[PostgreSQL] to manage your databases. But here, for simplicity, we will use http://www.sqlite.org/[SQLite]. If you are using Mac OS you don't have any additional libraries to install. If you are using Linux, don't worry, I'll guide you:
 
 [source,bash]
 ----
@@ -190,7 +189,7 @@ And there you go. Let's move on.
 
 === NPM Initialization
 
-NPM is the official package manager of Node.js. Since version 0.6.3 of Node.js, npm is part of the environment and is automatically installed by default.
+NPM is the official package manager of Node.js. Since version 0.6.3 of Node.js, NPM is part of the environment and is automatically installed by default.
 
 Initializing your project with Node.js means that you will be able to install any library published on https://www.npmjs.com/[npmjs.com].
 
@@ -205,7 +204,7 @@ Several questions will be asked, and in the end, you will see a new `package.jso
 
 === Setting up Typescript
 
-Now that we have created our folders, we are ready to implement Typescript.
+Now that we have initialize Node.js project, we are ready to implement Typescript.
 
 Typescript will bring us strong typing and will perform checks before _transpiling_ Typescript code to Javascript :
 
@@ -234,7 +233,7 @@ function say(message: string): void {
 say("Hello");
 ----
 
-This code is really very basic and will just be used to check that the transpilation works.
+This code is really basic and will just be used to check that the transpilation works.
 
 To use Typescript transpilation, we need to define a configuration file `tsconfig.json`. Here is a basic one:
 
@@ -297,7 +296,7 @@ So now you can execute the script with the following command:
 
 [source,bash]
 ----
-npm run start
+$ npm run start
 ----
 
 Now that everything is working, it's time to version our changes. Don't add all the created files. It's important only to version some folders:
@@ -316,7 +315,7 @@ We can now add all our files with Git and commit :
 
 [source,bash]
 ----
-git add .
+$ git add .
 $ git commit -m "Setup Typescript for backend"
 ----
 
@@ -373,7 +372,7 @@ Nodemon said: Hello
 [nodemon] clean exit - waiting for changes before restart
 ----
 
-Now that everything works, we can modify the `package.json` file and add the command `nodemon`:l
+Now that everything works, we can modify the `package.json` file and add the command `nodemon`:
 
 [source,json]
 ----
@@ -397,7 +396,7 @@ $ git commit -m "Setup Nodemon"
 
 ==== Setting up the web server
 
-So far, we have set up an environment that will allow us to avoid syntax and typing errors automatically with Typescript. It's time to make a real feature: the web server finally.
+So far, we have set up an environment that will allow us to avoid syntax and typing errors automatically with Typescript. It's time to make a real feature: the web server.
 
 There are several libraries to make a web server with Node.js. In my case, I recommend https://expressjs.com/fr/[Express.js] simply because it's the one with a bigger community, and it offers basic features. It also gives you the freedom to organize your code the way you want and offers a ton of plugins to add features on top of it.
 
@@ -405,14 +404,14 @@ Adding it is very easy:
 
 [source,bash]
 ----
-npm add express --save
+$ npm add express --save
 ----
 
 We will also add the Typescript typings that will help your code editor a little bit:
 
 [source,bash]
 ----
-npm add @types/express --save-dev
+$ npm add @types/express --save-dev
 ----
 
 And now we can instantiate our server in the file `main.ts`.

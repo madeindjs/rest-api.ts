@@ -19,7 +19,7 @@ def check_args(args)
 end
 
 def in_filename(args)
-  format('rest-api.ts/%s/main.adoc', args[:lang])
+  format('book/%s/main.adoc', args[:lang])
 end
 
 def out_filename(args, extension)
@@ -49,7 +49,8 @@ namespace :build do
     check_args(args)
     Rake::Task['build:pdf'].invoke(args[:lang])
     Rake::Task['build:epub'].invoke(args[:lang])
-    Rake::Task['build:mobi'].invoke(args[:lang])
+    Rake::Task['build:html'].execute(args)
+    # Rake::Task['build:mobi'].invoke(args[:lang])
   end
 
   desc 'Build a PDF version'

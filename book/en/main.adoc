@@ -1,20 +1,20 @@
-= API on Rails 6
+= REST-API.ts
 Alexandre Rousseau <contact@rousseau-alexandre.fr>
-v6.9, 2020-09-01
+v1.0, 2021-01-08
 :doctype: book
 :toc:
 :imagesdir: img
 :title-logo-image: image:logo.svg[]
-:homepage: https://github.com/madeindjs/api_on_rails/
+:homepage: https://github.com/madeindjs/rest-api.ts
 :source-highlighter: rouge
 // epub tags
-:copyright: CC-BY-SA 4.0, MIT
-:keywords: Rails, API, Ruby, Software
+:copyright: CC-BY-SA 4.0
+:keywords: Node.js, API, Javascript, Typescript, Software
 :lang: en
 :author: Alexandre Rousseau
-:description: Learn best practice to build an API using Ruby on Rails 6
+:description: Learn best practice to build an API using Node.js and Typescript
 :front-cover-image: image:cover.svg[]
-:revdate: 2020-09-01
+:revdate: 2021-01-08
 
 include::chapter00-before.adoc[]
 
