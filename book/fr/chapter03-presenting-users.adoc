@@ -675,16 +675,14 @@ Pas mal non ? Commitons les modifications avant d'aller plus loin :
 
 [source,bash]
 ----
-$ git add . && git commit -m "Factorise user controller with middleware"
+$ git add . && git commit -m "Factorize user controller with middleware"
 ----
-
-// current
 
 == Hashage du mot de passe
 
 === La théorie
 
-Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto]. Voici un exemple d'une méthode pour hasher le mot de pass
+Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto]. Voici un exemple d'une méthode pour hasher le mot de pass:
 
 [source,ts]
 ----
@@ -867,7 +865,7 @@ describe("User", () => {
 });
 ----
 
-Comme je vous le disait, c'est un test vraiment très simple. Ajoutons maintenant la commande qui va nous permettre de lancer ce test dans le `package.json` :
+Comme je vous le disait, c'est un test vraiment très simple. Ajoutons maintenant la commande qui va nous permettre de lancer ce test dans le fichier `package.json` :
 
 [source,diff]
 ----
@@ -885,11 +883,11 @@ Comme je vous le disait, c'est un test vraiment très simple. Ajoutons maintenan
 
 Quelques explications sur cette commande:
 
-* `-r reflect-metadata` charge la librairie `reflect-metadata` et nous évite de l'importer
+* `-r reflect-metadata` charge la librairie `reflect-metadata` et nous évite de l'importer manuellement
 * `-r dotenv/config` charge la librairie `dotenv` pour ainsi avoir les variables d'environnement de TypeORM
-* `dotenv_config_path` va charger un fichier `.env` particulier que nous allons voir juste après
+* `dotenv_config_path` va charger un fichier `.env` particulier que nous allons créer juste après
 
-Lorsque nous testons notre application, nous ne voulons pas polluer notre database avec des données que nous utilisons pour des tests. C'est donc une bonne pratique de créer une base dédiée. Dans notre cas, nous allons utiliser une base SQLite _in memory_. C'est a dire qu'elle n'est pas stockée sur lke disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
+Lorsque nous testons notre application, nous ne voulons pas polluer notre base de données avec des données que nous créons pendant les tests. C'est donc une bonne pratique de créer une base de donnée dédiée. Dans notre cas, nous allons utiliser une base SQLite _in memory_. C'est a dire qu'elle n'est pas stockée sur le disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
 
 [source,env]
 ----
@@ -960,13 +958,12 @@ $ git add . && git commit -m "Add unit test about password hash"
 
 == Ajout des tests fonctionnels
 
-Maintenant que nous avons mis en place des tests unitaires, il est temps de mettre en place les *tests fonctionnels*. Ce type de test va plutôt tester des portions de code.
+Maintenant que nous avons mis en place des tests unitaires, il est temps de mettre en place les *tests fonctionnels*. Ce type de test va  tester des fonctionnalités plutôt que des méthodes.
 
-Une bonne pratique que j'ai appris en développant avec Ruby on Rails est de tester le comportement des contrôleur. C'est très facile car il suffit d'appeler une route avec des paramètres donné et nous pouvons savoir à l'avance le résultat. Ainsi par exemple, si j'envoie une requête de Type `GET` sur la route `/users` je dois m'attendre à recevoir une liste d'utilisateur. Nous n'avons pas besoin de démarrer complètement le serveur pour pour ça, une librairie existe: https://www.npmjs.com/package/supertest[supertest].
+Une bonne pratique que j'ai appris en développant avec le _framework_ Ruby on Rails est de tester le comportement des contrôleurs. C'est très facile car il suffit d'appeler un _endpoint_ avec des paramètres et de vérifier le résultat. Ainsi par exemple, si j'envoie une requête de Type `GET` sur la route `/users` je dois m'attendre à recevoir une liste d'utilisateur. La librairie https://www.npmjs.com/package/supertest[supertest] nous permet de faire cela sans même démarrer le serveur.
 
 Installons donc cette librairie:
 
-.Installation de Supertest
 [source,bash]
 ----
 $ npm install supertest @types/supertest --save-dev
@@ -974,7 +971,6 @@ $ npm install supertest @types/supertest --save-dev
 
 Maintenant créons notre agent qui sera utilisé dans tous nos tests:
 
-.Création d'un `supertest` agent
 [source,ts]
 ----
 // src/tests/supertest.utils.ts
@@ -986,7 +982,6 @@ export const agent: SuperTest<Test> = supertest(server.build());
 
 Et maintenant commençons pas créer notre premier test pour la méthode `index` par exemple:
 
-.Test de l'_endpoint_ `UsersController.index`
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts
@@ -1006,8 +1001,7 @@ describe("UsersController", () => {
 });
 ----
 
-Le test est vraiment très simple et la syntaxe de `supertest` rend le test très lisible. Traduis dans la langue de Molière, ce test veut dire "envoie une requête HTTP de type `Get` et attends toi à recevoir une réponse de type `200`". Essayons de lancer les tests
-
+Le test est vraiment très simple et la syntaxe de `supertest` rend le test très lisible. Ce test veut dire "envoie une requête HTTP de type `Get` et attends toi à recevoir une réponse de type `200`". Essayons de lancer les tests
 
 [source,sh]
 ----
@@ -1023,8 +1017,6 @@ NOTE: les requêtes SQL de TypeORM sont peut être loggé chez vous car nous avo
 
 Maintenant voici le même tests pour `create`. Celui-ci est différent car il envoie des paramètres HTTP.
 
-
-.Test de l'_endpoint_ `UsersController.index`
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts
@@ -1054,7 +1046,6 @@ Ici nous testons deux choses:
 2. si l'on ne spécifie pas de mot de passe, on doit avoir un retour de type `400`
 
 Ce test est très simple et vous pouvez en rajouter d'autres comme _"should not create user with invalid email"_ par exemple. Ces tests sont faciles à mettre en place et *valident un comportement global*.
-
 
 Vous pouvez maintenant commiter les changements:
 
