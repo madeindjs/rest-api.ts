@@ -119,7 +119,7 @@ And there you go. Let's make a _commit_:
 
 [source, bash]
 ----
-git add . && git commit -m "Generate product model"
+$ git add . && git commit -m "Generate product model"
 ----
 
 === Product Validations
@@ -395,7 +395,7 @@ In the following chapters, we will improve this entry point and give the possibi
 
 [source,bash]
 ----
-git add. && git commit -m "Add logic to list product"
+$ git add. && git commit -m "Add logic to list product"
 ----
 
 === Product creation

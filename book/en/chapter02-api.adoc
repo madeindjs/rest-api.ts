@@ -349,13 +349,11 @@ The `@inject` decorator takes care of everything. Just specify the symbol. It's 
 
 The last step is to manually import this controller into the container. It's really very easy to do:
 
-[source,diff]
+[source,ts]
 ----
 // src/core/container.core.ts
-import {Container} from 'inversify';
-+ import '../controllers/home.controller';
-import '../controllers/users.controller';
 // ...
+import '../controllers/home.controller';
 ----
 
 You can now start the server with `npm run start` or wait for the transpilation to be done automatically if you have not stopped the previous server.

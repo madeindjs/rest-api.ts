@@ -177,7 +177,7 @@ Let's start all this and move on to the next part.
 
 [source,sh]
 ----
-git add . && git commit -m "Paginate products"
+$ git add . && git commit -m "Paginate products"
 ----
 
 Now that we've done a great optimization for the product list route, it's up to the customer to browse the pages.
@@ -186,7 +186,7 @@ Let's go through these changes and continue with the order list.
 
 [source,bash]
 ----
-git add .
+$ git add .
 git commit -m "Adds pagination for products index action to optimize response"
 ----
 

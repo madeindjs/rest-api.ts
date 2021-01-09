@@ -29,7 +29,7 @@ Overall, a JWT token is composed of three parts :
 * a payload structured in JSON, which can contain any data. In our case, it will contain the identifier of the "connected" user.
 * a signature that will allow us to verify that the token has been encrypted by our application and therefore that it is valid.
 
-These three parts are each encoded in base64 and then concatenated using dots (.). This gives us something like this:
+These three parts are each encoded in base64 and then concatenated using dots `.`. This gives us something like this:
 
 ....
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
@@ -51,24 +51,26 @@ Once decoded, this token gives us the following information:
 { "sub": "1234567890", "name": "John Doe", "iat": 1516239022 }
 ----
 
-For more information about JWT tokens, I invite you to visit _jxt.io_.
+For more information about JWT tokens, I invite you to visit https://jwt.io/[jwt.io].
 
 This has many advantages, such as sending information to the API consumer directly in the token. You can, for example, choose to integrate the user information in the payload.
 
 == Setting up the authentication token
 
-The JWT standard has many implementations in various languages and libraries. Of course, there is a Nodejs library on this subject: https://github.com/auth0/node-jsonwebtoken[node-jsonwebtoken].
+The JWT standard has many implementations in various languages. Of course, there is a Nodejs library on this subject: https://github.com/auth0/node-jsonwebtoken[node-jsonwebtoken].
 
 So let's start by installing it:
 
+.Install JWT library
 [source,bash]
 ----
-npm install jsonwebtoken
-npm install --save-dev @types/jsonwebtoken
+$ npm install jsonwebtoken
+$ npm install --save-dev @types/jsonwebtoken
 ----
 
 The library is very easy to use with the `jwt.sign` and `jwt.verify` methods. Here is an example:
 
+.Exemple of how to use JWT library with Node.js
 [source,ts]
 ----
 import {sign, verify} from 'jsonwebtoken';
@@ -85,6 +87,7 @@ In the first line, we encoded a `payload` with the secret key `JWT_PRIVATE_KEY`.
 
 Now we're going to put all this logic into a `JsonWebTokenService` class. This will allow us to avoid duplicating the code. This class will just encode and decode the JWT tokens. Here is the implementation :
 
+.Create `JsonWebTokenService` to encode / decode JWT token
 [source,ts]
 ----
 // src/services/jsonWebToken.service.ts
@@ -107,7 +110,7 @@ export class JsonWebTokenService {
 
 The implementation is straightforward. One method encodes a payload. The other decodes it. As this service is injectable, we have to save it in the container.
 
-Add the `Symbol` for the `JsonWebTokenService` service.
+.Add the `Symbol` for the `JsonWebTokenService` service.
 [source,ts]
 ----
 // src/core/types.core.ts
@@ -117,7 +120,7 @@ export const TYPES = {
 };
 ----
 
-Added the `JsonWebTokenService` service to the _container_.
+.Register `JsonWebTokenService` service to the container.
 [source,ts]
 ----
 // src/core/container.core.ts
@@ -129,8 +132,9 @@ export const container = new Container();
 container.bind(TYPES.JsonWebTokenService).to(JsonWebTokenService);
 ----
 
-And there you go. We can even add a little quick test that will encode and decode a _payload_ and check that we find the content:
+And there you go. We can even add a little quick test that will encode and decode a payload and check that we find the content:
 
+.Create unit test about JWT encoding / decoding
 [source,ts]
 ----
 // src/services/jsonWebToken.service.spec.ts
@@ -160,7 +164,7 @@ Now let's see if all our tests pass :
 
 [source,bash]
 ----
-npm test
+$ npm test
 ...
   JsonWebTokenService
     ✓ should encode and decode payload
@@ -171,7 +175,7 @@ It's perfect. Let's get started and move on:
 
 [source,bash]
 ----
-git add . && git commit -m "Create JsonWebTokenService"
+$ git add . && git commit -m "Create JsonWebTokenService"
 ----
 
 == The token controller
@@ -188,12 +192,11 @@ Here we will test the _endpoint_ that we will create next. This _endpoint_ will 
 2. the password is wrong, so we return the error `400 - Bad request`.
 3. the user does not exist, so we return the error `400 - Bad request`.
 
-NOTE: We return a code `400` without further explanation. Indeed, we do not want to tell the user that this email is not present in the database. This is a good practice that would make a brute force attack on a user a little more complicated.
+NOTE: We return a code `400` without further explanation. Indeed, we do not want to tell the user that this email is not present in the database. This is a good practice that would make a brute force attack little more complicated.
 
 Obviously, the test will start by creating a user. This is what we will do in the `before` method.
 
 .Creation of a part of the functional test of `TokensController`.
-
 [source,ts]
 ----
 // src/controllers/tokens.controller.spec.ts
@@ -287,7 +290,7 @@ Our goal in the next section will be to pass these tests.
 So we will create the `TokenController`. Let's start by creating the controller with the necessary dependencies:
 
 1. `DatabaseService` to retrieve the user that corresponds to the email
-2. JsonWebTokenService to create a JWT token
+2. `JsonWebTokenService` to create a JWT token
 
 .Creation of the TokensController with the necessary dependencies.
 [source,ts]
@@ -322,6 +325,7 @@ import "../controllers/tokens.controller";
 
 Now all we have to do is focus on the `create` method of our controller.
 
+.Implement `POST /tokens` endpoint to get a JWT token
 [source,ts]
 ----
 // src/controllers/tokens.controller.ts
@@ -368,6 +372,7 @@ Wow! This code looks complicated, but it's actually straightforward:
 
 Still there? Let's try to run the tests to see if our code works:
 
+
 [source,bash]
 ----
 $ npm test
@@ -382,7 +387,7 @@ $ npm test
 
 Let's try the logic in the terminal. Let's create a user (if not already done) :
 
-
+.Create a brand new user using `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
@@ -391,6 +396,7 @@ $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/
 
 Then let's ask for the token for this one:
 
+.Request JWT token for an user using `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/tokens
@@ -399,6 +405,7 @@ $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/
 
 Oura! Let's try with a wrong password :
 
+.Request JWT token for an user using `cURL` using a bad password
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.fr" -d "password=azerty" http://localhost:3000/tokens
@@ -411,7 +418,7 @@ Let's count and move on:
 
 [source,bash]
 ----
-git add . && git commit -m "Create token controller"
+$ git add . && git commit -m "Create token controller"
 ----
 
 == User logged in
@@ -438,6 +445,7 @@ We'll take the `users.controller.spec.ts` test, and we'll implement the tests fo
 These three tests require that we already have a basic user. We will create a `utils` method that will generate a random user:
 
 
+.Create a method to build a new user with random data for testing purposes
 [source,ts]
 ----
 // src/utils/faker.utils.ts
@@ -457,13 +465,13 @@ export function generateUser(user?: User): User {
 }
 ----
 
-This method is straightforward and will rely on the `randomBytes` of https://nodejs.org/docs/latest-v14.x/api/crypto.html [module `crypto`] to generate a totally random email address.
+This method is straightforward and will rely on the `randomBytes` of https://nodejs.org/docs/latest-v14.x/api/crypto.html[`crypto` library] to generate a totally random email address.
 
 NOTE: there are libraries like https://github.com/marak/Faker.js/[Faker.js] that allow you to do this, but here I prefer to do without them to simplify the example.
 
-
 Now we can go back to our test and create a user in the `before` method:
 
+.Create user in `before` hook in functional test
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts
@@ -520,7 +528,6 @@ describe("UsersController", () => {
 As you can see, the tests are really very simple. We simply check the HTTP status code of the response.
 
 The principle is exactly the same for the `update` and `destroy` methods:
-
 
 .Functional tests of the method `UsersController.show`.
 [source,ts]
@@ -590,16 +597,16 @@ UsersController
 
 This is quite normal because we haven't implemented the suite yet. Now let's move on to implementation.
 
-=== Creating _middleware_.
+=== Creating middleware
 
 So we are going to create a _Middleware_ `FetchLoggerUserMiddleware` to meet our needs. That is to say, find the user thanks his authentication token, which is sent on each request.
 
-// -- current
 The principle is pretty much the same as the previous _middleware_ we created earlier, so I'll go straight to the implementation. In the same way as the `TokenController`, we inject it with
 
 - the `jsonWebTokenService` to decode the JWT token
 - the `databaseService` to retrieve the user associated with the token
 
+.Create a brand new middleware to fetch logged user
 [source,ts]
 ----
 // src/middlewares/fetchLoggedUser.middleware.ts
@@ -624,7 +631,7 @@ export class FetchLoggedUserMiddleware extends BaseMiddleware {
 
 And now here is the implementation of the `handler` method
 
-
+.Create logic for `FetchLoggedUserMiddleware`
 [source,ts]
 ----
 // src/middlewares/fetchLoggedUser.middleware.ts
@@ -665,9 +672,9 @@ Again the code seems long, but it is actually straightforward:
 . we decode the JWT token and retrieve the associated user. If an error occurs (the token can't be decoded or the user doesn't exist), we return a `403` error as well.
 . we inject the user in the request so that it can be used in the controller
 
-Of course, we don't forget to add this _middleware_ to our conatiner :
+Of course, we don't forget to add this _middleware_ to our container :
 
-Add the `FetchLoggedUserMiddleware` symbol.
+.Add the `FetchLoggedUserMiddleware` symbol.
 [source,ts]
 ----
 // src/core/types.core.ts
@@ -695,7 +702,7 @@ And here is our _middleware_ ready to be used.
 
 And now we just have to use the _middleware_ in the `UsersController` . Here is an example for the `show` method:
 
-
+.Use `FetchLoggedUserMiddleware` into user controller
 [source,diff]
 ----
 // src/controllers/home.controller.ts
@@ -717,7 +724,9 @@ export class UsersController {
 
 As you can see, the changes are minimal because part of the logic is *deported into the _middleware_*. You can also see that I put a straightforward check to prevent a user from viewing another user's information.
 
-*The _middleware_ allowed us to keep the logic in our controller very simple.
+The middleware allowed us to keep the logic in our controller very simple.
+
+// -- current
 
 The principle is exactly the same for the `update` and `destroy` method.
 
@@ -763,7 +772,7 @@ If all goes well. Our tests should pass:
 
 [source,bash]
 ----
-npm test
+$ npm test
 
   TokensController
     create
@@ -827,7 +836,7 @@ It's time to commit all our changes:
 
 [source, bash]
 ----
-git add . && git commit -m "Add JWT middleware"
+$ git add . && git commit -m "Add JWT middleware"
 ----
 
 == Conclusion

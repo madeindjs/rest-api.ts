@@ -183,7 +183,7 @@ We can commit the changes made so far:
 
 [source,bash]
 ----
-git add .
+$ git add .
 $ git commit -m "Setup TypeORM"
 ----
 
@@ -783,6 +783,7 @@ A few explanations are necessary:
 
 Now let's try to create a user via the API:
 
+.Creating an user with `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
@@ -791,6 +792,7 @@ $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/
 
 Everything seems to work perfectly because we can see that the user has a hashed password. If we change the password, the hash changes correctly :
 
+.Update user's password with `cURL`
 [source,bash]
 ----
 $ curl -X PUT   -d "password=helloWorld"  http://localhost:3000/users/4
@@ -812,13 +814,15 @@ Unit testing's role is to make sure that our method always works the way we deci
 
 There are several libraries of tests in JavaScript. I chose `Mocha` because it's one of the most popular libraries and straightforward to set up. We also install `ts-mocha`, which will transpose the TypeScript on the fly:
 
+.Install mocha library
 [source,bash]
 ----
-npm install mocha ts-mocha @types/mocha --save-dev
+$ npm install mocha ts-mocha @types/mocha --save-dev
 ----
 
 We also need to modify our `tsconfig.json` to add Mocha's declarations and tell Typescript not to compile these files:
 
+.Add mocha setting to Typescript configuration
 [source,diff]
 ----
 {
@@ -836,6 +840,7 @@ We also need to modify our `tsconfig.json` to add Mocha's declarations and tell 
 
 Here we are ready to create our first test:
 
+.Create first unit test about hashing password
 [source,ts]
 ----
 // src/entities/user.entity.spec.ts
@@ -855,6 +860,7 @@ describe("User", () => {
 
 As I told you, it's a really simple test. Now let's add the command that will allow us to run this test in the `package.json` file:
 
+.Add NPM script to run tests
 [source,diff]
 ----
 {
@@ -877,6 +883,7 @@ Some explanations on this command:
 
 When we test our application, we don't want to pollute our database with data we create during testing. So it's a good practice to create a dedicated database. In our case, we will use a SQLite **in memory** database. That is to say that it is not stored on the hard disk but directly in the random access memory. Here is the file `.test.env`:
 
+.TypeORM environnement variable for testing
 [source,env]
 ----
 TYPEORM_CONNECTION=sqlite
@@ -941,7 +948,8 @@ Now that you're warmed up, let's commit and move on to the next one:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Add unit test about password hash"
+$ git add .
+$ git commit -m "Add unit test about password hash"
 ----
 
 == Add functional tests
@@ -952,6 +960,7 @@ A good practice I learned while developing with the Ruby on Rails _framework_ is
 
 So let's install this library:
 
+.Install supertest library
 [source,bash]
 ----
 $ npm install supertest @types/supertest --save-dev
@@ -959,6 +968,7 @@ $ npm install supertest @types/supertest --save-dev
 
 Now let's create our agent that will be used in all our tests:
 
+.Create supertest agent
 [source,ts]
 ----
 // src/tests/supertest.utils.ts
@@ -970,6 +980,7 @@ export const agent: SuperTest<Test> = supertest(server.build());
 
 And now let's start creating our first test for the `index` method for example:
 
+.Create functional test about `GET /users` endpoint
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts
@@ -1005,6 +1016,7 @@ NOTE: TypeORM SQL queries may be hosted by you because we left the `TYPEORM_LOGG
 
 Now here is the same test for `create`. This one is different because it sends HTTP parameters.
 
+.Create functional test about `POST /users/` endpoint
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts

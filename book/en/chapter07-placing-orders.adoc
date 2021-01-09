@@ -303,7 +303,7 @@ And now our tests should pass:
 
 [source, bash]
 ----
-npm test
+$ npm test
 ...
   OrderController
     index

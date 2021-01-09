@@ -399,8 +399,6 @@ query: INSERT INTO "query-result-cache"("identifier", "query", "time", "duration
 ...
 ----
 
-// Current
-
 Voici quelques explications sur ces requêtes:
 
 1. une requête est effectuée sur la table `"query-result-cache"` afin de voir si un cache est présent
