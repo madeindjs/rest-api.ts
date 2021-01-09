@@ -33,9 +33,7 @@ Commençons par la liste des produits.
 
 === Les produits
 
-// TODO
-
-Nous devons fournir les informations de pagination sur la balise meta dans le formulaire suivant:
+Nous devons fournir les informations de pagination sur la balise `meta` comme le document JSON suivant:
 
 [source,json]
 ----
@@ -52,7 +50,7 @@ Nous devons fournir les informations de pagination sur la balise meta dans le fo
 }
 ----
 
-Maintenant que nous avons la structure finale de la balise meta, il ne nous reste plus qu’à la sortir sur la réponse JSON. Ajoutons d’abord quelques tests:
+Maintenant que nous voyons ce que ne devons retourner, il ne nous reste plus qu’à modifier un peu notre code. Mais avant d'aller plus loin, ajoutons d’abord quelques tests:
 
 [source,ts]
 ----
@@ -86,7 +84,7 @@ Nous testons donc deux choses:
 1. nous créons 25 produits nous devons donc en retrouver uniquement 20 lors de la réponse API car les résultats doivent se limiter à une seule page
 2. nous devons retrouver les attributs `links` que nous avons vu précédemment
 
-Notre but est donc de faire passer ces tests. Nous n'allons pas définir le comportement dans le contrôleur nous savons d'avance que nous vulons le même comportement pour tous les contrôleurs. Nous allons donc définir une `function` utilitaire qui va prendre en paramètre:
+Notre but est donc de faire passer ces tests. Nous n'allons pas définir le comportement dans le contrôleur car nous savons d'avance que nous voulons le même comportement pour tous les contrôleurs. Nous allons donc créer une méthode générique qui va prendre en paramètre:
 
 - la requête HTTP, qui nous permettra de retrouver facilement la paramètre `page` et aussi de construire les `links` en fonction de l'URL actuelle de la requête
 - la requête SQL, qui sera utile pour savoir combien il y a de résultats en base de donnée et aussi appliquer les filtres `OFFSET` et `LIMIT` pour ne récupérer qu'une partie des résultats
@@ -94,7 +92,6 @@ Notre but est donc de faire passer ces tests. Nous n'allons pas définir le comp
 
 Allez c'est parti!
 
-.Création de la méthode `paginate`
 [source,ts]
 ----
 // src/services/paginate.service.ts
@@ -143,7 +140,7 @@ L'implémentation est un peu longue mais nous allons la revoir ensemble:
 1. `queryBuilder.getCount()` nous permet d'executer la requête passée en paramètre mais uniquement pour connaître le nombre de résultat
 2. nous utilisons cette valeur pour calculer le nombre de pages et déduire le numéro de la page précédente et suivante
 3. nous exécutons la requête SQL du `queryBuilder` en ajoutant un `offset` et une `limit`
-4. nous générons les URL que nous ajoutons au résultat sérializé précédemmen
+4. nous générons les URL que nous ajoutons au résultat sérializé précédemment
 
 Vous êtes toujours là? L'implémentation dans le contrôleur est beaucoup plus facile:
 
@@ -250,7 +247,6 @@ $ npm test
 
 Faire passe ce test est là encore assez facile.
 
-.Implémentation de la pagination pour les commandes
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
@@ -274,7 +270,7 @@ export class OrdersController {
 }
 ----
 
-La seule différence par rapport à l'implémentation du controleur des produit est que ici nous avons eu besoin de transformer `repository.find` en `queryBuilder`.
+La seule différence par rapport à l'implémentation du contrôleur des produit est que ici nous avons eu besoin de transformer `repository.find` en `queryBuilder`.
 
 Les tests devraient maintenant passer:
 
@@ -339,9 +335,9 @@ Et voilà. Quelques explications:
 
 Maintenant nous pouvons lancer le script avec la commande suivante:
 
-[source,ts]
+[source,sh]
 ----
-$ npm run build && node dist/scripts/loadFakeData.script.js
+$ npm run build && node dist/scripts/loadfakedata.script.js
 ----
 
 Nous pouvons vérifier que tout s'est bien passé en envoyant une petite requête SQL directement sur la base de données:
@@ -351,8 +347,6 @@ Nous pouvons vérifier que tout s'est bien passé en envoyant une petite requêt
 $ sqlite3 db/development.sqlite "SELECT COUNT(*) FROM product"
 500
 ----
-
-
 
 Maintenant essayons d'activer le cache. C'est vraiment très facile. Tout d'abord nous devons ajouter la variable d'environement suivante afin que TypeORM crée une table dédiée au démarrage:
 
@@ -405,6 +399,8 @@ query: INSERT INTO "query-result-cache"("identifier", "query", "time", "duration
 ...
 ----
 
+// Current
+
 Voici quelques explications sur ces requêtes:
 
 1. une requête est effectuée sur la table `"query-result-cache"` afin de voir si un cache est présent
@@ -430,7 +426,7 @@ Et voilà. Le cache a été utilisé et ... rien de plus! Maintenant c'est à vo
 
 L’amélioration est donc énorme! _Committons_ une dernière fois nos changements.
 
-[source,ruby]
+[source,sh]
 ----
 $ git commit -am "Adds caching for the serializers"
 ----

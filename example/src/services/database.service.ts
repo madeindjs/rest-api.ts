@@ -20,7 +20,7 @@ export class DatabaseService {
       DatabaseService.connection = await createConnection();
       this.logger.log('INFO', `Connection established`);
     } catch (e) {
-      this.logger.log('ERROR', 'Cannot establish database connection', e);
+      this.logger.log('ERROR', 'Cannot establish database connection');
       process.exit(1);
     }
 

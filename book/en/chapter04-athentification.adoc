@@ -117,7 +117,7 @@ export const TYPES = {
 };
 ----
 
-Added the `JsonWebTokenService' service to the _container_.
+Added the `JsonWebTokenService` service to the _container_.
 [source,ts]
 ----
 // src/core/container.core.ts
@@ -154,7 +154,7 @@ describe("JsonWebTokenService", () => {
 });
 ----
 
-This test is a bit longer than the others because we have to *retrieve an instance* of `JsonWebTokenService` via the `container`. We use the `before' method that will be executed before our test battery.
+This test is a bit longer than the others because we have to *retrieve an instance* of `JsonWebTokenService` via the `container`. We use the `before` method that will be executed before our test battery.
 
 Now let's see if all our tests pass :
 
@@ -176,7 +176,7 @@ git add . && git commit -m "Create JsonWebTokenService"
 
 == The token controller
 
-So we set up the JWT token generation system. It is now time to create a route that will generate this token. The actions we will implement will be handled as _RESTful_ services: the connection will be handled by a `POST' request to the `create' action.
+So we set up the JWT token generation system. It is now time to create a route that will generate this token. The actions we will implement will be handled as _RESTful_ services: the connection will be handled by a `POST` request to the `create` action.
 
 Before moving on to the implementation, we will try to write a complete test.
 
@@ -190,7 +190,7 @@ Here we will test the _endpoint_ that we will create next. This _endpoint_ will 
 
 NOTE: We return a code `400` without further explanation. Indeed, we do not want to tell the user that this email is not present in the database. This is a good practice that would make a brute force attack on a user a little more complicated.
 
-Obviously, the test will start by creating a user. This is what we will do in the `before' method.
+Obviously, the test will start by creating a user. This is what we will do in the `before` method.
 
 .Creation of a part of the functional test of `TokensController`.
 
@@ -217,7 +217,7 @@ describe("TokensController", () => {
 });
 ----
 
-NOTE: we store the `user' variable outside the `before' method so that we can use it later.
+NOTE: we store the `user` variable outside the `before` method so that we can use it later.
 
 Now we just have to write our tests.
 
@@ -320,7 +320,7 @@ import "../controllers/tokens.controller";
 // ...
 ----
 
-Now all we have to do is focus on the `create' method of our controller.
+Now all we have to do is focus on the `create` method of our controller.
 
 [source,ts]
 ----
@@ -362,8 +362,8 @@ export class TokensController {
 
 Wow! This code looks complicated, but it's actually straightforward:
 
-. we create a `create' method in the controller that will create a token for the requested user.
-. this method uses the `userRepository' to retrieve the user from the given email. If we can't find the user, we return a `400 - Bad request` error.
+. we create a `create` method in the controller that will create a token for the requested user.
+. this method uses the `userRepository` to retrieve the user from the given email. If we can't find the user, we return a `400 - Bad request` error.
 . we use the `isPasswordMatch` method to check if the password matches the hash we have stored. If it does, we create and return a token with the `jsonWebTokenService.encode` method.
 
 Still there? Let's try to run the tests to see if our code works:
@@ -433,7 +433,7 @@ The operation we wish to set up is as follows:
 
 Now that we have defined that, we can create our functional test.
 
-We'll take the `users.controller.spec.ts` test, and we'll implement the tests for `show', `update', and `destroy'.
+We'll take the `users.controller.spec.ts` test, and we'll implement the tests for `show`, `update`, and `destroy`.
 
 These three tests require that we already have a basic user. We will create a `utils` method that will generate a random user:
 
@@ -462,7 +462,7 @@ This method is straightforward and will rely on the `randomBytes` of https://nod
 NOTE: there are libraries like https://github.com/marak/Faker.js/[Faker.js] that allow you to do this, but here I prefer to do without them to simplify the example.
 
 
-Now we can go back to our test and create a user in the `before' method:
+Now we can go back to our test and create a user in the `before` method:
 
 [source,ts]
 ----
@@ -622,7 +622,7 @@ export class FetchLoggedUserMiddleware extends BaseMiddleware {
 }
 ----
 
-And now here is the implementation of the `handler' method
+And now here is the implementation of the `handler` method
 
 
 [source,ts]
@@ -693,7 +693,7 @@ And here is our _middleware_ ready to be used.
 
 === Using the middleware
 
-And now we just have to use the _middleware_ in the `UsersController` . Here is an example for the `show' method:
+And now we just have to use the _middleware_ in the `UsersController` . Here is an example for the `show` method:
 
 
 [source,diff]

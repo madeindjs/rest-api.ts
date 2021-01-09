@@ -9,7 +9,7 @@ So this book is naturally Open-Source and freely available https://github.com/ma
 
 == About the original author
 
-My name is https://rsseau.fr[Alexandre Rousseau], and I am a passionate developer. I like to share my experience through https://rsseau.fr/blog/[my blog] and some books like https://leanpub.com/apionrails6-fr [API on Rails] or even this one.
+My name is https://rsseau.fr[Alexandre Rousseau], and I am a passionate developer. I like to share my experience through https://rsseau.fr/blog/[my blog] and some books like https://leanpub.com/apionrails6[API on Rails] or even this one.
 
 I am currently a partner at https://isignif.fr/[iSignif], where I build and maintain a SAAS-like product using https://rubyonrails.org[Ruby on Rails]. I also contribute to the Ruby community by producing and now some gems that you can see on https://rubygems.org/profiles/madeindjs[my Rubygem profile]. Most of my projects are on GitHub, so don't hesitate to visit https://github.com/madeindjs[follow me].
 

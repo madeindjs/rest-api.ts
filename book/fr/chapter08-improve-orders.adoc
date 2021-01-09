@@ -212,8 +212,6 @@ export class OrdersController {
 }
 ----
 
-// Current
-
 Oula. Le code devient un peu plus long et mérite quelques explications:
 
 - nous créons la commande avec un total égal à 0 (Nous verrons dans la prochaine section comment faire en sorte que ce total se mette à jour automatiquement.)

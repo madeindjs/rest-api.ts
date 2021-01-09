@@ -599,7 +599,6 @@ C'est tout à fait normal car nous n'avons pas encore implémenté la suite. Pas
 
 Nous allons donc créer un _Middleware_ `FetchLoggerUserMiddleware` pour répondre à nos besoins. C’est-à-dire retrouver l’utilisateur grâce à son jeton d’authentification qui est envoyé sur chaque requête.
 
-// -- current
 Le principe est assez identique au précédent _middleware_ que nous avons crée plus tôt donc je passe directement à l'implémentation. De la même manière que le `TokenController`, on lui injecte
 
 - le `jsonWebTokenService` pour décoder le jeton JWT
