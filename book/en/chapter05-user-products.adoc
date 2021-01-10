@@ -5,22 +5,15 @@ In the previous chapter, we implemented the authentication mechanism that we wil
 
 At the moment, we have a straightforward implementation of the `User` model, but the moment of truth has come. We are going to customize the JSON output and add a second resource: the user's products. These are the elements that the user will sell in the application.
 
-If you are familiar with an ORM, you may already know what I'm talking about. But for those who don't, we will combine the `User` model with the `Product` model using the `@ManyToOne` and `@OneToMany` decorators _TypeORM_.
+If you are familiar with an ORM, you may already know what I'm talking about. But for those who don't, we will combine the `User` model with the `Product` model using the `@ManyToOne` and `@OneToMany` TypeORM decorators.
 
 In this chapter, we will build the `Product` model from scratch, associate it with the user, and create the necessary entries so that any client can access the information.
-
-You can clone the project up to this point:
-
-[source,bash]
-----
-git checkout tags/checkpoint_chapter05
-----
 
 Before we start, and as usual, when we start new features, we create a new branch:
 
 [source,bash]
 ----
-git checkout -b chapter05
+$ git checkout -b chapter05
 ----
 
 
@@ -35,12 +28,13 @@ The `Product` template will need several fields: a `price` attribute for the pri
 
 Let's go directly to the implementation.
 
-Creation of the entity `Product`.
+.Creation of the entity `Product`.
 [source,ts]
 ----
 // src/entities/product.entity.ts
 import {validateOrReject} from 'class-validator';
-import {BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn,} from 'typeorm"; import {User} from "./user.entity";
+import {/* ... */} from "typeorm";
+import {User} from "./user.entity";
 
 @Entity()
 export class Product {
@@ -87,6 +81,7 @@ NOTE: I also added a `@Index` decorator to make this column indexed. This is a g
 
 Before we move on, we also need to define the `OneToMany` association in the `User` entity.
 
+.Add products relation to user model
 [source,ts]
 ----
 // src/entities/user.entity.ts
@@ -158,7 +153,7 @@ export class Product {
 // ...
 ----
 
-The decorators document the code, and there is not much to add here. I added the `nullable: false` property, which will modify the database schema and add a `NOT NULL` constraint.
+Decorators document the code, and there is not much to add here. I added the `nullable: false` property, which will modify the database schema and add a `NOT NULL` constraint.
 
 
 Let's make these changes and keep moving forward:
@@ -207,18 +202,11 @@ export function generateProduct(product?: Partial<Product>): Product {
 
 We will now use this method in the `before` of the new test below:
 
+.Create a product in `products.controller.spec`
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
-import {container} from '../core/container.core';
-import {TYPES} from '../core/types.core';
-import {Product, ProductRepository} from '../entities/product.entity';
-import {User, UserRepository} from '../entities/user.entity';
-import {DatabaseService} from '../services/database.service';
-import {JsonWebTokenService} from '../services/jsonWebToken.service';
-import {generateProduct, generateUser} from '../tests/faker.utils';
-import {agent} from '../tests/supertest.utils';
-
+// ...
 describe("ProductsController", () => {
   let productRepository: ProductRepository;
   let product: Product;
@@ -234,7 +222,7 @@ describe("ProductsController", () => {
 });
 ----
 
-And now we can use this product and to test if it is searchable:
+And now we can use this product and to test if it can be showed:
 
 
 [source, ts]
@@ -256,9 +244,9 @@ describe("ProductsController", () => {
 
 Now that our test is in place, it's time to take the test.
 
-Just like we did with the users, we will create a _middleware_ `FetchProductMiddleware`. It will just fetch the product according to the `productId` parameter and inject it into the request:
+Just like we did with the users, we will create a middleware `FetchProductMiddleware`. It will just fetch the product according to the `productId` parameter and inject it into the request:
 
-
+.Creating `FetchProductMiddleware`
 [source,ts]
 ----
 // src/middlewares/fetchUser.middleware.ts
@@ -291,6 +279,7 @@ The small novelty here is the appearance of the `relation` parameter of the `fin
 
 Now we can switch to the controller:
 
+.Add `FetchProductMiddleware` to product controller
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -300,9 +289,7 @@ export class ProductController {
   public constructor(
     @inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService
   ) {}
-
   // ...
-
   @httpGet("/:productId", TYPES.FetchProductMiddleware)
   public async show(req: Request & { product: Product }) {
     return req.product;
@@ -312,8 +299,7 @@ export class ProductController {
 
 Wait! Don't run the tests yet. Don't forget that we need to add the route to the container:
 
-
-
+.Add `FetchProductMiddleware` type for dependency injection
 [source,ts]
 ----
 // src/core/types.core.ts
@@ -323,6 +309,7 @@ export const TYPES = {
 };
 ----
 
+.Register product controller and `FetchProductMiddleware` to container
 [source,ts]
 ----
 // src/core/container.core.ts
@@ -336,7 +323,6 @@ container.bind(TYPES.FetchProductMiddleware).to(FetchProductMiddleware);
 
 Now we make sure the tests pass:
 
-
 [source,bash]
 ----
 $ npm test
@@ -349,15 +335,16 @@ $ npm test
 
 Perfect! We can now move on to the next one.
 
-
 [source,bash]
 ----
 $ git add . && git commit -m "Add logic to show product"
 ----
+
 === List of products
 
 It is now time to create an entry for a product list that could display the product catalog of a market, for example. For this access point, we do not require the user to be logged in. As usual, we will start writing some tests:
 
+.Create functional test for product list endpoint
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -374,6 +361,7 @@ describe("ProductsController", () => {
 
 Now let's move on to implementation, which for now is going to be a small process:
 
+.Create product list endpoint
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -406,6 +394,7 @@ Creating products is a bit more tricky because we'll need an additional configur
 
 So our first stop will be the `products.controller.spec.ts` file. We will first create a specific user in the `before` and retrieve his JWT token:
 
+.Creating and user and a valid JWT token in functional test
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -443,6 +432,7 @@ The small novelty here is the appearance of the `relation` parameter of the `fin
 
 Here we go:
 
+.Complete functional test suite of product creation
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -486,7 +476,7 @@ Wow! we added a lot of code. If you remember, the tests are actually the same as
 
 So it's time to take the test. The implementation is again very similar to the previous one in the user controller. With the difference that here we will retrieve the user associated with the JWT token and assign it to the product we are creating:
 
-
+.Implementation of product creation
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -553,6 +543,7 @@ First of all, we add some tests. Here we will test three things:
 
 To set up these tests, we will create a `product`, a `user` who owns the product, and a `stranger` user who will be a user not associated with the product:
 
+.Create needed variable for functional tests about product controller
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -583,6 +574,7 @@ describe("ProductsController", () => {
 
 This may sound abstract, but look at the implementation of the tests that will use these variables:
 
+.Implementation of functional tests about update product endpoint
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -625,6 +617,7 @@ The tests may seem complex, but at a glance they are almost identical to those o
 
 Now let's implement the code to pass our tests successfully:
 
+.Implementation of product update endpoint
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -693,6 +686,7 @@ Our last stop for the product road will be the `destroy` action. Now you can ima
 
 Let's start by adding some tests:
 
+.Functional tests about product delete endpoint
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -724,6 +718,7 @@ describe("ProductsController", () => {
 
 Now, let's just add the code needed to run the tests:
 
+.Implementation to delete product endpoint
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -749,7 +744,7 @@ export class ProductController {
 }
 ----
 
-As you can see, the implementation does the job in three lines. We can run the tests to make sure everything is good.
+As you can see, the implementation does the job in three lines of code. We can run the tests to make sure everything is good.
 
 [source,bash]
 ----
@@ -765,7 +760,7 @@ $ npm test
   27 passing (344ms)
 ----
 
-After that, we _commit_ the changes.
+After that, we commit changes.
 
 [source,bash]
 ----
@@ -778,12 +773,16 @@ Our tests tell us that everything is fine, but it's always good to make sure. So
 
 Start your server with `npm start` if you haven't already done so, and let's start by creating a user:
 
+.Creating an user using `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/users
+----
+[source,jsonc]
+----
 {
   "email": "test@test.io",
-  "hashedPassword": "8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b",
+  "hashedPassword": "8574a...69777b",
   "id": 1,
   "createdAt": "2020-11-25T20:37:20.000Z",
   "updatedAt": "2020-11-25T20:37:20.000Z"
@@ -792,10 +791,13 @@ $ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/
 
 And now let's get a valid JWT token:
 
-
+.Get a JWT token using `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/tokens
+----
+[source,jsonc]
+----
 {
   "token": "eyJhbGciOiJ..."
 }
@@ -803,6 +805,7 @@ $ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/
 
 Write down this token and save it in a Bash variable:
 
+.Initialize Bash variable with JWT token
 [source,bash]
 ----
 $ export JWT="eyJhbGciOiJ..."
@@ -813,6 +816,9 @@ Now let's use this token to create a product:
 [source,bash]
 ----
 curl -X POST -H "Authorization: $JWT" -d "title=my first product" -d "price=1" http://localhost:3000/products
+----
+[source,jsonc]
+----
 {
   "id": 1,
   "title": "my first product",
@@ -823,6 +829,7 @@ curl -X POST -H "Authorization: $JWT" -d "title=my first product" -d "price=1" h
 
 We can update it easily with the request `PUT`:
 
+.Create a product using `cURL`
 [source,bash]
 ----
 curl -X PUT -H "Authorization: $BASH" -d "title=my first product undated" -d "price=66" http://localhost:3000/products/1
@@ -830,6 +837,7 @@ curl -X PUT -H "Authorization: $BASH" -d "title=my first product undated" -d "pr
 
 And finally remove this product:
 
+.Delete a product using `cURL`
 [source,bash]
 ----
 curl -X DELETE -H "Authorization: $JWT" http://localhost:3000/products/1

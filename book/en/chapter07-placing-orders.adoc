@@ -13,7 +13,7 @@ Now that everything is clear, we can start working. Let's create a new branch to
 
 [source,bash]
 ----
-git checkout -b chapter07
+$ git checkout -b chapter07
 ----
 
 == Order modeling

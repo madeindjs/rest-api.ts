@@ -5,7 +5,7 @@ In the previous chapter, we added the products to the application and built all 
 
 Now you should be satisfied with all this work. But we still have a lot of work ahead of us. Right now, we have a JSON output that is not perfect. The JSON output looks like this one:
 
-[source,json]
+[source,jsonc]
 ----
 [
   {
@@ -28,7 +28,7 @@ You can clone the project up to this point with:
 
 [source,bash]
 ----
-git checkout tags/checkpoint_chapter06
+$ git checkout tags/checkpoint_chapter06
 ----
 
 Let's start a new branch for this chapter:
@@ -120,7 +120,7 @@ Let's try all this with `cURL`:
 $ curl http://localhost:3000/users
 ----
 .Sortie JSON des utilisateurs
-[source,json]
+[source,jsonc]
 ----
 {
   "data": [
@@ -241,7 +241,7 @@ Faced with this problem, there are several possible alternatives.
 A good solution, in my opinion is to integrate the user IDs linked to the products in a meta attribute, so we would have a JSON output as:
 
 
-[source,json]
+[source,jsonc]
 ----
 {
   "meta": { "user_ids": [1,2,3] },
@@ -257,7 +257,7 @@ This may require additional configuration on the user's terminal to retrieve its
 
 Another solution is to incorporate the `user` object into the `product` object. This can make the first request a little slower, but this way, the client doesn't need to make another request. An example of the expected results is shown below:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data":
@@ -286,7 +286,7 @@ Another solution is to incorporate the `user` object into the `product` object. 
 
 The problem with this approach is that we have to duplicate `User` objects for all products that belong to the same user:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data":
@@ -341,7 +341,7 @@ We will include all relations in an `include` key, which will contain all relati
 
 One JSON is worth a thousand words:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data":

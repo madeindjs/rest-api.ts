@@ -39,14 +39,14 @@ Une fois décodé, ce jeton nous donne les informations suivantes:
 
 * l'en tête
 
-[source,json]
+[source,jsonc]
 ----
 { "alg": "HS256", "typ": "JWT" }
 ----
 
 * le payload
 
-[source,json]
+[source,jsonc]
 ----
 { "sub": "1234567890", "name": "John Doe", "iat": 1516239022 }
 ----
@@ -732,15 +732,6 @@ Le principe est exactement le même pour la méthode `update` et `destroy`.
 @controller('/users')
 export class UsersController {
   // ...
--   @httpGet('/:userId', TYPES.FetchUserMiddleware)
-+   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
-  public async show(/* ... */)> {
-+    if (Number(userId) !== req.user.id) {
-+      return res.sendStatus(403);
-+    }
-    return req.user;
-  }
-
 -  @httpPut('/:userId', TYPES.FetchUserMiddleware)
 +  @httpPut('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async update(/* ... */)> {

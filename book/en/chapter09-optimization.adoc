@@ -35,7 +35,7 @@ Let's start with the list of products.
 
 We need to provide the paging information on the `meta` tag as the following JSON document:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data": [
@@ -187,7 +187,7 @@ Let's go through these changes and continue with the order list.
 [source,bash]
 ----
 $ git add .
-git commit -m "Adds pagination for products index action to optimize response"
+$ git commit -m "Adds pagination for products index action to optimize response"
 ----
 
 === List of commands
@@ -471,8 +471,8 @@ And there it is! Now it's time to make our last commit and merge our changes on 
 [source,bash]
 ----
 $ git commit -am "Activate CORS"
-git checkout master
-git merge chapter09
+$ git checkout master
+$ git merge chapter09
 ----
 
 == Conclusion

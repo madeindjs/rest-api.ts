@@ -31,6 +31,7 @@ The conventions in this book are based on those in https://www.railstutorial.org
 
 I will use many examples using command line. I'm not going to deal with Windows `cmd` (sorry, guys). I'm going to base all the examples using the Unix-style command line prompt. Here is an example:
 
+.An example of a UNIX command
 [source,bash]
 ----
 $ echo "A command-line command"
@@ -39,6 +40,7 @@ A command-line command
 
 I will try to shorten the code pieces as much as possible, keeping only interesting lines depending on the context. I'll hide irrelevant lines with the comment symbol `// ...` or `/* ... */`. At the beginning of each piece of code, I will also specify the path and the name of the file concerned. Here is an example.
 
+.An example of a Typescript block code
 [source,ts]
 ----
 // user.ts
@@ -91,6 +93,7 @@ Personally, I use Firefox in everyday life, and I check the proper functioning o
 
 * *Mac OS*: There are many options to manage how you install packages on your Mac, such as https://www.macports.org/[Mac Ports] or http://brew.sh/[Homebrew]. Both are good options, but I would choose the latter. I've had fewer problems installing software with Homebrew. To install `brew`, just run the command below:
 
+.Install Homebrew
 [source,bash]
 ----
 $ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
@@ -109,6 +112,7 @@ We will use Git a lot, and you should use it too (not only for this tutorial but
 
 There are many ways to install and manage Node.js. You may even already have a version installed on your system. To find out, just type:
 
+.Get node.js version
 [source,bash]
 ----
 $ node -v
@@ -118,6 +122,7 @@ If you haven't installed it, you can do it with your package manager. However, I
 
 To install it, go to https://github.com/nvm-sh/nvm#installing-and-updating[follow the official documentation]. You have to launch the following script :
 
+.Install NVM
 [source,bash]
 ----
 $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash
@@ -127,6 +132,7 @@ The URL of the script may vary depending on the current version.
 
 Once the installation is complete, you can install the latest version of Node.js with the following command:
 
+.Install node.js using NVM
 [source,bash]
 ----
 $ nvm install node
@@ -136,16 +142,10 @@ $ nvm install node
 
 I strongly recommend that you install http://www.postgresql.org/[PostgreSQL] to manage your databases. But here, for simplicity, we will use http://www.sqlite.org/[SQLite]. If you are using Mac OS you don't have any additional libraries to install. If you are using Linux, don't worry, I'll guide you:
 
+.Install SQlite dependencies for Debian based Linux distribution
 [source,bash]
 ----
 $ sudo apt-get install libxslt-dev libxml2-dev libsqlite3-dev
-----
-
-or
-
-[source,bash]
-----
-$ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
 ----
 
 == Initializing the project
@@ -160,6 +160,7 @@ Are you ready? Here we go!
 
 Go to the folder of your choice and create a new folder:
 
+.Create folder for new project
 [source,bash]
 ----
 $ mkdir node_market_place
@@ -172,6 +173,7 @@ Remember that Git helps you track and maintain your code history. Version all yo
 
 Initializing Git in your project is as simple as the following command:
 
+.Initialize Git
 [source,bash]
 ----
 $ git init
@@ -179,6 +181,7 @@ $ git init
 
 However, you need to configure the committer's information. If it is not already done, go to the directory and run the following commands:
 
+.Set basic Git configuration
 [source,bash]
 ----
 $ git config user.name "John Doe"
@@ -195,6 +198,7 @@ Initializing your project with Node.js means that you will be able to install an
 
 So let's initialize NPM in our :
 
+.Initialize NPM
 [source,bash]
 ----
 $ npm init
@@ -212,6 +216,7 @@ NOTE: We talk about a *compiler* for compiling a program into an executable and 
 
 Therefore, we install Typescript as a development dependency because it will only be used to transpile our code. It will be Node.js, which will execute the Javascript later :
 
+.Install Typescript for project
 [source,bash]
 ----
 $ npm add typescript @types/node --save-dev
@@ -224,6 +229,7 @@ We have added two libraries :
 
 So let's add our first Typescript file :
 
+.Our first typescript code
 [source,ts]
 ----
 // src/main.ts
@@ -237,7 +243,8 @@ This code is really basic and will just be used to check that the transpilation 
 
 To use Typescript transpilation, we need to define a configuration file `tsconfig.json`. Here is a basic one:
 
-[source,json]
+.Basic Typescript configuration
+[source,jsonc]
 ----
 {
   "compilerOptions": {
@@ -268,6 +275,7 @@ $ ./node_modules/.bin/tsc
 
 You will see a `dist/main.js` file of the following form.
 
+.Transpilation of our first Typescript code
 [source,javascript]
 ----
 // dist/main.js
@@ -281,7 +289,8 @@ This is the transposed version of our Typescript file.
 
 Now that we've seen that everything works, we can automate this a bit by adding the commands directly into the `package.json` file:
 
-[source,json]
+.Create NPM `start` script
+[source,jsonc]
 ----
 {
   // ...
@@ -327,12 +336,12 @@ The `Nodemon` library will provide us with this feature. Let's add it :
 
 [source,bash]
 ----
-npm add nodemon --save-dev
+$ npm add nodemon --save-dev
 ----
 
 Now you have to define a `nodemon.json` file:
 
-source,json]
+[source,json]
 ----
 {
   "watch": ["src"],
@@ -350,9 +359,10 @@ A few explanations are necessary:
 
 Let's check that everything works by running Nodemon by hand:
 
+.Start nodemon
 [source,bash]
 ----
-./node_modules/.bin/nodemon
+$ ./node_modules/.bin/nodemon
 [nodemon] 2.0.6
 [nodemon] to restart at any time, enter `rs`
 [nodemon] watching path(s): src/**/*
@@ -374,7 +384,8 @@ Nodemon said: Hello
 
 Now that everything works, we can modify the `package.json` file and add the command `nodemon`:
 
-[source,json]
+.Create `start:watch` NPM script
+[source,jsonc]
 ----
 {
   // ...
@@ -416,6 +427,7 @@ $ npm add @types/express --save-dev
 
 And now we can instantiate our server in the file `main.ts`.
 
+.Create Express HTTP server
 [source,ts]
 ----
 // src/main.ts

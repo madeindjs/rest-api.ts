@@ -56,7 +56,7 @@ As you can see, we define that we will use SQLite and that the database will be 
 All we have to do is configure `dotenv` to load this file. To do this, I use Node.js flag `--require`, which allows us to pre-load a library. You just have to modify the `package.json`:
 
 .the basic TypeORM configuration for a connection to SQLite
-[source,json]
+[source,jsonc]
 ----
 {
   // ...

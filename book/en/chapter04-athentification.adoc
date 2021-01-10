@@ -39,14 +39,14 @@ Once decoded, this token gives us the following information:
 
 * the head
 
-[source,json]
+[source,jsonc]
 ----
 { "alg": "HS256", "typ": "JWT" }
 ----
 
 * the payload
 
-[source,json]
+[source,jsonc]
 ----
 { "sub": "1234567890", "name": "John Doe", "iat": 1516239022 }
 ----
@@ -726,10 +726,9 @@ As you can see, the changes are minimal because part of the logic is *deported i
 
 The middleware allowed us to keep the logic in our controller very simple.
 
-// -- current
-
 The principle is exactly the same for the `update` and `destroy` method.
 
+.Adding `FetchLoggedUserMiddleware` updare
 [source,diff]
 ----
 // src/controllers/home.controller.ts
@@ -737,15 +736,6 @@ The principle is exactly the same for the `update` and `destroy` method.
 @controller('/users')
 export class UsersController {
   // ...
--   @httpGet('/:userId', TYPES.FetchUserMiddleware)
-+   @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
-  public async show(/* ... */)> {
-+    if (Number(userId) !== req.user.id) {
-+      return res.sendStatus(403);
-+    }
-    return req.user;
-  }
-
 -  @httpPut('/:userId', TYPES.FetchUserMiddleware)
 +  @httpPut('/:userId', TYPES.FetchLoggedUserMiddleware)
   public async update(/* ... */)> {
@@ -814,6 +804,7 @@ It's beautiful all this green, isn't it?
 
 Let's try to do the same thing with `cURL`:
 
+.Obtains JWT token and use it with `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/tokens
@@ -824,15 +815,14 @@ $ curl -H "Authorization: eyJhbGciOiJIUzI1NiI..." http://localhost:3000/users/1
 
 Perfect! And what happens if we try to access this road without an authorization?
 
+.Try to access on protected endpoint without JWT token using `cURL`
 [source,bash]
 ----
 $ curl http://localhost:3000/users/1
 You must provide an `Authorization` header
 ----
 
-And there you go. We were denied access as planned.
-
-It's time to commit all our changes:
+And there you go. We were denied access as planned. It's time to commit all our changes:
 
 [source, bash]
 ----

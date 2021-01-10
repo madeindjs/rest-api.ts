@@ -8,6 +8,7 @@ To summarize, we simply generated our Node.js application, setup Typescript, and
 
 Our application will be quite simple. It will consist of five models. Don't worry if you don't understand what's going on. We will review and develop each of these resources as we move forward with the tutorial.
 
+.Diagram of Market Place API models
 ----
 +---------+     +---------+
 | User    +---->+Product  |
@@ -31,7 +32,7 @@ That's right. If you _google_ something related to exploring an API, you'll find
 
 == Set up the API
 
-An API is defined by https://fr.wikipedia.org/wiki/Interface_de_programmation [wikipedia] as _an Application Programming Interface (API) standardized set of components that serves as a front end through which one software provides services to other software_. In other words, it is a way in which systems interact with each other via an interface (in our case, a web service built with JSON). There are other communication protocols, such as SOAP, but we are not talking about them here.
+An API is defined by https://fr.wikipedia.org/wiki/Interface_de_programmation[wikipedia] as _an Application Programming Interface (API) standardized set of components that serves as a front end through which one software provides services to other software_. In other words, it is a way in which systems interact with each other via an interface (in our case, a web service built with JSON). There are other communication protocols, such as SOAP, but we are not talking about them here.
 
 JSON has become a must as a file format for the Internet because of its readability, scalability, and ease of implementation. Many JavaScript frameworks use it as a default protocol, such as https://angularjs.org/[Angular] or http://emberjs.com/[EmberJS]. Other large Objective-C libraries use it like https://github.com/AFNetworking/AFNetworking [AFNetworking] or http://restkit.org/[RESTKit]. There are probably good solutions for Android, but I can't recommend anything due to my lack of experience on this development platform.
 
@@ -67,6 +68,7 @@ In this section, we will set up the *dependency injection* system. If you have n
 
 Here I will try to summarize what dependency injection is and what it is used for. Let's imagine a `User` class that needs a `Database` class to be saved. We would try to initialize the database connection in the user's constructor:
 
+.An example of bad design
 [source,ts]
 ----
 class Logger {
@@ -156,7 +158,7 @@ This code becomes stronger because the `User`, `Database`, and `Logger` classes 
 
 Yes, it does. That's why we use a `Container` that will record the classes that can be injected and offer us to create instances easily:
 
-
+.An example of a container used to instantiate classes
 [source,ts]
 ----
 class Logger {/* ... */}
@@ -191,14 +193,14 @@ So let's install `inversify`:
 
 [source,bash]
 ----
-npm install inversify --save
+$ npm install inversify --save
 ----
 
 And let's create a simple event logging class:
 
 NOTE: We could use a library like https://github.com/winstonjs/winston[Winston] or https://www.npmjs.com/package/morgan[Morgan], but for the example, I will create a fairly basic class:
 
-
+.Create a basic logger
 [source,ts]
 ----
 // src/services/logger.service.ts
@@ -212,6 +214,7 @@ export class Logger {
 
 To make it injectable, you need to add a `@injectable` decorator to it. This decorator will simply https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[add metadata] to our class so that it can be injected into our future dependencies.
 
+.Make `Logger` injectable
 [source,ts]
 ----
 import {injectable} from 'inversify';

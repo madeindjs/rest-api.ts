@@ -35,7 +35,7 @@ Commençons par la liste des produits.
 
 Nous devons fournir les informations de pagination sur la balise `meta` comme le document JSON suivant:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data": [

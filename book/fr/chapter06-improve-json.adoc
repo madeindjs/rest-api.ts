@@ -5,7 +5,7 @@ Dans le chapitre précédent, nous avons ajouté les produits à l’application
 
 Maintenant, vous devriez être satisfaits de tout ce travail. Mais nous avons encore du pain sur la planche. Actuellement, nous avons une sortie JSON qui n’est pas parfaite. La sortie JSON ressemble à celle-ci:
 
-[source,json]
+[source,jsonc]
 ----
 [
   {
@@ -128,7 +128,7 @@ Essayons tout cela avec `cURL`:
 $ curl http://localhost:3000/users
 ----
 .Sortie JSON des utilisateurs
-[source,json]
+[source,jsonc]
 ----
 {
   "data": [
@@ -248,7 +248,7 @@ Face à ce problème, il y a plusieurs alternatives possibles.
 Une bonne solution à mon avis est d’intégrer les identifiants des utilisateurs liés aux produits dans un attribut meta, donc nous aurions une sortie JSON comme:
 
 
-[source,json]
+[source,jsonc]
 ----
 {
   "meta": { "user_ids": [1,2,3] },
@@ -264,7 +264,7 @@ Cela peut nécessiter une configuration supplémentaire sur le terminal de l’u
 
 Une autre solution, est d’incorporer l’objet `user` dans l’objet `product`. Ce qui peut rendre la première requête un peu plus lente, mais de cette façon le client n’a pas besoin de faire une autre requête supplémentaire. Un exemple des résultats escomptés est présenté ci-dessous:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data":
@@ -293,7 +293,7 @@ Une autre solution, est d’incorporer l’objet `user` dans l’objet `product`
 
 Le problème de cette approche est que nous devons dupliquer les objets `User` pour tous les produits qui appartiennent au même utilisateur:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data":
@@ -348,7 +348,7 @@ Nous allons inclure toutes les relations dans une clé `include` qui contiendra 
 
 Un JSON vaut mille mots:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "data":

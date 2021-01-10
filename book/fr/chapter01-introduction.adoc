@@ -247,7 +247,7 @@ Ce code est vraiment très basique et va juste nous servir a vérifier que la tr
 
 Afin d'utiliser la transpilation de Typescript, nous avons besoin de définir un fichier de configuration `tsconfig.json`. En voici un basique:
 
-[source,json]
+[source,jsonc]
 ----
 {
   "compilerOptions": {
@@ -291,7 +291,7 @@ Il s'agit de la version transpilé de notre fichier Typescript.
 
 Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
 
-[source,json]
+[source,jsonc]
 ----
 {
   // ...
@@ -342,7 +342,7 @@ $ npm add nodemon --save-dev
 
 Il suffit maintenant de définir un fichier `nodemon.json` :
 
-[source,json]
+[source,jsonc]
 ----
 {
   "watch": ["src"],
@@ -396,7 +396,7 @@ Nodemon said: Hello
 
 Maintenant que tout fonctionne, nous pouvons modifier le fichier `package.json` et ajouter la commande `nodemon`:
 
-[source,json]
+[source,jsonc]
 ----
 {
   // ...
