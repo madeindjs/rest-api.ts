@@ -29,19 +29,19 @@ Here we go:
 .Adding libraries to install TypeORM
 [source,bash]
 ----
-npm add typeorm sqlite3 dotenv --save
+$ npm add typeorm sqlite3 dotenv --save
 ----
 
 We will now generate our configuration file. By default, `dotenv` will look for a file named `.env`. Let's create it:
 
 [source,bash]
 ----
-touch .env
+$ touch .env
 ----
 
 And let's start by defining https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables[TypeORM environment variables] for a basic connection to an SQLite database:
 
-The basic configuration of TypeORM for a connection to SQLite
+.The basic configuration of TypeORM for a connection to SQLite
 [source,env]
 ----
 TYPEORM_CONNECTION=sqlite
@@ -55,7 +55,7 @@ As you can see, we define that we will use SQLite and that the database will be 
 
 All we have to do is configure `dotenv` to load this file. To do this, I use Node.js flag `--require`, which allows us to pre-load a library. You just have to modify the `package.json`:
 
-.the basic TypeORM configuration for a connection to SQLite
+.The basic TypeORM configuration for a connection to SQLite
 [source,jsonc]
 ----
 {
@@ -71,14 +71,11 @@ All we have to do is configure `dotenv` to load this file. To do this, I use Nod
 
 We will now create a `DatabaseService` that will take care of connecting TypeORM to our database. As we have implemented dependency injection, this service will also be injectable. Here is the complete implementation. Don't panic. I'll detail the logic next.
 
+.Implementation of `DatabaseService`
 [source,ts]
 ----
 // src/services/database.service.ts
-import {inject, injectable} from 'inversify';
-import {Connection, createConnection, ObjectType} from 'typeorm';
-import {TYPES} from '../core/types.core';
-import {Logger} from './logger.service';
-
+// ...
 @injectable()
 export class DatabaseService {
   private static connection: Connection;
@@ -93,12 +90,11 @@ export class DatabaseService {
     try {
       DatabaseService.connection = await createConnection();
       this.logger.log('INFO', `Connection established`);
+      return DatabaseService.connection;
     } catch (e) {
       this.logger.log('ERROR', 'Cannot establish database connection');
       process.exit(1);
     }
-
-    return DatabaseService.connection;
   }
 
   public async getRepository<T>(repository: ObjectType<T>): Promise<T> {
@@ -148,16 +144,11 @@ We can now create our first `User` model. Using the _patern Data Mapper_, we wil
 
 To simplify the example, I will put these two classes in the same file, but you can separate them very well :
 
+.Creation of user entity and user repository
 [source,ts]
 ----
 // src/entities/user.entity.ts
-import {
-  Column,
-  Entity,
-  EntityRepository,
-  PrimaryGeneratedColumn,
-  Repository,
-} from 'typeorm';
+import {/* ... */} from 'typeorm';
 
 @Entity()
 export class User {
@@ -199,6 +190,7 @@ As we saw earlier, controllers can inject our services. So we will inject the `D
 
 Here is the implementation of our controller:
 
+.Implementation of user controller index
 [source,ts]
 ----
 // src/controllers/users.controller.ts
@@ -241,7 +233,7 @@ $ curl http://localhost:3000/users
 
 Command's output indicates an empty result: this is normal because there is no user yet. On the other hand, the server terminal tells us that a lot has happened:
 
-
+.Output of TypeORM database initialization
 [source,sql]
 ....
 query: BEGIN TRANSACTION
@@ -347,6 +339,7 @@ And there you go. Everything is working properly. Now let's try to update this u
 
 The `update` method will take care of recovering, modifying, and registering the user. As for the previous method, TypeORM makes our task much easier:
 
+.Implementation of user update
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -379,13 +372,13 @@ export class UsersController {
 
 And there you go. As before, let's see if it works:
 
+.Updating an user using `cURL`
 [source,bash]
 ----
 $ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
 ----
 
 Perfect! You can even see, our user has been updated and it is sent back to us in JSON format. You can even see the SQL query that TypeORM performed in the terminal logs.
-
 
 [source,sql]
 ----
@@ -399,11 +392,11 @@ query: COMMIT
 
 The `delete` method is the easiest. Just retrieve the user and call the `repository.delete` method. Let's do it:
 
+.Implementation of user delete
 [source,ts]
 ----
 // src/controllers/home.controller.ts
 // ...
-
 @controller('/users')
 export class UsersController {
   // ...
@@ -419,6 +412,7 @@ export class UsersController {
 
 The `delete` method is the easiest. Just retrieve the user and call the `repository.delete` method. Let's do it:
 
+.Delete an user using `cURL`
 [source,bash]
 ----
 $ curl -X DELETE  http://localhost:3000/users/1
@@ -443,6 +437,7 @@ $ git commit -am "Implement CRUD actions on user"
 
 Everything seems to work, but there is still one problem: we do not validate the data we insert in the database. Thus, it is possible to create a user with a fake email:
 
+.Try to creating an invalid user using `cURL`
 [source,sh]
 ....
 $ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
@@ -489,6 +484,7 @@ export class User {
 
 It didn't take a lot of code to add. The most interesting part is the `validate` method. It has two decorators `BeforeInsert` and `BeforeUpdate`, which will automatically call the `validate` method when using the `save` method of a repository. This is very convenient, and there is nothing to do. Now let's try to create the same user with the wrong email:
 
+.Try to creating an invalid user using `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
@@ -533,6 +529,7 @@ export class UsersController {
 
 Let's try now:
 
+.Try to creating an invalid user using `cURL`
 [source,bash]
 ----
 $ curl -X POST -d "test@test.fr" -d "password=test"  http://localhost:3000/users
@@ -607,7 +604,7 @@ Here are some explanations about this code :
 
 Since we have defined a new injectable, we need to add it to our container:
 
-
+.Add `FetchUserMiddleware` type for inversify
 [source,ts]
 ----
 // src/core/types.core.ts
@@ -618,6 +615,7 @@ export const TYPES = {
 };
 ----
 
+.Register `FetchUserMiddleware` to container
 [source,ts]
 ----
 // src/core/container.core.ts
@@ -630,6 +628,7 @@ container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
 
 Now we can use this middleware in our controller by adding `TYPE.FetchUserMiddleware` to the decorator. So here is the modification:
 
+.Using `FetchUserMiddleware` into user controller
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -672,6 +671,7 @@ $ git add . && git commit -m "Factorize user controller with middleware"
 
 We will use the basic library of Node.js: https://nodejs.org/api/crypto.html[Crypto]. Here is an example of a method for hashing the password:
 
+.Hash a password with `crypto` library
 [source,ts]
 ----
 import {createHash} from 'crypto';
@@ -686,6 +686,7 @@ console.log(hashPassword("$uper_u$er_p@ssw0rd"));
 
 And there it is! To know if the password matches, just check if the hash matches the previous one:
 
+.Compare an hashed password
 [source,ts]
 ----
 import {createHash} from 'crypto';
@@ -710,6 +711,7 @@ If your passwords leak, it will be quite easy to retrieve the corresponding pass
 
 The hash salt consists of adding a defined text to each password. Here is the modification:
 
+.Hash a password with a salt
 [source,ts]
 ----
 import {createHash} from 'crypto';
@@ -736,6 +738,7 @@ There you go! The result is the same, but our application is more secure. If som
 
 Now that we have seen the theory let's put it into practice. We will use the same methods in a `password.utils.ts` file. Here we go:
 
+.Create utilities methods for password hashing
 [source,ts]
 ----
 // src/utils/password.utils.ts
@@ -754,6 +757,7 @@ export function isPasswordMatch(hash: string, password: string): boolean {
 
 We will now use the `hashPassword` method in the `User` entity. With TypeORM it's very easy using hooks as we did with validation.
 
+.Hash user's password
 [source,ts]
 ----
 // src/entities/user.entity.ts
@@ -910,6 +914,7 @@ $ npm test
 
 And while we're at it, we can also add another unit test on the `isPasswordMatch` password comparison method:
 
+.Add unit test about `isPasswordMatch`
 [source,ts]
 ----
 // src/utils/password.utils.spec.ts

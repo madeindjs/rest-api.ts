@@ -5,6 +5,7 @@ In the previous chapter, we added the products to the application and built all 
 
 Now you should be satisfied with all this work. But we still have a lot of work ahead of us. Right now, we have a JSON output that is not perfect. The JSON output looks like this one:
 
+.Current JSON output
 [source,jsonc]
 ----
 [
@@ -24,14 +25,12 @@ We want an output that does not contain the `user_id`, `created_at`, and `update
 
 Moreover, an important and difficult part of creating your API is to decide on the output format. Fortunately, some organizations have already faced this kind of problem and have established certain conventions you will discover in this chapter.
 
-You can clone the project up to this point with:
+Let's start a new branch for this chapter:
 
 [source,bash]
 ----
-$ git checkout tags/checkpoint_chapter06
+$ git checkout -b chapter06
 ----
-
-Let's start a new branch for this chapter:
 
 == Presentation of https://jsonapi.org/[JSON:API]
 
@@ -57,8 +56,8 @@ So let's install this dependency:
 
 [source,bash]
 ----
-npm install jsonapi-serializer
-npm install @types/jsonapi-serializer --save-dev
+$ npm install jsonapi-serializer
+$ npm install @types/jsonapi-serializer --save-dev
 ----
 
 You should be ready to continue with this tutorial.
@@ -69,6 +68,7 @@ You should be ready to continue with this tutorial.
 
 We first need to add a `serializers.utils.ts` file that will contain all the serializers. And in the meantime, I start directly with the implementation of `userSerializer`:
 
+.Serializer of `User` entity
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
@@ -84,9 +84,9 @@ export const userSerializer = new Serializer("users", {
 
 This _serializer_ will allow us to convert our `User` object to JSON, which correctly implements the JSON:API standard. We have specified the `email` attribute to present in the `data` table. By listing the fields that we want to appear in, this library fixes the problem with our API's `hashedPassword` attribute.
 
-
 Now we just have to use this instance in our controller:
 
+.Using `userSerializer` into user controller
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -119,7 +119,6 @@ Let's try all this with `cURL`:
 ----
 $ curl http://localhost:3000/users
 ----
-.Sortie JSON des utilisateurs
 [source,jsonc]
 ----
 {
@@ -147,6 +146,7 @@ $ git commit -am "Adds user serializer for customizing the json output"
 
 Now that we understand how the serialization gem works, it's time to customize the output. The first step is the same as for the user, we need a product serializer, so let's do it:
 
+.Implementation of `productSerializer`
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
@@ -158,6 +158,7 @@ export const productsSerializer = new Serializer("products", {
 
 And there you go. It's as simple as that. Let's modify our controller a little bit.
 
+.Using `productSerializer` into product controller
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -183,7 +184,6 @@ export class ProductController {
 
 You can run the tests to check but they should still be good. Let's make these small changes:
 
-
 [source,bash]
 ----
 $ git add .
@@ -198,6 +198,7 @@ We don't have to worry about this in our case, the JSON:API standard did it for 
 
 To summarize, we have a `has_many' type association between the user and the product model.
 
+.Add products relationships to user entity
 [source,ts]
 ----
 // src/entities/user.entity.ts
@@ -212,6 +213,7 @@ export class User {
 // ...
 ----
 
+.Add user relationships to product entity
 [source,ts]
 ----
 // src/entities/product.entity.ts
@@ -232,7 +234,7 @@ It's a good idea to integrate users into the JSON outputs of the products. This 
 
 Imagine a scenario where you will search for products in the API, but in this case, you need to display some of the user information.
 
-A possible solution would be to add the `user_id` attribute to the `product_serializer` to retrieve the corresponding user later. This may sound like a good idea, but if you are concerned about performance or if your database transactions are not fast enough, you should reconsider this approach. You should understand that for each product you recover, you will need to recover its corresponding user.
+A possible solution would be to add the `userId` attribute to the `productSerializer` to retrieve the corresponding user later. This may sound like a good idea, but if you are concerned about performance or if your database transactions are not fast enough, you should reconsider this approach. You should understand that for each product you recover, you will need to recover its corresponding user.
 
 Faced with this problem, there are several possible alternatives.
 
@@ -244,19 +246,18 @@ A good solution, in my opinion is to integrate the user IDs linked to the produc
 [source,jsonc]
 ----
 {
-  "meta": { "user_ids": [1,2,3] },
-  "data": [
-
-  ]
+  "meta": { "userIds": [1,2,3] },
+  "data": [/* ... */]
 }
 ----
 
-This may require additional configuration on the user's terminal to retrieve its users from these `user_ids`.
+This may require additional configuration on the user's terminal to retrieve its users from these `userIds`.
 
 === Incorporate the object into the attribute
 
 Another solution is to incorporate the `user` object into the `product` object. This can make the first request a little slower, but this way, the client doesn't need to make another request. An example of the expected results is shown below:
 
+.Incorporate user relation into product attributes
 [source,jsonc]
 ----
 {
@@ -296,16 +297,13 @@ The problem with this approach is that we have to duplicate `User` objects for a
         "type": "product",
         "attributes": {
           "title": "First product",
-          "price": "25.02",
-          "published": false,
+          // ...
           "user": {
             "id": 2,
             "type": "user",
             "attributes": {
               "email": "stephany@lind.co.uk",
-              "created_at": "2014-07-29T03:52:07.432Z",
-              "updated_at": "2014-07-29T03:52:07.432Z",
-              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+              // ...
             }
           }
         }
@@ -315,16 +313,13 @@ The problem with this approach is that we have to duplicate `User` objects for a
         "type": "product",
         "attributes": {
           "title": "Second product",
-          "price": "25.02",
-          "published": false,
+          // ...
           "user": {
             "id": 2,
             "type": "user",
             "attributes": {
               "email": "stephany@lind.co.uk",
-              "created_at": "2014-07-29T03:52:07.432Z",
-              "updated_at": "2014-07-29T03:52:07.432Z",
-              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+              // ...
             }
           }
         }
@@ -349,11 +344,7 @@ One JSON is worth a thousand words:
     {
         "id": 1,
         "type": "product",
-        "attributes": {
-          "title": "First product",
-          "price": "25.02",
-          "published": false
-        },
+        "attributes": {/* ... */},
         "relationships": {
           "user": {
             "id": 1,
@@ -364,11 +355,7 @@ One JSON is worth a thousand words:
     {
         "id": 2,
         "type": "product",
-        "attributes": {
-          "title": "Second product",
-          "price": "25.02",
-          "published": false
-        },
+        "attributes": {/* ... */},
         "relationships": {
           "user": {
             "id": 1,
@@ -398,8 +385,9 @@ You see the difference? This solution drastically reduces the size of the JSON a
 
 We will, therefore, incorporate the user object into the product. Let's start by adding some tests.
 
-We will simply modify the `Products#show` test to verify that we recover:
+We will simply modify the `UsersController.show` test to verify that we recover:
 
+.Add functional test to test `include` presence in JSON response
 [source,ts]
 ----
 // src/controllers/users.controller.spec.ts
@@ -448,6 +436,7 @@ You may also notice that I have created and linked a product to the user saved i
 
 To pass this test, we will start by including the relationship in the serializer:
 
+.Add relationship to user serializer
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
@@ -525,6 +514,7 @@ Have you understood the principle? We have included user information in the JSON
 
 Let's start with the test:
 
+.Add functional test to test `include` presence in JSON response
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -548,6 +538,7 @@ describe("ProductsController", () => {
 
 Then build serializer:
 
+.Add relationship to serializer
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
@@ -563,8 +554,9 @@ export const productsSerializer = new Serializer("products", {
 } as any);
 ----
 
-And finally build controller:
+And finally update controller:
 
+.Using serializer in product controller
 [source,ts]
 ----
 // src/controllers/home.controller.ts

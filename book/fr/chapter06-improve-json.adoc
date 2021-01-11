@@ -303,16 +303,13 @@ Le problème de cette approche est que nous devons dupliquer les objets `User` p
         "type": "product",
         "attributes": {
           "title": "First product",
-          "price": "25.02",
-          "published": false,
+          // ...
           "user": {
             "id": 2,
             "type": "user",
             "attributes": {
               "email": "stephany@lind.co.uk",
-              "created_at": "2014-07-29T03:52:07.432Z",
-              "updated_at": "2014-07-29T03:52:07.432Z",
-              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+              // ...
             }
           }
         }
@@ -322,16 +319,13 @@ Le problème de cette approche est que nous devons dupliquer les objets `User` p
         "type": "product",
         "attributes": {
           "title": "Second product",
-          "price": "25.02",
-          "published": false,
+          // ...
           "user": {
             "id": 2,
             "type": "user",
             "attributes": {
               "email": "stephany@lind.co.uk",
-              "created_at": "2014-07-29T03:52:07.432Z",
-              "updated_at": "2014-07-29T03:52:07.432Z",
-              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+              // ...
             }
           }
         }
@@ -405,7 +399,7 @@ Vous voyez la différence? Cette solution réduit drastiquement la taille du JSO
 
 Nous allons donc incorporer l’objet utilisateur dans le produit. Commençons par ajouter quelques tests.
 
-Nous allons simplement modifier le test `Products#show` afin de vérifier que nous récupérons:
+Nous allons simplement modifier le test `UsersControllers.show` afin de vérifier que nous récupérons:
 
 .Ajout d'un test pour controller l'ajout du `include` dans la sortie JSON
 [source,ts]
@@ -637,6 +631,8 @@ C'était vraiment facile. Faisons un _commit_:
 ----
 $ git commit -am "Add user relationship to ProductsController.show"
 ----
+
+// -- current
 
 == Rechercher les produits
 
