@@ -171,7 +171,8 @@ C'est parfait. Commitons et passons à la suite :
 
 [source,bash]
 ----
-$ git add . && git commit -m "Create JsonWebTokenService"
+$ git add .
+$ git commit -m "Create JsonWebTokenService"
 ----
 
 == Le contrôleur de jetons
@@ -414,7 +415,8 @@ Comittons et passons à la suite :
 
 [source,bash]
 ----
-$ git add . && git commit -m "Create token controller"
+$ git add .
+$ git commit -m "Create token controller"
 ----
 
 
@@ -822,7 +824,8 @@ Il est temps de commiter tous nos changement:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Add JWT middleware"
+$ git add .
+$ git commit -m "Add JWT middleware"
 ----
 
 == Conclusion

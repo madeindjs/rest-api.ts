@@ -1,7 +1,7 @@
 [#chapter09-optimization]
 = Optimizations
 
-Welcome to the last chapter of the book. It's been a long road, but you're only one step away from the end. In the previous chapter, we finished modeling the command model. We could say that the project is now complete, but I want to cover a few important details about optimization. The topics I will cover here will be:
+Welcome to the last chapter of the book. It's been a long road, but you're only one step away from the end. In the previous chapter, we finished modeling the order model. We could say that the project is now complete, but I want to cover a few important details about optimization. The topics I will cover here will be:
 
 * Pagination
 * Caching
@@ -177,7 +177,8 @@ Let's start all this and move on to the next part.
 
 [source,sh]
 ----
-$ git add . && git commit -m "Paginate products"
+$ git add .
+$ git commit -m "Paginate products"
 ----
 
 Now that we've done a great optimization for the product list route, it's up to the customer to browse the pages.
@@ -192,7 +193,7 @@ $ git commit -m "Adds pagination for products index action to optimize response"
 
 === List of commands
 
-Now it's time to do exactly the same for the command list route. This should be very easy to implement. But first, let's add some tests:
+Now it's time to do exactly the same for the order list route. This should be very easy to implement. But first, let's add some tests:
 
 [source,ts]
 ----
@@ -331,7 +332,7 @@ And there you go. Some explanations:
 - The `main` will create a loop around `createOrder` to call it several times.
 - `require.main === module` may seem abstract, but it is actually straightforward: it means that the function will be executed only if we explicitly execute the file. In other words, it ensures that the method will not be executed if the file is accidentally imported.
 
-Now we can run the script with the following command:
+Now we can run the script with the following order:
 
 [source,sh]
 ----
@@ -403,7 +404,7 @@ Here are some explanations for these requests:
 2. the request is made because the cache did not exist
 3. the result is inserted in the ``query-result-cache`` table.
 
-Let's try to execute the cURL command again:
+Let's try to execute the cURL order again:
 
 [source,sh]
 ----

@@ -175,7 +175,8 @@ It's perfect. Let's get started and move on:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Create JsonWebTokenService"
+$ git add .
+$ git commit -m "Create JsonWebTokenService"
 ----
 
 == The token controller
@@ -418,7 +419,8 @@ Let's count and move on:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Create token controller"
+$ git add .
+$ git commit -m "Create token controller"
 ----
 
 == User logged in
@@ -826,13 +828,14 @@ And there you go. We were denied access as planned. It's time to commit all our 
 
 [source, bash]
 ----
-$ git add . && git commit -m "Add JWT middleware"
+$ git add .
+$ git commit -m "Add JWT middleware"
 ----
 
 == Conclusion
 
 You did it! You're halfway there! This chapter has been long and difficult, but it's a big step forward in setting up a solid mechanism to handle user authentication. We're even starting to scratch the surface for simple authorization rules.
 
-In the next chapter, we will focus on customizing JSON output for the user and adding a product template by giving the user the ability to create a product and publish it for sale.
+In the next chapter, we will focus on customizing JSON output for the user and adding a product entity by giving the user the ability to create a product and publish it for sale.
 
 

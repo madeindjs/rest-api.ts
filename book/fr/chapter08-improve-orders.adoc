@@ -352,7 +352,7 @@ export class PlacementSubscriber
 }
 ----
 
-NOTE: Nous récupérons le produit via le `manager` au lieu de simplement récupérer via la relation `enity.product` afin de s'assurer d'avoir la dernière version stocké en base
+NOTE: Nous récupérons le produit via le `manager` au lieu de simplement récupérer via la relation `entity.product` afin de s'assurer d'avoir la dernière version stocké en base
 
 Et voilà. C'était facile non? Lançons les tests pour être sûr.
 

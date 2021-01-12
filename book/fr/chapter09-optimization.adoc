@@ -179,7 +179,8 @@ Commitons tout cela et passons à la suite
 
 [source,sh]
 ----
-$ git add . && git commit -m "Paginate products"
+$ git add .
+$ git commit -m "Paginate products"
 ----
 
 Maintenant que nous avons fait une superbe optimisation pour la route de la liste des produits, c’est au client de parcourir les pages.

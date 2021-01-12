@@ -19,12 +19,12 @@ $ git checkout -b chapter05
 
 == The product model
 
-We will first create a `Product` model, then we will add some validations to it, and finally, we will associate it with the `User` model. Like the `User` template, the `Product` will be fully tested and automatically deleted if the user is deleted.
+We will first create a `Product` model, then we will add some validations to it, and finally, we will associate it with the `User` model. Like the `User` entity, the `Product` will be fully tested and automatically deleted if the user is deleted.
 
 
 === Product basics
 
-The `Product` template will need several fields: a `price` attribute for the price of the product, a `published` boolean to know if the product is ready to be sold or not, a `title` to define a sexy product title, and last but not least a `userId` to associate that particular product to a user:
+The `Product` entity will need several fields: a `price` attribute for the price of the product, a `published` boolean to know if the product is ready to be sold or not, a `title` to define a sexy product title, and last but not least a `userId` to associate that particular product to a user:
 
 Let's go directly to the implementation.
 
@@ -114,7 +114,8 @@ And there you go. Let's make a _commit_:
 
 [source, bash]
 ----
-$ git add . && git commit -m "Generate product model"
+$ git add .
+$ git commit -m "Generate product model"
 ----
 
 === Product Validations
@@ -176,7 +177,7 @@ First, we need to create the `ProductsController`. As a warm-up, we'll start by 
 
 As usual, we start by adding some tests from the product controller. The purpose here is straightforward. Just display a single product and make sure that the server response is what we expect.
 
-But to do this, we will first create a product and a user in the `before` method. So we're going to refine our utility to create templates by adding `generateProduct`:
+But to do this, we will first create a product and a user in the `before` method. So we're going to refine our utility to create entities by adding `generateProduct`:
 
 .Creating the `generateProduct` method
 [source,ts]
@@ -337,7 +338,8 @@ Perfect! We can now move on to the next one.
 
 [source,bash]
 ----
-$ git add . && git commit -m "Add logic to show product"
+$ git add .
+$ git commit -m "Add logic to show product"
 ----
 
 === List of products
@@ -851,4 +853,4 @@ So it's time to close this chapter and move on.
 
 I hope you enjoyed this chapter. It's a long job, but the code we've created is an excellent foundation for the main application.
 
-In the next chapter, we will focus on customizing user and product templates' output using the https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] library. It will allow us to easily filter the attributes to be displayed and manage associations such as embedded objects.
+In the next chapter, we will focus on customizing user and product entities output using the https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] library. It will allow us to easily filter the attributes to be displayed and manage associations such as embedded objects.

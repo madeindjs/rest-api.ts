@@ -662,7 +662,8 @@ Not bad, right? Let's start the modifications before going further:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Factorize user controller with middleware"
+$ git add .
+$ git commit -m "Factorize user controller with middleware"
 ----
 
 == Password Hash
@@ -807,7 +808,8 @@ Everything works perfectly well. Let's do a commit before going any further.
 
 [source,bash]
 ----
-$ git add . && git commit -m "Hash user password"
+$ git add .
+$ git commit -m "Hash user password"
 ----
 
 === Setting up a unit test

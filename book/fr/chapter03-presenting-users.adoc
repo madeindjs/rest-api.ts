@@ -675,7 +675,8 @@ Pas mal non ? Commitons les modifications avant d'aller plus loin :
 
 [source,bash]
 ----
-$ git add . && git commit -m "Factorize user controller with middleware"
+$ git add .
+$ git commit -m "Factorize user controller with middleware"
 ----
 
 == Hashage du mot de passe
@@ -813,7 +814,8 @@ Tout marche parfaitement bien. Faisons un commit avant d'aller plus loin.
 
 [source,bash]
 ----
-$ git add . && git commit -m "Hash user password"
+$ git add .
+$ git commit -m "Hash user password"
 ----
 
 === Mise en place d'un test unitaire
@@ -953,7 +955,8 @@ Maintenant que vous êtes échauffé, commitons et passons à la suite :
 
 [source,bash]
 ----
-$ git add . && git commit -m "Add unit test about password hash"
+$ git add .
+$ git commit -m "Add unit test about password hash"
 ----
 
 == Ajout des tests fonctionnels

@@ -121,7 +121,8 @@ Et voilà. Faisons un _commit_:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Generate product model"
+$ git add .
+$ git commit -m "Generate product model"
 ----
 
 === Validations des produits
@@ -354,7 +355,8 @@ Parfait, nous pouvons maintenant passer à la suite.
 
 [source,bash]
 ----
-$ git add . && git commit -m "Add logic to show product"
+$ git add .
+$ git commit -m "Add logic to show product"
 ----
 
 === Liste des produits
@@ -398,7 +400,8 @@ Dans les chapitres suivants, nous allons améliorer ce point d’entré et donne
 
 [source,bash]
 ----
-$ git add . && git commit -m "Add logic to list product"
+$ git add .
+$ git commit -m "Add logic to list product"
 ----
 
 === Création des produits

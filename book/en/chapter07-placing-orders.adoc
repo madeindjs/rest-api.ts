@@ -5,7 +5,7 @@ In the previous chapters, we have dealt with associations between products and u
 
 In this chapter, we're going to do several things:
 
-* Create an order template with the corresponding specifications
+* Create an order entity with the corresponding specifications
 * Manage the JSON output association between the order user and product models
 * Send a confirmation email with the order summary
 
@@ -18,10 +18,11 @@ $ git checkout -b chapter07
 
 == Order modeling
 
-If you remember the templates' associations, you should remember that the `Order` template is associated with the `User` and `Product` templates. It's actually straightforward to manage this with Rails. The tricky part is when serializing these objects. I'll talk about it in more detail later.
+If you remember the models associations entities, `Order` entity is associated with the `User` and `Product` entities. It's actually straightforward to manage this with Rails. The tricky part is when serializing these objects. I'll talk about it in more detail later.
 
-Let's start by creating the model of the command. It will have two `ManyToOne` relationships: `User` and `Product`. It will also have a `total` column for the command's total cost and then the classic `createdAt` and `updatedAt` columns. Here is the full implementation.
+Let's start by creating the model of the order. It will have two `ManyToOne` relationships: `User` and `Product`. It will also have a `total` column for the order's total cost and then the classic `createdAt` and `updatedAt` columns. Here is the full implementation.
 
+.First implementation of `Order` entity
 [source,ts]
 ----
 // src/entities/order.entity.ts
@@ -66,6 +67,7 @@ I took the opportunity to add the `ValidateIf` constraint on the `total` field, 
 
 But before we forget, we must also define the relationship on the `User` side:
 
+.Add order relationship to user
 [source,ts]
 ----
 // src/entities/user.entity.ts
@@ -85,22 +87,19 @@ Perfect! We are ready to move on. Let's make a commit before:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Generate orders"
+$ git add .
+$ git commit -m "Generate orders"
 ----
 
 === Orders and products
 
-We have to establish the link between the order and the products. This is done with a _many-to-many_ association because many products will be placed on several orders, and the orders will have several products. In this case, we, therefore, need an additional template that will join these two other objects and map the appropriate association. Here is the implementation:
+We have to establish the link between orders and products. This is done with a _many-to-many_ association because many products will be placed on several orders, and orders will have several products. In this case, we, therefore, need an additional entity that will join these two other objects and map the appropriate association. Here is the implementation:
 
+.The new entity who join `order` and `product`
 [source,ts]
 ----
 // src/entities/placement.entity.ts
-import {IsDefined, validateOrReject} from 'class-validator';
-import {/* ... */} from 'typeorm';
-import {Order} from './order.entity';
-import {Product} from './product.entity';
-import {User} from './user.entity';
-
+// ...
 @Entity()
 export class Placement {
   @PrimaryGeneratedColumn()
@@ -157,7 +156,8 @@ Good! Let's commit changes:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Associates products and orders with a placements model"
+$ git add .
+$ git commit -m "Associates products and orders with a placements model"
 ----
 
 == Expose the user model
@@ -166,17 +166,17 @@ Now it's time to prepare the order controller to expose the right orders. If you
 
 Let's first define what actions we are going to implement:
 
-. An indexing action to retrieve current user commands
-. A show action to retrieve a particular command from the current user
+. An indexing action to retrieve current user orders
+. A show action to retrieve a particular order from the current user
 . Creative action to actually place the order
 
-Let's start with the `index` action. First, we need to create the command controller. But before we start typing code, we need to ask ourselves:
+Let's start with the `index` action. First, we need to create the order controller. But before we start typing code, we need to ask ourselves:
 
-> Should I leave my command routes nested in the `UsersController`, or should I isolate them?
+> Should I leave my order routes nested in the `UsersController`, or should I isolate them?
 
 The answer is straightforward: it depends on how much information you want to expose to the developer.
 
-In our case, we're not going to do that because we will retrieve the user commands on the `/orders' route. Let's start with some tests:
+In our case, we're not going to do that because we will retrieve the user orders on the `/orders` route. Let's start with some tests:
 
 .Functional tests of the method `OrdersController.index`.
 [source,ts]
@@ -223,6 +223,7 @@ describe("OrdersController", () => {
 });
 ----
 
+.Implementation `generateOrder` test utility
 [source,ts]
 ----
 // src/utils/faker.utils.ts
@@ -240,14 +241,15 @@ export function generateOrder(order?: Partial<Order>): Order {
 }
 ----
 
-The implementation of this test should remind you of `product.controller.spec.ts`. We try to access the new `endpoint` with a user with an `Order` and check that this command appears in the JSON return.
+The implementation of this test should remind you of `product.controller.spec.ts`. We try to access the new `endpoint` with a user with an `Order` and check that this order appears in the JSON return.
 
-NOTE: You may have noticed the syntax `({body}) => ...`. This is the functionality of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax[spread syntax]. It simply allows you to retrieve a property contained in an object directly from a variable of the same name. Thus `const data = {a: 1}; const a = data.a;` can be simplified to `const { a } = {a: 1}`. This syntax can be confusing at first so I preferred to use it rather than from this chapter on.
+NOTE: You may have noticed the syntax `({body}) \=> ...`. This is the functionality of https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax[spread syntax]. It simply allows you to retrieve a property contained in an object directly from a variable of the same name. Thus `const data = {a: 1}; const a = data.a;` can be simplified to `const { a } = {a: 1}`. This syntax can be confusing at first so I preferred to use it rather than from this chapter on.
 
-If we run the test suite now, as you might expect, both tests will fail. This is normal because we haven't even defined the controller or even the command-specific serializer. So let's do it.
+If we run the test suite now, as you might expect, both tests will fail. This is normal because we haven't even defined the controller or even the order-specific serializer. So let's do it.
 
 So let's start with the serializer:
 
+.Create serialize for order
 [source,ts]
 ----
 // src/utils/serializers.utils.ts
@@ -262,13 +264,7 @@ And now we can use it in our brand new controller:
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
-import {Request, response, Response} from 'express';
-import {inject} from 'inversify';
-import {controller, httpGet} from 'inversify-express-utils';
-import {TYPES} from '../core/types.core';
-import {Order, OrderRepository} from '../entities/order.entity';
-import {User} from '../entities/user.entity';
-import {DatabaseService} from '../services/database.service';
+// ...
 import {ordersSerializer} from '../utils/serializers.utils';
 
 @controller("/orders", TYPES.FetchLoggedUserMiddleware)
@@ -291,6 +287,7 @@ In the first decorator `@controller`, we globally inject the middleware `FetchLo
 
 Let's not forget to load our controller since it is a brand new controller:
 
+.Import order controller into container
 [source,ts]
 ----
 // src/core/container.core.ts
@@ -316,15 +313,17 @@ We like our commits very small. So let's commit now:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Adds the index action for order"
+$ git add .
+$ git commit -m "Adds the index action for order"
 ----
 
-=== Display a single command
+=== Display a single order
 
-As you can already imagine, this route is straightforward. We just have to set up some configurations (routes, controller action) and a new _middleware_ that will take care of retrieving the command, and that will be all for this section. Later we will include the products related to this order in the output JSON.
+As you can already imagine, this route is straightforward. We just have to set up some configurations (routes, controller action) and a new _middleware_ that will take care of retrieving the order, and that will be all for this section. Later we will include the products related to this order in the output JSON.
 
 Let's start by adding some tests:
 
+.Functional test about get order information endpoint
 [source,ts]
 ----
 // src/controllers/orders.controller.spec.ts
@@ -348,7 +347,7 @@ describe("OrdersController", () => {
 });
 ----
 
-Let's move on to implementation. We will start by creating a middleware that will search for the command according to the parameter. The code is really very similar to `FetchProductMiddleware` so I'll skip over it a bit faster:
+Let's move on to implementation. We will start by creating a middleware that will search for the order according to the parameter. The code is really very similar to `FetchProductMiddleware` so I'll skip over it a bit faster:
 
 .Creating the `FetchOrderMiddleware`.
 [source,ts]
@@ -420,11 +419,11 @@ Let's commit changes and move on.
 $ git commit -am "Adds the show action for order"
 ----
 
-=== Placement and commands
+=== Placement and orders
 
 Now it is time to give the user the possibility to place some orders. This will add complexity to the application but don't worry. We'll take it one step at a time.
 
-Before launching this feature, let's take some time to think about the implications of creating a command in the application. I'm not talking about setting up a transaction service like https://stripe.com/[Stripe] or https://www.braintreepayments.com/[Braintree] but things like:
+Before launching this feature, let's take some time to think about the implications of creating a order in the application. I'm not talking about setting up a transaction service like https://stripe.com/[Stripe] or https://www.braintreepayments.com/[Braintree] but things like:
 
 * the management of out-of-stock products
 * Decrease in product inventory
@@ -432,7 +431,10 @@ Before launching this feature, let's take some time to think about the implicati
 
 It looks like there's still a lot to do but trust me: you're closer than you think, and it's not as hard as it looks. For now, let's keep things simple and assume we still have enough products to place any number of orders. We're just concerned about the response from the server at the moment.
 
-If you remember the order template, we need three things: a total for the order, the user placing the order, and the order's products. Given this information, we can start adding some tests:
+If you remember the order entity, we need three things: a total for the order, the user placing the order, and the order's products. Given this information, we can start adding some tests:
+
+
+// -- current
 
 [source,ts]
 ----
@@ -480,7 +482,7 @@ As you can see in the first case, the user sends a table of the products he want
 1. retrieve the list of associated products via the IDs
 2. calculate the total sum of these products
 3. Create the `Order`.
-4. create the `Placements` associated with this command
+4. create the `Placements` associated with this order
 
 It sounds complicated, but look at the implementation:
 
@@ -725,7 +727,8 @@ Let's do everything we just did to finish this section:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Adds order confirmation mailer"
+$ git add .
+$ git commit -m "Adds order confirmation mailer"
 ----
 
 
@@ -741,7 +744,7 @@ $ git merge chapter07
 
 That's it! You did it! You can applaud each other. I know it's been a long time, but it's almost over, believes me.
 
-In the chapters to come, we will continue to work on the order template to add validations when placing an order. Some scenarios are:
+In the chapters to come, we will continue to work on the order entity to add validations when placing an order. Some scenarios are:
 
 * What happens when the products are not available?
 * Decrease the quantity of the current product when placing an order.

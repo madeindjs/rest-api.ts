@@ -85,12 +85,13 @@ Parfait! Nous sommes prêt à passer à la suite. _Commitons_ tout cela avant:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Generate orders"
+$ git add .
+$ git commit -m "Generate orders"
 ----
 
 === Les commandes et les produits
 
-Nous devons établir la liaison entre la commande et les produits. Cela se fait avec une association _many-to-many_ car de nombreux produits seront placés sur plusieurs commandes et les commandes auront plusieurs produits. Dans ce cas, nous avons donc besoin d’un modèle supplémentaire qui joindra ces deux autres objets et mappera l’association appropriée. Voici l'implémentation:
+Nous devons établir la liaison entre la commande et les produits. Cela se fait avec une association _many-to-many_ car les produits seront associé à plusieurs commandes et les commandes auront plusieurs produits. Dans ce cas, nous avons donc besoin d’un modèle supplémentaire qui joindra ces deux autres objets et mappera l’association appropriée. Voici l'implémentation:
 
 
 [source,ts]
@@ -158,7 +159,8 @@ _Commitons_ les changements:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Associates products and orders with a placements model"
+$ git add .
+$ git commit -m "Associates products and orders with a placements model"
 ----
 
 == Exposer le modèle d’utilisateur
@@ -243,7 +245,7 @@ export function generateOrder(order?: Partial<Order>): Order {
 
 L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparaît bien dans le retour JSON.
 
-NOTE: Vous avez certainement remarqué la syntaxe `({body}) => ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préféré l'utiliser qu'à partir de ce chapitre.
+NOTE: Vous avez certainement remarqué la syntaxe `({body}) \=> ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préféré l'utiliser qu'à partir de ce chapitre.
 
 Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur ni même le sérialiseur spécifique aux commandes. Alors faisons le.
 
@@ -263,13 +265,7 @@ Et maintenant nous pouvons l'utiliser dans notre tout nouveau contrôleur:
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
-import {Request, response, Response} from 'express';
-import {inject} from 'inversify';
-import {controller, httpGet} from 'inversify-express-utils';
-import {TYPES} from '../core/types.core';
-import {Order, OrderRepository} from '../entities/order.entity';
-import {User} from '../entities/user.entity';
-import {DatabaseService} from '../services/database.service';
+// ...
 import {ordersSerializer} from '../utils/serializers.utils';
 
 @controller("/orders", TYPES.FetchLoggedUserMiddleware)
@@ -317,7 +313,8 @@ Nous aimons nos commits très petits. Alors _commitons_ dès maintenant:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Adds the index action for order"
+$ git add .
+$ git commit -m "Adds the index action for order"
 ----
 
 
@@ -726,7 +723,8 @@ _Commitons_ tout ce que nous venons de faire pour terminer cette section:
 
 [source,bash]
 ----
-$ git add . && git commit -m "Adds order confirmation mailer"
+$ git add .
+$ git commit -m "Adds order confirmation mailer"
 ----
 
 Et comme nous arrivons à la fin de notre chapitre, il est temps d'appliquer toutes nos modifications sur la branche master en faisant un _merge_:

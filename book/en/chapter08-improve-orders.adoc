@@ -1,7 +1,7 @@
 [#chapter08-improve_orders]
 = Improving orders
 
-Previously we improved our API to place orders and send a confirmation email to the user (just to improve the user experience). This chapter will take care of some validations on the order template to make sure it is valid. That is:
+Previously we improved our API to place orders and send a confirmation email to the user (just to improve the user experience). This chapter will take care of some validations on the order entity to make sure it is valid. That is:
 
 * Decrease the quantity of the current product when creating an order
 * manage the case where the product is not available
@@ -131,7 +131,7 @@ const productOrderParams = [
 ]
 ----
 
-So let's start by modifying our functional test about the command controller:
+So let's start by modifying our functional test about the order controller:
 
 [source,ts]
 ----
@@ -212,7 +212,7 @@ export class OrdersController {
 
 Wow. The code is getting a bit longer and deserves some explanations:
 
-- we create the command with a total equal to zero (We will see in the next section how to make this total update automatically).
+- we create the order with a total equal to zero (We will see in the next section how to make this total update automatically).
 - we check the user's data by checking that `req.body.products` contains values
 - we make a loop on `req.body.products` in which we retrieve the product, create an `Investment`, and add it to the `order.investments` table
 - the rest remains unchanged
@@ -350,7 +350,7 @@ export class PlacementSubscriber
 }
 ----
 
-NOTE: We retrieve the product via the `manager` instead of simply retrieving via the `enity.product` relationship to ensure that we have the latest version stored in the database.
+NOTE: We retrieve the product via the `manager` instead of simply retrieving via the `entity.product` relationship to ensure that we have the latest version stored in the database.
 
 And there you go. It was easy, wasn't it? Let's run the tests to be sure.
 
@@ -366,9 +366,9 @@ Perfect, let's move on.
 
 === Update of the total stroke of the order
 
-If you understood the previous section correctly, you could guess that the command stroke update will be quite similar.
+If you understood the previous section correctly, you could guess that the order stroke update will be quite similar.
 
-Let's start by writing the tests. So we will create a `Product`, then an `Order` and then a `Placement` to check that the command total has updated. We will then remove this `Placement` and check that the
+Let's start by writing the tests. So we will create a `Product`, then an `Order` and then a `Placement` to check that the order total has updated. We will then remove this `Placement` and check that the
 
 [source,ts]
 ----
