@@ -431,11 +431,15 @@ Before launching this feature, let's take some time to think about the implicati
 
 It looks like there's still a lot to do but trust me: you're closer than you think, and it's not as hard as it looks. For now, let's keep things simple and assume we still have enough products to place any number of orders. We're just concerned about the response from the server at the moment.
 
-If you remember the order entity, we need three things: a total for the order, the user placing the order, and the order's products. Given this information, we can start adding some tests:
+If you remember the order entity, we need three things:
 
+- a total for the order
+- the user placing the order
+- order's products.
 
-// -- current
+Given this information, we can start adding some tests:
 
+.Add functional tests to order creation endpoint
 [source,ts]
 ----
 // src/controllers/orders.controller.spec.ts
@@ -473,19 +477,20 @@ describe("OrderController", () => {
 
 Once again, we will create tests that cover all possible cases. Respectively:
 
-* the case where everything goes well
-* the case where the user has not sent the necessary parameters
-* the case where the user has not specified his JWT token
+* when everything goes well
+* when the user has not sent the necessary parameters
+* when the user has not specified his JWT token
 
 As you can see in the first case, the user sends a table of the products he wants to add to his order. So we go to the controller:
 
 1. retrieve the list of associated products via the IDs
 2. calculate the total sum of these products
 3. Create the `Order`.
-4. create the `Placements` associated with this order
+4. create `Placements` associated with this order
 
 It sounds complicated, but look at the implementation:
 
+.Handle multiples products in order creation
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
@@ -535,7 +540,6 @@ $ npm test
 
 Let's commit our changes:
 
-
 [source,bash]
 ----
 $ git commit -am "Adds the create method for the orders controller"
@@ -545,14 +549,11 @@ $ git commit -am "Adds the create method for the orders controller"
 
 The last section of this chapter will send a confirmation email to the user who has just created an order. If you want, you can skip this step and go to the next chapter! This section is more of a bonus.
 
-So we will use the library https://nodemailer.com/[nodemailer].
-
-
-So let's install the library:
+So we will use the library https://nodemailer.com/[nodemailer]. So let's install the library:
 
 [source,bash]
 ----
-npm install nodemailer
+$ npm install nodemailer
 $ npm install --save-dev @types/nodemailer
 ----
 
@@ -575,9 +576,7 @@ export class MailerService {
 
   public async sendEmail(options: SendMailOptions): Promise<void> {
     await this.initializeTransporter();
-
     await MailerService.transporter.sendMail(options);
-
   }
 
   private async initializeTransporter() {
@@ -601,6 +600,7 @@ As you can see, our service does not do much. We just initialize here a `transpo
 
 And since we just created a service, we need to add it to the container:
 
+.Add mailer service to inversify types
 [source,ts]
 ----
 // src/core/types.core.ts
@@ -609,9 +609,9 @@ export const TYPES = {
   MailerService: Symbol.for("MailerService"),
   // ...
 };
-
 ----
 
+.Bind mailer service to inversify container
 [source,ts]
 ----
 // src/core/container.core.ts
@@ -622,7 +622,7 @@ container.bind(TYPES.MailerService).to(MailerService);
 
 And there you go. I think it's a good idea to add the product's mail in the `MailerService`. On the other hand, we have to be careful that this service doesn't become too big as we extend our application and don't hesitate to cut it again if necessary. In our case, this is not a problem. So here is the method:
 
-
+.Implement method to send an email about brand new order
 [source,ts]
 ----
 // src/services/mailer.service.ts
@@ -646,6 +646,7 @@ export class MailerService {
 
 We can now call this method directly to our controller:
 
+.Call `MailerService.sendNewOrderEmail` into order controller
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
@@ -687,10 +688,11 @@ $ npm test
      Error: Timeout of 2000ms exceeded.
 ----
 
-We find that our test no longer works because it exceeds the time allotted for a test. We could increase the time allocated to this test with the time-out method, but it is not optimal. But don't worry, we have a straightforward solution offered by the dependency injection we have implemented since the beginning: a _Mock_.
+We find that our test no longer works because it exceeds the time allotted for a test. We could increase the time allocated to this test with the `setTimeout` method, but it is not optimal. But don't worry, we have a straightforward solution offered by the dependency injection we have implemented since the beginning: *a Mock*.
 
 So the idea is to create a class that implements the features of the `MailerService` but behaves the way we want it to specifically in the given context. That is, we want the emails not to be sent during tests. It sounds complicated, but it's actually effortless:
 
+.Create a new service that extends mailer service but does nothing
 [source,ts]
 ----
 // src/tests/fakeMailer.service.ts
@@ -723,7 +725,7 @@ describe("OrderController", () => {
 
 There you go, our tests should pass again.
 
-Let's do everything we just did to finish this section:
+Let's commit everything we just did to finish this section:
 
 [source,bash]
 ----
@@ -731,8 +733,7 @@ $ git add .
 $ git commit -m "Adds order confirmation mailer"
 ----
 
-
-And as we come to the end of our chapter, it's time to apply all our changes to the master branch by doing a _merge_:
+And as we come to the end of our chapter, it's time to apply all our changes to the master branch by doing a merge:
 
 [source,bash]
 ----

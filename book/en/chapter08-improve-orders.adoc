@@ -23,6 +23,7 @@ In this part, we will update the product quantity to ensure that each order will
 
 We will first add a `total` field on the product, representing the available stock of the product.
 
+.Add `total` column to products
 [source,ts]
 ----
 // src/entities/product.entity.ts
@@ -39,6 +40,7 @@ export class Product {
 
 This field must also be available when creating the product. So we need to update our controller:
 
+.Handle `quantity` attribute in products creation endpoint
 [source,ts]
 ----
 // src/controllers/home.controller.ts
@@ -56,8 +58,9 @@ export class ProductController {
 }
 ----
 
-We also need to update the =generateProduct= method, which must handle this new attribute:
+We also need to update the `generateProduct` method, which must handle this new attribute:
 
+.Handle `quantity` attribute in tests utilities
 [source,ts]
 ----
 // src/utils/faker.utils.ts
@@ -74,6 +77,7 @@ Now we have to check that the total can never be less than zero. This will secur
 
 So let's start by adding a test that will describe the desired behavior:
 
+.Implement a tests to ensure a negative quantity is not valid
 [source,ts]
 ----
 // src/entities/product.entity.spec.ts
@@ -96,6 +100,7 @@ describe('ProductRepository', () => {
 
 Passing the test is very easy thanks to the `class-validator` decorators. Just add the decorators `@IsInt` and `@Min` like this:
 
+.Add product quantity validation
 [source,ts]
 ----
 // src/entities/product.entity.ts
@@ -133,6 +138,7 @@ const productOrderParams = [
 
 So let's start by modifying our functional test about the order controller:
 
+.Update functional test about order creation with new params
 [source,ts]
 ----
 // src/controllers/orders.controller.spec.ts
@@ -168,6 +174,7 @@ As you can see, we have simply updated the parameters we pass to the query.
 
 Let's recap what we need to change in the controller. We need to find the product associated with the `id` in the table that creates the `placements`. Let's see the implementation of the controller:
 
+.Implementation to handle multiple products in orders controller
 [source,ts]
 ----
 // src/controllers/orders.controller.ts
@@ -218,15 +225,15 @@ Wow. The code is getting a bit longer and deserves some explanations:
 - the rest remains unchanged
 
 
-=== The subscriber.
+=== The subscriber
 
 It is now time to update the product quantity once an order is placed.
 
 We would be tempted to do this quickly in the `OrderController.create` action, but that would be a bad idea because we would have to duplicate this logic on the `OrderController.update` and `OrderController.destroy` actions, which must also update the product quantity. It also goes against the good practice to minimize the responsibility of the controllers.
 
-That's why I think a https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md [``Subscriber` from TypeORM] is a much better place for the simple reason that we are sure that our _subscriber_ will be called no matter what happens without us having to worry about it.
+That's why I think a https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[*Subscribers from TypeORM*] is a much better place for the simple reason that we are sure that our subscriber will be called no matter what happens without us having to worry about it.
 
-NOTE: It would be possible to use the _entity listeners_ as `@afterInsert` on the `UserRepository.validate` method, but I really recommend using the _subscriber_ when we want to manipulate multiple entity types. This allows us to better split our code and not make one class depend on another.
+NOTE: It would be possible to use the *entity listeners* as `@afterInsert` on the `UserRepository.validate` method, but I really recommend using the _subscriber_ when we want to manipulate multiple entity types. This allows us to better split our code and not make one class depend on another.
 
 The behavior we will implement is the following:
 
@@ -257,6 +264,7 @@ export interface EntitySubscriberInterface<Entity = any> {
 
 So we can create a brand new class who implements `EntitySubscriberInterface`:
 
+.Create `PlacementSubscriber`
 [source,ts]
 ----
 // src/subscribers/placement.subscriber.ts
@@ -279,9 +287,9 @@ export class PlacementSubscriber
 }
 ----
 
-You can also notice that I have implemented the `listenTo' method, which will specify this subscriber's listening field. But before moving on, we need to tell TypeORM where our migration is via the following configuration variable that you need to add to your `.env` and `.test.env` file.
+You can also notice that I have implemented the `listenTo` method, which will specify this subscriber's listening field. But before moving on, we need to tell TypeORM where our migration is via the following configuration variable that you need to add to your `.env` and `.test.env` file.
 
-.Adding the configuration of _subscribers_.
+.Adding the configuration of subscribers
 [source,env]
 ----
 TYPEORM_SUBSCRIBERS=src/subscribers/*.subscriber.ts
@@ -291,6 +299,7 @@ We are now ready to move on to the implementation of the methods!
 
 As usual, we will create a test dedicated to this new class. This test will simply create a product with a sufficient quantity and then create a `Placement` and check that the total has been updated. We then do the opposite by deleting the product and checking that the original quantity is found.
 
+.Create test to ensure `product.entity` is updated
 [source,ts]
 ----
 // src/subscribers/placement.subscriber.spec.ts
@@ -326,6 +335,7 @@ describe('PlacementSubscriber', () => {
 
 The implementation of the subscriber is really very simple. We will use the `beforeInsert` and `beforeRemove` methods to increment or decrement the product total and then save the product.
 
+.Complete subscriber to update `product.quantity`
 [source,ts]
 ----
 // src/subscribers/placement.subscriber.ts
@@ -435,11 +445,11 @@ Let's take a closer look at the `updateOrderTotal` method:
 1. we get all the `placements` of the order passed in parameter with the associated products
 2. we add up the total investment
 
-The _query builder_ of TypeORM
-***
+.The query builder of TypeORM
+****
 It is possible to rewrite the previous code with the _Query Builder_ of TypeORM. The _Query Builder_ gives you more control over the generated SQL query. The code can be more complex and more powerful because we don't need to load several objects in memory.
 
-This is the case here, so I wanted to make a little sidebar. Here is the equivalent with the _Query Builder_.
+This is the case here, so I wanted to make a little sidebar. Here is the equivalent with the Query Builder.
 
 [source,ts]
 ----
@@ -458,9 +468,9 @@ This query will directly total by multiplying the quantity by the price of the r
 
 This code will generate the following SQL query:
 
-source,sql]
+[source,sql]
 ----
-SELECT SUM("pl". "quantity") * "p". "price" AS "total
+SELECT SUM("pl". "quantity") * "p". "price" AS "total"
 FROM "placement" "pl"
 INNER JOIN "order" "o" ON "o". "id"="pl". "orderId"
 INNER JOIN "product" "p" ON "p". "id"="pl". "productId"
@@ -469,7 +479,7 @@ GROUP BY "o". "id"
 ----
 
 Therefore, I strongly advise you to improve your database managers' knowledge as they can be great allies.
-***
+****
 
 Let's see if the tests pass:
 

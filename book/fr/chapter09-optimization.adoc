@@ -94,21 +94,21 @@ Allez c'est parti!
 
 [source,ts]
 ----
-// src/services/paginate.service.ts
+// src/utils/paginate.utils.ts
 import {Request} from 'express';
 import {Serializer} from 'jsonapi-serializer';
 import {SelectQueryBuilder} from 'typeorm';
 
 const PER_PAGE = 20;
 
-export async function getPaginatedJSONResponse<T>(
+export async function paginate<T>(
   queryBuilder: SelectQueryBuilder<T>,
   serializer: Serializer,
   {query, baseUrl}: Request,
 ) {
   const page = Number(query.page ?? 1);
 
-  const count = await queryBuilder.getCount();
+  const count = await queryBuilder.cache(60 * 1000).getCount();
   const totalPage = Math.floor(count / PER_PAGE);
   const prevPage = page === 1 ? 1 : page - 1;
   const nextPage = page === totalPage ? page : page + 1;
@@ -148,7 +148,7 @@ Vous êtes toujours là? L'implémentation dans le contrôleur est beaucoup plus
 ----
 // src/controllers/home.controller.ts
 // ...
-import {paginate} from '../services/paginate.service';
+import {paginate} from '../utils/paginate.utils';
 
 @controller('/products')
 export class ProductController {
@@ -362,7 +362,7 @@ Maintenant nous allons ajouter deux lignes à notre méthode `paginate`:
 
 [source,ts]
 ----
-// src/services/paginate.service.ts
+// src/utils/paginate.utils.ts
 // ...
 export async function paginate<T>(/*...*/) {
   // ...

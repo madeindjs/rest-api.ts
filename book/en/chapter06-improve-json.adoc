@@ -619,3 +619,433 @@ It was really easy. Let's make a commit:
 $ git commit -am "Add user relationship to ProductsController.show"
 ----
 
+== Search for products
+
+This last section will continue to strengthen the `Products#index` action by implementing a straightforward search mechanism to allow any client to filter the results. This section is optional as it will have no impact on the modules of the application. But if you want to practice more with the TDD, I recommend that you complete this last step.
+
+There are libraries to build advanced search forms extremely quickly. But here, since the goal is to learn and the search we're going to do is straightforward, I think we can build a search engine from scratch. We just need to consider the criteria by which we're going to filter the attributes. Hang on to your seats. It's going to be a difficult journey.
+
+So we'll filter the products according to the following criteria:
+
+* By title
+* By price
+* Sort by creation date
+
+It may seem short and easy, but trust me, it will give you a headache if you don't plan it.
+
+So we're going to add a `search' method to the `ProductRepository` that will take the filters I just listed above as parameters:
+
+.Add `ProductRepository.search` method
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  // need to be implemented
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    // need to be implemented
+  }
+}
+----
+
+Can you see how we're going to do it? Let's start with the first filter.
+
+=== Published products
+
+As from the beginning of this book, we will start by writing the test that will test our new method. Here is the basic structure of our test which should look familiar to you:
+
+
+.Add unit tests skeleton about `ProductRepository.search`
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {ProductRepository} from '../entities/product.entity';
+import {DatabaseService} from '../services/database.service';
+
+describe("ProductRepository", () => {
+  let productRepository: ProductRepository;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  describe("search", () => {
+    // will be implemented
+  });
+});
+----
+
+This test will require several existing database products that we will create by hand. Here is the structure of our test:
+
+.Add some fixtures for unit tests
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+import {Product, ProductRepository} from '../entities/product.entity';
+import {generateProduct} from '../tests/faker.utils';
+
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    let tvPlosmo: Product;
+    let computer: Product;
+    let tvCheap: Product;
+    let unpublishedProduct: Product;
+
+    before(async () => {
+      tvPlosmo = await productRepository.save(generateProduct({
+        title: "TV Plosmo Philopp",
+        price: 9999.99,
+        published: true,
+      }));
+      computer = await productRepository.save(generateProduct({
+        title: "Azos Zeenbok",
+        price: 499.99,
+        published: true,
+      }));
+      tvCheap = await productRepository.save(generateProduct({
+        title: "Cheap TV",
+        price: 99.99,
+        published: true,
+      }));
+      unpublishedProduct = await productRepository.save(generateProduct({
+        published: false,
+      }));
+    });
+    // ...
+  });
+});
+----
+
+As you can see, we have inserted in base 4 different products. In our first test we will call our method `ProductReposiroty.search` without parameters and we will check that no unpublished products are returned to us. Here is the test:
+
+
+.Implementing unit tests about `ProductRepository.search`
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should not include unpublished products", async () => {
+      const products = await productRepository.search({}).getMany();
+      assert.ok(products.every((p) => p.published));
+    });
+  });
+});
+----
+
+So let's start by defining our method for taking this test:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters { }
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    const query = this.createQueryBuilder()
+                      .where("published = TRUE")
+                      .orderBy("updatedAt", "DESC");
+
+    return query;
+  }
+}
+----
+
+And there you go. The test should pass. Let's go to our first filter.j
+
+=== By title
+
+Now that the structure of our testing and implementation is in place, everything will go faster. Here's the test for the filter, which is very similar to the previous one:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should filter products by title", async () => {
+      const products = await productRepository.search({ title: "tv" }).getMany();
+      assert.ok(products.some((p) => p.id === tvPlosmo.id));
+      assert.ok(products.some((p) => p.id === computer.id) === false);
+    });
+  });
+});
+----
+
+The following tests ensure that the method will correctly search for products based on their titles. We use the term `tv` in lower case to ensure that our search will not be case sensitive.
+
+The implementation is straightforward:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  title?: string;
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    // ...
+    if (filters.title !== undefined) {
+      query.andWhere("lower(title) LIKE :title", { title: `%${filters.title}%` });
+    }
+
+    return query;
+  }
+}
+----
+
+The implementation is sufficient for our tests to pass:
+
+[source,bash]
+----
+$ npm test
+....
+  ProductRepository
+    search
+      ✓ should not include unpublished products
+      ✓ should filter products by title
+....
+----
+
+=== By price
+
+To filter by price, things can get a little trickier. We will separate the logic of filtering by price into two different methods: one that will look for products that are larger than the price received and the other that will look for those below that price. This way, we will keep some flexibility, and we can easily test the scope.
+
+Let's start by building the tests:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should filter products by priceMax", async () => {
+      const products = await productRepository
+        .search({priceMax: 100})
+        .getMany();
+      assert.ok(products.some((p) => p.id === tvCheap.id));
+      assert.ok(products.some((p) => p.id === tvPlosmo.id) === false);
+    });
+
+    it("should filter products by priceMin", async () => {
+      const products = await productRepository
+        .search({priceMin: 500})
+        .getMany();
+      assert.ok(products.some((p) => p.id === tvPlosmo.id));
+      assert.ok(products.some((p) => p.id === tvCheap.id) === false);
+    });
+  });
+});
+----
+
+The implementation is straightforward:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  title?: string;
+  priceMin?: number;
+  priceMax?: number;
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    // ...
+    if (filters.priceMin !== undefined) {
+      query.andWhere("price >= :priceMin", { priceMin: filters.priceMin });
+    }
+
+    if (filters.priceMax !== undefined) {
+      query.andWhere("price <= :priceMax", { priceMax: filters.priceMax });
+    }
+
+    return query.getMany();
+  }
+}
+----
+
+The implementation is sufficient for our tests to pass:
+
+[source,bash]
+----
+$ npm test
+...
+  ProductRepository
+    search
+      ✓ should not include unpublished products
+      ✓ should filter products by title
+      ✓ should filter products by priceMax
+      ✓ should filter products by priceMin
+...
+----
+
+Great. The last step is to integrate it with our controller.
+
+=== Integration into the controller
+
+As usual, we will start with the tests. This will help us define the implementation of our endpoint.
+
+As with the previous tests, we will create two specific products to search for using the different filters we have just implemented. The test will, therefore, look very familiar to you.
+
+We will define a new `describe` that will group our two tests together. Let's start with the `beforeEach`:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    // ...
+    describe("search", () => {
+      let computer: Product;
+      let tvCheap: Product;
+
+      before(async () => {
+        computer = await productRepository.save(
+          generateProduct({
+            title: "Azos Zeenbok",
+            price: 499.99,
+            published: true,
+          })
+        );
+        tvCheap = await productRepository.save(
+          generateProduct({
+            title: "Cheap TV",
+            price: 99.99,
+            published: true,
+          })
+        );
+      });
+    // ...
+    });
+  });
+  // ...
+});
+----
+
+Now let's move on to the tests themselves:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    // ...
+    describe("search", () => {
+      // ...
+      it("should find cheap TV", () => {
+        const params = new URLSearchParams();
+        params.append("title", "tv");
+        params.append("priceMin", "50");
+        params.append("priceMax", "150");
+
+        return agent
+          .get(`/products?${params.toString()}`)
+          .expect(200)
+          .then((response) => assert.ok(response.body.data.some((row) => row.id === String(tvCheap.id))));
+      });
+
+      it("should find computer", () => {
+        const params = new URLSearchParams();
+        params.append("title", "azos");
+        params.append("priceMax", "500");
+
+        return agent
+          .get(`/products?${params.toString()}`)
+          .expect(200)
+          .then((response) => {
+            assert.ok(
+              response.body.data.some((row) => row.id === String(computer.id)),
+              response.body
+            );
+          });
+      });
+    });
+  });
+  // ...
+});
+----
+
+NOTE: we build the parameters with the https://developer.mozilla.org/fr/docs/Web/API/URLSearchParams[`URLSearchParams`] class. Then just use the `toString` method, which will build the `GET` parameters.
+
+When we receive the answer, we check that the product we are looking for is present. Quite simply.
+
+The implementation of the controller is straightforward. Just use our new method.
+
+[source,ts]
+----
+// src/controllers/products.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index(req: Request) {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    const products = await repository.search(req.query).getMany();
+    return productsSerializer.serialize(products);
+  }
+  // ...
+}
+----
+
+We can run the entire test suite to make sure the application is healthy so far:
+
+[source,bash]
+----
+npm test
+  ProductsController
+    index
+      ✓ should respond 200 (47ms)
+      search
+        ✓ should find cheap TV
+        ✓ should find computer
+...
+  33 passing (786ms)
+----
+
+Great! Let's make these changes:
+
+[source,bash]
+----
+$ git commit -am "Adds search class method to filter products"
+----
+
+And as we come to the end of our chapter, it's time to apply all our changes to the master branch by doing a merge:
+
+[source,bash]
+----
+$ git checkout master
+$ git merge chapter06
+----
+
+== Conclusion
+
+Until now, and thanks to the library https://github.com/SeyZ/jsonapi-serializer/[jsonapi-serializer], it was easy. In the coming chapters, we will start building the `Order` model that will associate users with the products.

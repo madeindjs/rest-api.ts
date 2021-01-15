@@ -52,6 +52,7 @@ We need to provide the paging information on the `meta` tag as the following JSO
 
 Now that we see what we should return, all we have to do is change our code a little. But before going any further, let's add a few tests first:
 
+.Add functional tests about products pagination
 [source,ts]
 ----
 // src/controllers/products.controller.spec.ts
@@ -78,6 +79,7 @@ describe('ProductsController', () => {
   // ...
 });
 ----
+
 So we are testing two things:
 
 1. we create 25 products, so we have to find only 20 of them in the API response because the results must be limited to one page.
@@ -86,6 +88,7 @@ So we are testing two things:
 So our goal is to get these tests done. We are not going to define the controller's behavior because we know in advance that we want the same behavior for all controllers. So we're going to create a generic method that will take as a parameter:
 
 The HTTP request will allow us to easily find the `page` parameter and build the `links` according to the current URL of the request.
+
 - the SQL query, which will be useful to know how many results there are in the database and also apply the `OFFSET` and `LIMIT` filters to get only part of the results
 - the serializer to serialize the data according to the JSON:API schema
 
@@ -93,21 +96,21 @@ Let's go!
 
 [source,ts]
 ----
-// src/services/paginate.service.ts
+// src/utils/paginate.utils.ts
 import {Request} from 'express';
 import {Serializer} from 'jsonapi-serializer';
 import {SelectQueryBuilder} from 'typeorm';
 
 const PER_PAGE = 20;
 
-export async function getPaginatedJSONResponse<T>(
+export async function paginate<T>(
   queryBuilder: SelectQueryBuilder<T>,
   serializer: Serializer,
   {query, baseUrl}: Request,
 ) {
   const page = Number(query.page ?? 1);
 
-  const count = await queryBuilder.getCount();
+  const count = await queryBuilder.cache(60 * 1000).getCount();
   const totalPage = Math.floor(count / PER_PAGE);
   const prevPage = page === 1 ? 1 : page - 1;
   const nextPage = page === totalPage ? page : page + 1;
@@ -147,7 +150,7 @@ Are you still there? The implementation in the controller is much easier:
 ----
 // src/controllers/home.controller.ts
 // ...
-import {paginate} from '../services/paginate.service';
+import {paginate} from '../utils/paginate.utils';
 
 @controller('/products')
 export class ProductController {
@@ -173,14 +176,6 @@ $ npm test
 ...
 ---
 
-Let's start all this and move on to the next part.
-
-[source,sh]
-----
-$ git add .
-$ git commit -m "Paginate products"
-----
-
 Now that we've done a great optimization for the product list route, it's up to the customer to browse the pages.
 
 Let's go through these changes and continue with the order list.
@@ -191,7 +186,7 @@ $ git add .
 $ git commit -m "Adds pagination for products index action to optimize response"
 ----
 
-=== List of commands
+=== List of orders
 
 Now it's time to do exactly the same for the order list route. This should be very easy to implement. But first, let's add some tests:
 
@@ -293,6 +288,7 @@ We can easily set up simple caching for some of our requests. The implementation
 
 Before seeing a little bit of the cache's behavior, we will create a script that will insert dummy data in our database. This will be very easy because we just need to use the methods we created during our tests. Here's a little script that we're going to create in a new `scripts` folder:
 
+.Create a script to insert lot's of data in development database
 [source,ts]
 ----
 // src/scripts/loadFakeData.script.ts
@@ -360,7 +356,7 @@ Now we will add two lines to our `paginate` method:
 
 [source,ts]
 ----
-// src/services/paginate.service.ts
+// src/utils/paginate.utils.ts
 // ...
 export async function paginate<T>(/*...*/) {
   // ...
@@ -449,11 +445,12 @@ We need to manually enable this feature so that any client can make requests to 
 
 [source,sh]
 ----
-npm install --save horns
+$ npm install --save horns
 ----
 
 And then we just need to modify our server a little bit:
 
+.Setup CORS on Express.js
 [source,ts]
 ----
 // src/main.ts
@@ -467,7 +464,6 @@ server
 ----
 
 And there it is! Now it's time to make our last commit and merge our changes on the master branch.
-
 
 [source,bash]
 ----

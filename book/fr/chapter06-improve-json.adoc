@@ -669,7 +669,6 @@ export class ProductRepository extends Repository<Product> {
 
 Vous voyez un peu comment nous allons nous y prendre? Commençons par le premier filtre.
 
-
 === Les produits publiés
 
 Comme depuis le début de ce livre, nous allons commencer par écrire le test qui va tester notre nouvelle méthode. Voici la structure de base de notre test qui doit vous sembler familière:
@@ -757,7 +756,7 @@ describe("ProductRepository", () => {
 });
 ----
 
-Et commençon donc par définir notre méthode pour faire passer ce test:
+Et commençons donc par définir notre méthode pour faire passer ce test:
 
 [source,ts]
 ----
@@ -779,7 +778,7 @@ export class ProductRepository extends Repository<Product> {
 
 Et voilà. Le test devrait passer. Passons à notre premier filtre.j
 
-=== Le mot-clé by
+=== Par titre
 
 Maintenant que la structure de nos tests et de l'implémentation est en place, tout va aller plus vite. Voici le test pour le filtre qui ressemble beaucoup au précédent:
 
@@ -823,7 +822,6 @@ export class ProductRepository extends Repository<Product> {
     return query;
   }
 }
-
 ----
 
 L’implémentation est suffisante pour que nos tests passent:

@@ -15,7 +15,7 @@ import {TYPES} from '../core/types.core';
 import {Product, ProductRepository} from '../entities/product.entity';
 import {User} from '../entities/user.entity';
 import {DatabaseService} from '../services/database.service';
-import {paginate} from '../services/paginate.service';
+import {paginate} from '../utils/paginate.utils';
 import {productsSerializer} from '../utils/serializers.utils';
 
 @controller('/products')

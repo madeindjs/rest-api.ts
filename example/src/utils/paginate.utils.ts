@@ -1,4 +1,4 @@
-// src/services/paginate.service.ts
+// src/utils/paginate.utils.ts
 import {Request} from 'express';
 import {Serializer} from 'jsonapi-serializer';
 import {SelectQueryBuilder} from 'typeorm';
