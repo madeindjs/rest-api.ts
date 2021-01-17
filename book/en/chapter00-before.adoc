@@ -5,7 +5,7 @@
 
 So I hope this book will be alive and evolving following the best practices of the moment. I also want it to be an entry point for beginners, as other resources were for me when I started developing.
 
-So this book is naturally Open-Source and freely available https://github.com/madeindjs/rest-api.ts[on Github]. You will find the PDF, EPUB versions, and also the sources in https://asciidoctor.org[Asciidoctor] format. A paid version is available on https://leanpub.com/apionrails6/[leanpub] if you want to contribute to the project. Of course, this is not the only way to do it. You can also propose improvements by https://github.com/madeindjs/rest-api.ts/fork[forking] the project, talk about this book around you or thank me by mail mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr].
+So this book is naturally Open-Source and freely available https://github.com/madeindjs/rest-api.ts[on Github]. You will find the PDF, EPUB versions, and also the sources in https://asciidoctor.org[Asciidoctor] format. A paid version is available on https://leanpub.com/rest-api-ts[leanpub] if you want to contribute to the project. Of course, this is not the only way to do it. You can also propose improvements by https://github.com/madeindjs/rest-api.ts/fork[forking] the project, talk about this book around you or thank me by mail mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr].
 
 == About the original author
 
@@ -19,4 +19,4 @@ I am currently a partner at https://isignif.fr/[iSignif], where I build and main
 
 == Thank you
 
-Many thanks to https://github.com/madeindjs/api_on_rails/graphs/contributors[all API on Rails contributors], to all those who supported the project at https://leanpub.com/apionrails6/[buying a paid version of this book] and to https://github.com/madeindjs/rest-api.ts/graphs/contributors[all API on Rails contributors].
+Many thanks to https://github.com/madeindjs/rest-api.ts/graphs/contributors[all API on Rails contributors], to all those who supported the project at https://leanpub.com/rest-api-ts[buying a paid version of this book] and to https://github.com/madeindjs/rest-api.ts/graphs/contributors[all API on Rails contributors].

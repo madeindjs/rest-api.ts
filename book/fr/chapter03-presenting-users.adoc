@@ -876,7 +876,7 @@ Comme je vous le disait, c'est un test vraiment très simple. Ajoutons maintenan
   "scripts": {
     "start": "tsc && node dist/main.js",
     "start:watch": "nodemon",
-+     "test": "ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts dotenv_config_path=.test.env",
++     "test": "DOTENV_CONFIG_PATH=.test.env ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts",
     "build": "tsc"
   },
   // ...
@@ -887,7 +887,7 @@ Quelques explications sur cette commande:
 
 * `-r reflect-metadata` charge la librairie `reflect-metadata` et nous évite de l'importer manuellement
 * `-r dotenv/config` charge la librairie `dotenv` pour ainsi avoir les variables d'environnement de TypeORM
-* `dotenv_config_path` va charger un fichier `.env` particulier que nous allons créer juste après
+* `DOTENV_CONFIG_PATH` va charger un fichier `.env` particulier que nous allons créer juste après
 
 Lorsque nous testons notre application, nous ne voulons pas polluer notre base de données avec des données que nous créons pendant les tests. C'est donc une bonne pratique de créer une base de donnée dédiée. Dans notre cas, nous allons utiliser une base SQLite _in memory_. C'est a dire qu'elle n'est pas stockée sur le disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
 

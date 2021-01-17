@@ -14,7 +14,7 @@ import {Product} from '../entities/product.entity';
 import {User} from '../entities/user.entity';
 import {DatabaseService} from '../services/database.service';
 import {MailerService} from '../services/mailer.service';
-import {paginate} from '../services/paginate.service';
+import {paginate} from '../utils/paginate.utils';
 import {ordersSerializer} from '../utils/serializers.utils';
 
 @controller('/orders', TYPES.FetchLoggedUserMiddleware)

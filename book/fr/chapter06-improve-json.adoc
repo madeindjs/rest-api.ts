@@ -13,14 +13,14 @@ Maintenant, vous devriez être satisfaits de tout ce travail. Mais nous avons en
     "title": "Tag Case",
     "price": 98.77,
     "published": false,
-    "user_id": 1,
-    "created_at": "2018-12-20T12:47:26.686Z",
-    "updated_at": "2018-12-20T12:47:26.686Z"
+    "userId": 1,
+    "createdAt": "2018-12-20T12:47:26.686Z",
+    "updatedAt": "2018-12-20T12:47:26.686Z"
   },
 ]
 ----
 
-Or nous voulons une sortie qui ne contienne pas les champs `user_id`, `created_at` et `updated_at`.
+Or nous voulons une sortie qui ne contienne pas les champs `userId`, `createdAt` et `updatedAt`.
 
 De plus, une partie importante et difficile lors de la création de votre API est de décider le format de sortie. Heureusement, certaines organisations ont déjà fait face à ce genre de problème et elles ont ainsi établi certaines conventions que vous allez découvrir dans ce chapitre.
 

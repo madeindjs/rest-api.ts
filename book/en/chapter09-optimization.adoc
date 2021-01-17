@@ -352,6 +352,15 @@ Now let's try to activate the cache. It's really very easy. First we need to add
 TYPEORM_CACHE=true
 ----
 
+Do not forget to deactivate this parameter during tests:
+
+[source,env]
+----
+# .test.env
+# ...
+TYPEORM_CACHE=false
+----
+
 Now we will add two lines to our `paginate` method:
 
 [source,ts]

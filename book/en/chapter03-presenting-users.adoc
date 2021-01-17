@@ -874,7 +874,7 @@ As I told you, it's a really simple test. Now let's add the command that will al
   "scripts": {
     "start": "tsc && node dist/main.js",
     "start:watch": "nodemon",
-+     "test": "ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts dotenv_config_path=.test.env",
++     "test": "DOTENV_CONFIG_PATH=.test.env ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts",
     "build": "tsc"
   },
   // ...
@@ -885,7 +885,7 @@ Some explanations on this command:
 
 * `-r reflect-metadata` loads the `reflect-metadata` library and prevents us from importing it manually.
 * `-r dotenv/config` loads the `dotenv` library to get the TypeORM environment variables.
-* `dotenv_config_path` will load a particular `.env` file that we will create right afterward.
+* `DOTENV_CONFIG_PATH` will load a particular `.env` file that we will create right afterward.
 
 When we test our application, we don't want to pollute our database with data we create during testing. So it's a good practice to create a dedicated database. In our case, we will use a SQLite **in memory** database. That is to say that it is not stored on the hard disk but directly in the random access memory. Here is the file `.test.env`:
 

@@ -5,7 +5,7 @@
   "scripts": {
     "start": "npm run build && node dist/main.js -r dotenv/config",
     "start:watch": "nodemon",
-    "test": "ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts dotenv_config_path=.test.env",
+    "test": "DOTENV_CONFIG_PATH=.test.env ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts",
     "build": "tsc"
   },
   "author": "",

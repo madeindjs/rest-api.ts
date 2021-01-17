@@ -78,7 +78,7 @@ export class ProductRepository extends Repository<Product> {
 
   public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
     const query = this.createQueryBuilder()
-      .where('published = TRUE')
+      .where('published IS TRUE')
       .orderBy('updatedAt', 'DESC');
 
     if (filters.title !== undefined) {
@@ -101,6 +101,7 @@ export class ProductRepository extends Repository<Product> {
     page: number | string,
   ): SelectQueryBuilder<Product> {
     if (page) {
+      console.log(Number(page));
       query.offset(Number(page) * this.perPage);
     }
 

@@ -358,6 +358,15 @@ Maintenant essayons d'activer le cache. C'est vraiment très facile. Tout d'abor
 TYPEORM_CACHE=true
 ----
 
+N'oubliez pas de désactiver ce paramètre lors des test
+
+[source,env]
+----
+# .test.env
+# ...
+TYPEORM_CACHE=false
+----
+
 Maintenant nous allons ajouter deux lignes à notre méthode `paginate`:
 
 [source,ts]

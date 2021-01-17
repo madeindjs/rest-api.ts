@@ -5,7 +5,7 @@
 
 Je souhaite donc que ce livre soit vivant et évolue en suivant les meilleurs pratiques du moment. Je souhaite aussi qu'il soit un point d'entrée aux débutant comme d'autres ressources l'ont été pour moi lorsque j'ai débuté dans le développement.
 
-Ce livre est donc tout naturellement Open-Source et en accès libre https://github.com/madeindjs/rest-api.ts[sur Github]. Vous y trouverez les version PDF, EPUB et aussi les sources au format https://asciidoctor.org[Asciidoctor]. Une version payante est disponible sur https://leanpub.com/apionrails6/[leanpub] si vous souhaitez contribuer au projet. Bien sûr, ce n'est pas la seule façon de le faire, vous pouvez aussi proposer des améliorations en https://github.com/madeindjs/rest-api.ts/fork[forkant] le projet, parler de ce livre autour de vous ou simplement me remercier par mail à mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr].
+Ce livre est donc tout naturellement Open-Source et en accès libre https://github.com/madeindjs/rest-api.ts[sur Github]. Vous y trouverez les version PDF, EPUB et aussi les sources au format https://asciidoctor.org[Asciidoctor]. Une version payante est disponible sur https://leanpub.com/rest-api-ts[leanpub] si vous souhaitez contribuer au projet. Bien sûr, ce n'est pas la seule façon de le faire, vous pouvez aussi proposer des améliorations en https://github.com/madeindjs/rest-api.ts/fork[forkant] le projet, parler de ce livre autour de vous ou simplement me remercier par mail à mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr].
 
 == A propos de l’auteur original
 
@@ -19,5 +19,5 @@ Je suis actuellement associé chez https://isignif.fr/[iSignif]] où je construi
 
 == Merci
 
-Un grand merci à https://github.com/madeindjs/api_on_rails/graphs/contributors[tous les contributeurs de API on Rails], à tous ceux qui ont supporté le projet en https://leanpub.com/apionrails6/[achetant une version payante de ce livre] et aux https://github.com/madeindjs/rest-api.ts/graphs/contributors[tous les contributeurs de API on Rails].
+Un grand merci à https://github.com/madeindjs/rest-api.ts/graphs/contributors[tous les contributeurs de API on Rails], à tous ceux qui ont supporté le projet en https://leanpub.com/rest-api-ts[achetant une version payante de ce livre] et aux https://github.com/madeindjs/rest-api.ts/graphs/contributors[tous les contributeurs de API on Rails].
 

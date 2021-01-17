@@ -1,6 +1,6 @@
 = REST-API.ts
 Alexandre Rousseau <contact@rousseau-alexandre.fr>
-v1.0, 2021-01-08
+v1.0, 2021-01-17
 :doctype: book
 :toc:
 :imagesdir: img
@@ -14,7 +14,7 @@ v1.0, 2021-01-08
 :author: Alexandre Rousseau
 :description: Learn best practice to build an API using Node.js and Typescript
 :front-cover-image: image:cover.svg[]
-:revdate: 2021-01-08
+:revdate: 2021-01-17
 
 include::chapter00-before.adoc[]
 
