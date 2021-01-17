@@ -1,0 +1,381 @@
+[#chapter02-api]
+= L’API
+
+Dans ce chapitre, je vais vous donner les grandes lignes de l’application. Vous devriez avoir lu le chapitre précédent. Si ce n’est pas le cas, je vous recommande de le faire.
+
+Pour résumer, nous avons simplement généré notre application Rails et réalisé notre premier commit.
+
+
+== Planification de l’application
+
+Notre application sera assez simple. Elle se composera de cinq modèles. Ne vous inquiétez pas si vous ne comprenez pas bien ce qui se passe, nous reverrons et développerons chacune de ces ressources au fur et à mesure que nous avancerons avec le tutoriel.
+
+----
++---------+     +---------+
+| User    +---->+Product  |
++---------+     +---------+
+     |               |
+     v               v
++---------+     +---------+
+|Order    +---->+Placement|
++---------+     +---------+
+----
+
+En bref, nous avons l’utilisateur (`User`) qui sera en mesure de créer des commandes (`Order`). Il pourra aussi passer de nombreuses commandes (`Order`) qui vont contenir des éléments (`Placement`) qui désignes des produits.
+
+Nous n’allons pas construire d’interface pour l’interaction avec l’API afin de ne pas surcharger le tutoriel. Si vous voulez construire des vues, il existe de nombreuses options comme des frameworks JavaScript (https://angularjs.org/[Angular], https://vuejs.org/[Vue.JS], https://reactjs.org/[React]) ou des librairies mobiles (https://github.com/AFNetworking/AFNetworking[AFNetworking]).
+
+À ce stade, vous devriez vous poser cette question:
+
+> D’accord, mais j’ai besoin d’explorer et de visualiser l’API que je vais construire, non?
+
+C’est juste. Si vous _googlez_ quelque chose lié à l’exploration d’une API, vous allez trouver pas mal de résultats. Vous pouvez par exemple utiliser https://www.getpostman.com/[Postman] qui est devenu incontournable. Mais nous n'allons pas l'utiliser. Dans notre cas nous allons utiliser *cURL* qui est un outil en ligne de commande disponible presque partout. Cela permet d'avoir des exemples reproductibles quelque soit votre environnement de développement.
+
+== Mettre en place l’API
+
+Une API est définie par https://fr.wikipedia.org/wiki/Interface_de_programmation[wikipedia] comme _une interface de programmation d’application (API) qui est un ensemble normalisé de composants qui sert de façade par laquelle un logiciel offre des services à d’autres logiciels_. En d’autres termes, il s’agit d’une façon dont les systèmes interagissent les uns avec les autres via une interface (dans notre cas un service web construit avec JSON). Il existe d’autres types de protocoles de communication comme SOAP, mais nous n’en parlons pas ici.
+
+JSON est devenu incontournable en tant que format de fichier pour Internet en raison de sa lisibilité, de son extensibilité et de sa facilité à mettre en œuvre. Beaucoup de frameworks JavaScript l’utilisent comme protocole par défaut comme https://angularjs.org/[Angular] ou http://emberjs.com/[EmberJS]. D’autres grandes bibliothèques en Objective-C l’utilisent comme https://github.com/AFNetworking/AFNetworking[AFNetworking] ou http://restkit.org/[RESTKit]. Il existe probablement de bonnes solutions pour Android mais en raison de mon manque d’expérience sur cette plate-forme de développement je ne peux pas vous recommander quelque chose.
+
+Nous allons donc utiliser le format JSON pour construire notre API. La première idée qui pourrait vous venir à l’esprit serait de commencer à créer des routes en vrac. Le problème est qu’elles ne seraient pas normalisées. Un utilisateur ne pourrait pas deviner quelle ressource est renvoyée par une route.
+
+C’est pourquoi une norme existe: *REST* _(Representational State Transfer)_. REST impose une norme pour les routes qui créent, lisent, mettent à jour ou suppriment des informations sur un serveur en utilisant de simples appels HTTP. C’est une alternative aux mécanismes plus complexes comme SOAP, CORBA et RPC. Un appel REST est simplement une requête GET HTTP vers le serveur.
+
+[source,soap]
+----
+aService.getUser("1")
+----
+
+Et avec REST, vous pouvez appeler une URL avec une requête HTTP spécifique. Dans ce cas avec une requête GET:
+
+....
+http://domain.com/resources_name/uri_pattern
+....
+
+Les API _RESTful_ doivent suivre au minimum trois règles:
+
+* Une URI de base comme http://example.com/resources/
+* Un type de média Internet pour représenter les données, il est communément JSON et est communément défini par l’échange d’en-têtes.
+* Suivez les méthodes https://fr.wikipedia.org/wiki/Hypertext_Transfer_Protocol[HTTP] standard telles que GET, POST, PUT, PUT, DELETE.
+** *GET*: Lit la ou les ressources définies par le modèle URI
+** *POST*: Crée une nouvelle entrée dans la collection de ressources
+** *PUT*: Met à jour une collection ou un membre des ressources
+** *DELETE*: Détruit une collection ou un membre des ressources
+
+Cela peut sembler compliqué mais au fur et à mesure que nous avancerons dans le tutoriel cela deviendra beaucoup plus facile à comprendre.
+
+== Initialisation de l'application
+
+Maintenant que nous savons quel conventions nous allons suivre, nous pouvons commencer à construire l'architecture de notre application. Ici nous allons donc continuer la mise en place de Typescript et de certaines librairies qui vont nous aider à respecter les meilleurs pratiques en terme de développement logiciel.
+
+=== L'injection de dépendance
+
+Dans cette section nous allons mettre en place le système d'*injection de dépendance*. Si vous n'en avez jamais entendu parler, il s'agit très certainement de la partie la plus abstraite de ce chapitre.
+
+Je vais essayer ici de vous résumer ce qu'est l'injection de dépendance et à quoi ça sert. Imaginons une classe `User` qui a besoin d'une classe `Database` pour être sauvegardé. On serait tenter d'initialiser la connection à la base de donnée dans le constructeur de l'utilisateur :
+
+.Une mauvaise implémentation n'utilisant pas l'injection de dépendance
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    // do some stuff here
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+Cela pose plusieurs problème:
+
+1. la classe `User` depends de la classe `Database`. Si on change l'implémentation de la classe `Database`, il faudra modifier la classe `User`
+2. le code est beaucoup moins testable car pour tester un utilisateur, je dois connaître le fonctionnement de la classe user
+
+Pour vous accentuer le problème, rajoutons une classe `Logger` qui permet de logger les événements dans l'appli. Imaginons que nous avons besoin de logger la connection à la base de donnée. Le code devient donc
+
+
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    const logger = new Logger();
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+On voit bien que la situation se dégrade car toutes les classes deviennent dépendantes entre elles. Pour corriger cela, nous allons injecter directement la classe `Database` dans le constructeur de `User` :
+
+.La classe `Database` est maintenant injectée dans le constructeur
+[source,ts]
+----
+class Logger {/* ... */}
+
+class Database {
+  constructor(logger: Logger, connectionString: string) {
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  constructor(private database: Database) {}
+}
+
+const logger = new Logger();
+const database = new Database(logger, "db.sqlite");
+const user = new User(database);
+----
+
+Ce code devient plus solide car la classe `User`, `Database` et `Logger` sont découplés.
+
+> OK, mais ça devient plus pénible d'instancier une `User`.
+
+Effectivement. C'est pourquoi nous utilisons un `Container` qui va enregistrer les classes qui peuvent être injectées et nous proposer de créer des instances facilement :
+
+
+[source,ts]
+----
+class Logger {/* ... */}
+class Database {/* ... */}
+class User {/* ... */}
+
+class Container {
+  getLogger(): Logger {
+    return new Logger();
+  }
+
+  getDatabase(): Database {
+    return new Database(this.getLogger(), "db.sqlite");
+  }
+
+  getUser(): User {
+    return new User(this.getDatabase());
+  }
+}
+
+const container = new Container();
+const user = container.getUser();
+----
+
+Le code est plus long mais tout devient découpé. Rassurez-vous, nous n'allons pas implémenter tout cela à la main. De très bonne librairies existent. Celle que j'ai choisi est https://github.com/inversify/InversifyJS[Inversify].
+
+Dans cette section nous allons mettre en place concrètement un système d'injection de dépendance complet.
+
+Nous allons mettre en place un Logger qui pourra être injecté dans toutes les classes de notre application. Il nous permettra de les requêtes HTTP par exemple mais aussi bien d'autres événements.
+
+Installons donc `inversify`:
+
+[source,bash]
+----
+$ npm install inversify --save
+----
+
+Et créons une classe pour logger les événements toute simple:
+
+NOTE: On pourrait utiliser une librairie comme https://github.com/winstonjs/winston[Winston] ou https://www.npmjs.com/package/morgan[Morgan] mais pour l'exemple je vais créer une classe assez basique :
+
+[source,ts]
+----
+// src/services/logger.service.ts
+export class Logger {
+  public log(level: 'DEBUG' | 'INFO' | 'ERROR', message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} - ${level} - ${message}`);
+  }
+}
+----
+
+Pour la rendre injectable, il faut lui ajouter un décorateur `@injectable`. Ce décorateur va simplement https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[ajouter une metadata] a notre classe afin qu'elle puisse être injectée dans nos futures dépendances.
+
+.ajout du décorateur `@injectable`
+[source,ts]
+----
+import {injectable} from 'inversify';
+
+@injectable()
+export class Logger {/* ... */}
+----
+
+Et voilà. Il ne nous reste plus qu'à créer le container qui va enregistrer ce service. https://github.com/inversify/InversifyJS#installation[La documentation] recommande de créer un objet `TYPES` qui va simplement stocker les identifiants de nos services. Nous allons créer un dossier `core` qui contiendra tout le code transverse à toute notre application.
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {Logger: Symbol.for('Logger')};
+----
+
+NOTE: Un https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol[`Symbol`] est un type primitif qui permet d'avoir une référence unique.
+
+Maintenant nous pouvons utiliser ce symbole pour enregistrer notre logger dans un nouveau fichier `container.core.ts` Il suffit d'instancier un `Container` et d'ajouter notre service avec la méthode `bind()`. On exporte ensuite cette instance pour l'utiliser dans l'application:
+
+[source,ts]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
+import {Logger} from '../services/logger.service';
+import {TYPES} from './types.core';
+
+export const container = new Container();
+container.bind(TYPES.Logger).to(Logger);
+----
+
+Et voilà.
+
+=== Création d'un contrôleur
+
+Laissons de côté cette classe que nous allons utiliser plus tard dans notre premier contrôleur. Les contrôleurs font partis du _design patern_ *MVC: Modèle, Vue, Contrôleur*. Leur but est d'intercepter la requête et d'appeler les services dédiés. Il existe une librairie officielle Inversify pour intégrer l'injection de dépendance directement dans nos contrôleurs:  https://github.com/inversify/inversify-express-utils[`inverisfy-express-utils`].
+
+On commence par installer la librairie. On va aussi ajouter `body-parser` qui va nous permettre de traiter les paramètres de la requête HTTP (nous en reparlerons plus loins).
+
+Pour l'installer, c'est très facile. Il suffit de suivre la https://github.com/inversify/inversify-express-utils[documentation officielle]. On commence donc par installer quelques librairies.
+
+[source,bash]
+----
+$ npm install inversify-express-utils reflect-metadata body-parse --save
+----
+
+* `reflet-metadata` permet à Inversify d'ajouter des metadata sur notre classe. Cet import doit être situé au tout débt du premier fichier.
+* `body-parse` va nous donner la possibilité d'extraires les paramètres des requêtes HTTP (nous ren reparlerons plus tard)
+
+Avant d'écrire notre premier contrôleur, il est nécessaire de faire quelques modifications à la création de notre serveur HTTP. Créons un nouveau fichier `core/server.core.ts` qui va simplement définir notre serveur HTTP avec `inversify-express-utils`:
+
+.La définition de notre serveur HTTP avec `inversify-express-utils`
+[source,ts]
+----
+// src/core/server.ts
+import * as bodyParser from 'body-parser';
+import {InversifyExpressServer} from 'inversify-express-utils';
+import {container} from './container.core';
+
+export const server = new InversifyExpressServer(container);
+server.setConfig(app => {
+  app.use(bodyParser.urlencoded({extended: true}));
+  app.use(bodyParser.json());
+});
+----
+
+Comme vous pouvez le voir, nous utilisons maintenant une instance de `InversifyExpressServer`. La méthode `setConfig` permet d'ajouter des _middleware_ (nous y reviendrons plus tard). Passons au fichier `main.ts` que nous allons modifier un peu:
+
+[source,ts]
+----
+// src/main.ts
+import 'reflect-metadata';
+import {container} from './core/container.core';
+import {server} from './core/server';
+import {TYPES} from './core/types.core';
+
+const port = 3000;
+
+server
+  .build()
+  .listen(port, () => console.log(`Listen on http://localhost:${port}/`));
+----
+
+Et voilà. Nous pouvons maintenant nous attaquer à notre premier contrôleur.
+
+Le contrôleur est une classe comme les autres. Elle va simplement le décorateur `@controller`. Ce décorateur va lui aussi déclarer ce contrôleur comme `@injectable` mais aussi nos offrir des fonctionnalités spéciales.
+
+Passons directement à l'implémentation afin que cela soit plus parlant:
+
+. Création du premier contrôleur avec une unique route
+[source,ts]
+----
+// src/controllers/home.controller.ts
+import {controller, httpGet} from 'inversify-express-utils';
+
+@controller('/')
+export class HomeController {
+
+  @httpGet('')
+  public index(req: Request, res: Response) {
+    return res.send('Hello world');
+  }
+}
+----
+
+Comme vous pouvez le voir, l'implémentation est très claire grâce aux décorateurs:
+
+* Le `@controller("/")` nous indique que toutes les routes de ce contrôleur seront préfixées par `/`
+* Le second décorateur `@httpGet("/")` définit que cette méthode sera accèssible sur l'URL `/` via le verbe HTTP POST.
+
+Maintenant essayons d'injecter le `Logger` afin d'afficher un message lorsque cette route est utilisée:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {TYPES} from '../core/types.core';
+import {Logger} from '../services/logger.service';
+
+@controller("/")
+export class HomeController {
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  @httpGet('')
+  public index(req: Request, res: Response) {
+    this.logger.log('INFO', 'Get Home.index');
+    return res.send('Hello world');
+  }
+}
+----
+
+Et voilà !
+
+Le décorateur `@inject` s'occupe de tout, il suffit de spécifier le symbole. C'est magique.
+
+La dernière étape est d'importer manuellement ce contrôleur dans le container. C'est vraiment très simple à faire :
+
+[source,diff]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
++ import '../controllers/home.controller';
+import '../controllers/users.controller';
+// ...
+----
+
+Vous pouvez maintenant démarrer le serveur avec `npm run start` ou attendre que la transpilation se fasse automatiquement si vous n'avez pas arreté le précédent serveur.
+
+Si tout fonctionne comme avant, vous pouvez commiter les changements :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Add inversify"
+----
+
+== Conclusion
+
+Ça a été un peu long, je sais, mais vous avez réussi! N’abandonnez pas, c’est juste notre petite fondation pour quelque chose de grand, alors continuez comme ça.

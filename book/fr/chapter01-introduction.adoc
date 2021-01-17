@@ -1,0 +1,478 @@
+[#chapter01-introduction]
+= Introduction
+
+Bienvenue sur API-REST.ts, un tutoriel sous stéroïdes pour apprendre la meilleure façon de construire votre prochaine application avec Typescript. Le but de ce livre est de vous fournir une méthodologie complète pour développer une API RESTful en suivant les meilleures pratiques.
+
+Lorsque vous en aurez fini avec ce livre, vous serez en mesure de créer votre propre API et de l’intégrer à n’importe quel client comme un navigateur Web ou une application mobile. Le code généré est construit avec Typescript 4 qui est la version actuelle.
+
+L’intention de ce livre n’est pas seulement de vous apprendre à construire une API mais plutôt de vous apprendre comment construire une API évolutive et maintenable avec Typescript. Dans ce voyage, vous allez apprendre à:
+
+- Utiliser Git pour le contrôle de version
+- Construire des réponses JSON
+- Tester vos points d’entrées avec des tests unitaires et fonctionnels
+- Mettre en place une authentification avec des JSON Web Tokens (JWT)
+- Utiliser les spécifications JSON:API
+- Optimiser et mettre en cache l’API
+
+Je vous recommande fortement de suivre toutes les étapes de ce livre. Essayez de ne pas sauter des chapitres car je vais vous proposer des conseils et des astuces pour vous améliorer tout au long du livre. Vous pouvez vous considérer comme le personnage principal d’un jeu vidéo qui obtient un niveau supérieur à chaque chapitre.
+
+Dans ce premier chapitre je vous expliquerai comment configurer votre environnement (au cas où vous ne l’auriez pas déjà fait). Nous allons ensuite créer une application appelée =market_place=. Je veillerai à vous enseigner les meilleures pratiques que j’ai pu apprendre au cours de mon expérience. Cela signifie qu’après avoir initialisé le projet, nous commencerons à utiliser Git.
+
+Dans les prochains chapitres, nous allons construire l’application en suivant une méthode de travail simple que j’utilise quotidiennement. Nous développerons toute l’application en utilisant le développement dirigé par les tests (TDD). Je vous expliquerai aussi l’intérêt d’utiliser une API pour votre prochain projet et de choisir un format de réponse adapté comme le JSON ou le XML. Plus loin, nous mettrons les mains dans le code et nous compléterons les bases de l’application en construisant toutes les routes nécessaires. Nous sécuriserons aussi l’accès à l’API en construisant une authentification par échange d’en-têtes HTTP. Enfin, dans le dernier chapitre, nous ajouterons quelques techniques d’optimisation pour améliorer la structure et les temps de réponse du serveur.
+
+L’application finale sera une application de place de marché qui permettra à des vendeurs de mettre en place leur propre boutique en ligne. Les utilisateurs seront en mesure de passer des commandes, télécharger des produits et plus encore. Il existe de nombreuses options pour créer une boutique en ligne comme http://shopify.com/[Shopify], http://spreecommerce.com/[Spree] ou http://magento.com/[Magento].
+
+Tout au long de ce voyage (cela dépend de votre expertise), vous allez vous améliorer et être en mesure de mieux comprendre le fonctionnement des frameworks modernes. J’ai aussi pris certaines des pratiques de mon expérience de développeur.
+
+== Conventions sur ce livre
+
+Les conventions de ce livre sont basées sur celles du https://www.railstutorial.org/book[Tutoriel Ruby on Rails]. Dans cette section, je vais en mentionner quelques-unes que vous ne connaissez peut-être pas.
+
+Je vais utiliser de nombreux exemples en utilisant des ligne de commande. Je ne vais pas traiter avec Windows `cmd` (désolé les gars). Je vais baser tous les exemples en utilisant l’invite de ligne de commande de style Unix. Voici un exemple:
+
+[source,bash]
+----
+$ echo "A command-line command"
+A command-line command
+----
+
+J'éssaierai de raccourcir au maximum les morceaux de code en ne gardant que lignes intéressantes en fonction de contexte. Je masquerai les lignes non pertinentes avec le symbole commentaire `// ...` ou `/* ... */`. Je spécifierai aussi, au début de chaque morceau de code, le chemin et le nom du fichier concerné. Voici un exemple:
+
+[source,ts]
+----
+// user.ts
+// ...
+class User {
+  constructor(/* ... */) {
+      doInterestingStuff(message);
+  }
+  // ...
+  doInterestingStuff(message: string) {
+    console.log(message)
+  }
+}
+----
+
+J’utiliserai quelques principes comme:
+
+* _"Éviter"_ signifie que vous n’êtes pas censé le faire.
+* _"Préférer"_ indique que parmi les deux options, la première est la plus appropriée.
+* _"Utiliser"_ signifie que vous êtes en mesure d’utiliser la ressource.
+
+Si vous rencontrez une erreur quelconque lors de l’exécution d’une commande, je vous recommande d’utiliser votre moteur de recherche pour trouver votre solution. Malheureusement, je ne peux pas couvrir toutes les erreurs possibles. Si vous rencontrez des problèmes avec ce tutoriel, vous pouvez toujours mailto:contact@rousseau-alexandre.fr[m’envoyer un email].
+
+== Environnements de développement
+
+Pour presque tous les développeurs, l’une des parties les plus douloureuses est de mettre en place un environnement de développement confortable. Si vous le faites correctement, les prochaines étapes devraient être un jeu d’enfant. Je vais vous guider dans cette étape afin de vous faciliter la tâche et de vous motiver.
+
+=== Éditeurs de texte et Terminal
+
+Il existe deux catégories d'éditeurs de code :
+
+- les *éditeurs de textes* comme https://atom.io/[Atom], https://www.sublimetext.com/[Sublime Text], https://www.vim.org/[VIM] et bien d'autres.
+- les *environnements de développement* complets comme https://www.eclipse.org/[Eclipse], https://netbeans.org/[Netbeans]], https://www.jetbrains.com/fr-fr/webstorm/[Webstorm]
+
+Les environnement de développement sont plus complets et offre plus de fonctionnalités mais sont souvent beaucoup plus lourds.
+
+Il n'y a pas de mauvais choix et c'est vraiment une question de gout.
+
+Pour ma part j'utilise https://code.visualstudio.com/[Visual Studio Code] de Microsoft que se situe à mis chemin entre un éditeur de texte et un environnement de développement. Son auto-complétion est vraiment très performante lorsqu'on utilise https://www.typescriptlang.org/[Typescript]]. Si vous ne savez pas quoi utiliser, vous ne pouvez pas vous tromper en utilisant cet éditeur.
+
+=== Navigateur web
+
+Quand au navigateur, je conseillerai directement http://www.mozilla.org/en-US/firefox/new/[Firefox]. Mais d’autres développeurs utilisent https://www.google.com/intl/en/chrome/browser/[Chrome] ou même https://www.apple.com/safari/[Safari]. N’importe lequel d’entre eux vous aidera à construire l’application que vous voulez. Ils proposent tous un bon inspecteur pour le DOM, un analyseur de réseau et de nombreuses autres fonctionnalités que vous connaissez peut-être déjà.
+
+Je vous conseille néanmoins d'utiliser au moins deux navigateurs web. Il y a quelques nuances sur l'intérprétation du Javascript ou du CSS. En utilisant deux navigateurs vous vous assurez que vos développements fonctionnent correctement pour la majorité de vos utilisateurs.
+
+Personnellement j'utilise Firefox dans la vie de tous les jours et je vérifie le bon fonctionnement de mes fonctionnalités sur https://www.chromium.org/[Chromium], un dérivé de Google Chrome.
+
+
+=== Gestionnaire de paquets
+
+* *Mac OS*: Il existe de nombreuses options pour gérer la façon dont vous installez les paquets sur votre Mac, comme https://www.macports.org/[Mac Ports] ou http://brew.sh/[Homebrew]. Les deux sont de bonnes options, mais je choisirais la dernière. J’ai rencontré moins de problèmes lors de l’installation de logiciels avec Homebrew. Pour installer `brew` il suffit d’exécuter la commande ci-dessous:
+
+[source,bash]
+----
+$ /usr/bin/ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+----
+
+* *Linux*: Vous êtes déjà prêts! Peu importe si vous utilisez `apt`, `pacman`, `yum` tant que vous vous sentez à l’aise et que vous savez comment installer des paquets.
+
+=== Git
+
+Nous utiliserons beaucoup Git et vous devriez aussi l’utiliser (non seulement pour ce tutoriel mais aussi pour tous vos projets). Pour l’installer, c’est très facile:
+
+* sous Mac OS: `$ brew install git`
+* sous Linux: `$ sudo apt-get install git`
+
+=== Node.js
+
+Il existe de nombreuses façons d’installer et de gérer Node.js. Vous avez peut être même déjà avoir une version installée sur votre système. Pour le savoir, tapez simplement:
+
+[source,bash]
+----
+$ node -v
+----
+
+Si vous ne l'avez pas installé, vous pouvez le faire simplement avec votre gestionnaire de paquet. Je vous recommande néanmoins d'utiliser https://github.com/nvm-sh/nvm[Node Version Manager (NVM)]. Le principe de cet outil est de permettre d’installer plusieurs versions de Node.js sur une même machine, dans un environnement hermétique à une éventuelle version installée sur votre système d’exploitation et de pouvoir basculer de l’une à l’autre facilement.
+
+Pour l'installer, il suffit de https://github.com/nvm-sh/nvm#installing-and-updating[suivre la documentation officielle]. Il suffit donc de lancer le script suivant :
+
+[source,bash]
+----
+$ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.0/install.sh | bash
+----
+
+L'URL du script peut varier en fonction de la version actuelle.
+
+Une fois l'installation terminée, vous pouvez installer la dernière version de Node.js avec la commande suivante :
+
+[source,bash]
+----
+$ nvm install node
+----
+
+==== Bases de données
+
+Je vous recommande fortement d’installer http://www.postgresql.org/[Postgresql] pour gérer vos bases de données. Mais ici, pour plus de simplicité, nous allons utiliser http://www.sqlite.org/[SQLite]. Si vous utilisez Mac OS vous n’avez pas de bibliothèques supplémentaires à installer. Si vous êtes sous Linux, ne vous inquiétez pas, je vous guide:
+
+[source,bash]
+----
+$ sudo apt-get install libxslt-dev libxml2-dev libsqlite3-dev
+----
+
+ou
+
+[source,bash]
+----
+$ sudo yum install libxslt-devel libxml2-devel libsqlite3-devel
+----
+
+=== Initialisation de l'application
+
+Maintenant que votre poste de travail est prêt, nous sommes maintenant en mesure de créer notre projet !
+
+Dans cette section, nous allons poser l'architecture de notre application. Cela veut dire :
+
+* mise en place de l'ORM avec le connexion à la base de données
+* mise en place des contrôleur
+
+C'est à mons avis une des partie les plus intéressante car vous allez découvrir une manière de faire certainement différente de la vôtre.
+
+
+Il existe une tonne de _framework_ complets comme https://nestjs.com/[Nest.js] qui est vraiment très bien. Mais ici nous allons partir de zéro en utilisant des librairies très populaires afin de maîtriser complètement notre application.
+
+Cette méthode vous permettra aussi d'adapter et de construire l'architecture qui vous convient le mieux. Gardez à l'esprit que l'architecture que je vais vous présenter est celle que j'apprécie. Elle est totalement personnelle et je ne prétends pas que c'est la meilleure. Gardez toujours un esprit critique.
+
+
+Vous êtes prêt ? C'est partit !
+
+Placez vous donc dans le dossier de votre choix et créez un nouveau dossier :
+
+[source,bash]
+----
+$ mkdir node_market_place
+$ cd node_market_place
+----
+
+=== Contrôle de version
+
+Rappelez-vous que Git vous aide à suivre et à maintenir l’historique de votre code. Versionnez tous vos projets. Même si c'est un petit projet.
+
+Initialiser Git dans votre projet ce résume à la commande suivante :
+
+[source,bash]
+----
+$ git init
+----
+
+Il faut néanmoins configurer les informations de l’auteur des commits. Si ce n’est pas déjà fait, placez vous dans le répertoire et lancez les commandes suivantes:
+
+[source,bash]
+----
+$ git config user.name "John Doe"
+$ git config user.email "john@doe.io"
+----
+
+Et voilà. Passons à la suite.
+
+=== Initialisation de NPM
+
+NPM est le gestionnaire de paquets officiel de Node.js. Depuis la version 0.6.3 de Node.js, npm fait partie de l'environnement et est donc automatiquement installé par défaut
+
+Initialiser votre projet avec Node.js signifie que vous serez en mesure d'installer n'importe quelle librairie publiée sur https://www.npmjs.com/[npmjs.com].
+
+Initialisons donc NPM dans notre projet :
+
+[source,bash]
+----
+$ npm init
+----
+
+Plusieurs questions vous serons posées et à la fin vous verrez un nouveau fichier `package.json`. Ce fichier détaille les informations de votre projet et les dépendances de celui-ci.
+
+=== Mise en place de Typescript
+
+Maintenant que nous avons créée nos dossiers, nous somme prêts à mettre en place Typescript.
+
+Typescript va nous apporter un typage fort et va effectuer des vérification avant de _transpiler_ le Code Typescript vers du Javascript :
+
+NOTE: On parle de *compilateur* pour une compilation d'un programme vers un éxecutable et d'une *transpilation* pour la conversion d'un programme dans un language vers un autre language.
+
+Nous installons donc Typescript en tant que dépendance de développement car il va uniquement nous servir à transpiler notre code. Ce sera Node.js qui va éxecuter le Javascript plus tard :
+
+[source,bash]
+----
+$ npm add typescript @types/node --save-dev
+----
+
+Nous avons ajouté deux librairies :
+
+* `typescript` qui va nous offrir les outils de *transpilation*
+* `@types/node` qui va ajouter la définition des types de Node.js
+
+
+Ajoutons donc notre premier fichier Typescript :
+
+[source,ts]
+----
+// src/main.ts
+function say(message: string): void {
+    console.log(`I said: ${message}`);
+}
+say("Hello");
+----
+
+Ce code est vraiment très basique et va juste nous servir a vérifier que la transpilation fonctionne.
+
+Afin d'utiliser la transpilation de Typescript, nous avons besoin de définir un fichier de configuration `tsconfig.json`. En voici un basique:
+
+[source,jsonc]
+----
+{
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "dist",
+    "module": "commonjs",
+    "types": ["node"],
+    "target": "es6",
+    "esModuleInterop": true,
+    "lib": ["es6"],
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+----
+
+Cela fait beaucoup de code mais les deux directives a retenir ici sont: `rootDir` et `outDir`. Elles vont simplement spécifier ou sont les fichiers Typescript (`rootDir`) et ou placer les fichiers Javascript résultants de la transpilation (`outDir`).
+
+Dans notre cas je place tous les fichiers Typescript dans le dossier `src` et le résultat de la transpilation dans `dist`.
+
+A partir d'ici vous pouvez tester que tout fonctionne en executant la commande suivante :
+
+[source,bash]
+----
+$ ./node_modules/.bin/tsc
+----
+
+Vous allez voir apparaître un fichier `dist/main.js` de cette forme
+
+[source,javascript]
+----
+// dist/main.js
+function say(message) {
+  console.log(`I said: ${message}`);
+}
+say("Hello");
+----
+
+Il s'agit de la version transpilé de notre fichier Typescript.
+
+Maintenant que nous avons vu que tout fonctionne, nous pouvons automatiser un peu cela en ajoutant les commandes directement dans le fichier `package.json`:
+
+[source,jsonc]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js"
+  },
+  // ...
+}
+----
+
+Et vous pouvez donc maintenant executer le script avec la commande suivante:
+
+[source,bash]
+----
+$ npm run start
+----
+
+Maintenant que tout fonctionne il est temps de versionner nos changement. N'ajoutez pas tous les fichiers crées, il est important de ne versionner certains dossier uniquement :
+
+* le dossier `node_modules` car il contient les librairies récupérées à l'aide de NPM et il est amené a changer lors de la mise a jours de ces librairies
+* le dossier `dist` car il résulte de la transpilation de notre code
+
+Afin de les ignorer, il suffit juste de créer un fichier `.gitignore` avec le contenu suivant :
+
+....
+node_modules
+dist
+....
+
+Nous pouvons maintenant mettre ajouter tous nos fichiers avec Git et commiter :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Setup Typescript for backend"
+----
+
+==== Mise en place du Hot Reload avec Nodemon
+
+Il est sympa d'avoir une fonctionnalité de Hot Reload lors de la phase de développement. Cela signifie que notre programme se transpilera à nouveau et s'exécutera a chaque fois que notre code change.
+
+La librairie `Nodemon` va nous offrir cette fonctionnalité. Ajoutons la :
+
+[source,bash]
+----
+$ npm add nodemon --save-dev
+----
+
+Il suffit maintenant de définir un fichier `nodemon.json` :
+
+[source,jsonc]
+----
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["src/**/*.spec.ts"],
+  "exec": "npm run start"
+}
+----
+
+Quelques explications s'imposent :
+
+* `watch` spécifie le dossier dans lequel Nodemon surveillera les changement de fichier
+* `ignore` permet d'éviter le Hot Reload pour certains types de fichiers (ici ce sont les tests que nous verrons plus tard)
+* `exec`, la commande a executer a chaque changement
+
+Vérifions que tous fonctionne en lançant Nodemon à la main :
+
+[source,bash]
+----
+./node_modules/.bin/nodemon
+[nodemon] 2.0.6
+[nodemon] to restart at any time, enter `rs`
+[nodemon] watching path(s): src/**/*
+[nodemon] watching extensions: ts
+[nodemon] starting `npm run start`
+I said: Hello
+[nodemon] clean exit - waiting for changes before restart
+----
+
+Notre code a été transpilé et executé et on voit que Nodemon continue de s'éxecuter et attends un changement. Modifions donc notre fichier `main.ts` :
+
+[source,diff]
+----
+// src/main.ts
+function say(message: string): void {
+-   console.log(`I said: ${message}`);
++   console.log(`Nodemon said: ${message}`);
+}
+say("Hello");
+----
+
+Lorsque vous allez sauvegarder ce fichier, vous allez voir le travail de Nodemon dans le terminal
+
+[source,bash]
+----
+[nodemon] restarting due to changes...
+[nodemon] starting `npm run start`
+Nodemon said: Hello
+[nodemon] clean exit - waiting for changes before restart
+----
+
+Maintenant que tout fonctionne, nous pouvons modifier le fichier `package.json` et ajouter la commande `nodemon`:
+
+[source,jsonc]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js",
+    "start:watch": "nodemon"
+  },
+  // ...
+}
+----
+
+Nous pouvons maintenant commiter les changements :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Setup Nodemon"
+----
+
+==== Mise en place du serveur web
+
+Jusqu'ici nous avons mis en place un environnement qui va nous permettre d'éviter les erreurs de syntaxe et de typage automatiquement avec Typescript. Il est temps d'enfin faire une vrai fonctionnalité: le serveur web.
+
+Il existe plusieurs bibliothèque pour faire un serveur web avec Node.js. Dans mon cas je recommande https://expressjs.com/fr/[Express.js] tout simplement car c'est celle qui a une plus grosse communauté et elle offre des fonctionnalités basique. Elle vous laisse aussi la liberté d'organiser votre code comme vous le souhaitez tout en offrant une tonne de plugin pour rajouter des fonctionnalités par dessus.
+
+Pour l'ajouter c'est très facile:
+
+[source,bash]
+----
+$ npm add express --save
+----
+
+On va aussi ajouter les typages Typescript qui vont aider un peu votre éditeur de code :
+
+[source,bash]
+----
+$ npm add @types/express --save-dev
+----
+
+Et maintenant nous pouvons instancier notre serveur dans le fichier `main.ts`
+
+[source,ts]
+----
+// src/main.ts
+import express, {Request, Response} from 'express';
+
+const app = express();
+const port = 3000;
+
+app.get("/", (req: Request, res: Response) => res.send("Hello World!"));
+app.listen(port, () => console.log(`listen on http://localhost:${port}/`));
+----
+
+Vous pouvez lancer le serveur avec Nodemon (si ce n'est pas déjà fait) avec `npm run start:watch` et vous allez avoir le résultat suivant :
+
+....
+[nodemon] restarting due to changes...
+[nodemon] starting `npm run start`
+Server listen on http://localhost:3000/
+....
+
+Vous pouvez donc ouvrir votre navigateur a l'adresse http://localhost:3000 et voir que tout fonctionne. Voici ici le résultat en utilisant `curl`:
+
+[source,bash]
+----
+$ curl http://localhost:3000
+Hello World!
+----
+
+Maintenant que tout fonctionne, commitons les changements:
+
+[source,bash]
+----
+$ git commit -am "Add express.js server"
+----
+
+== Conclusion
+
+Cela a été un chapitre assez long. Si vous êtes arrivés ici, permettez-moi de vous féliciter. Les choses vont s’améliorer à partir de ce point. Commençons à mettre les mains dans le code!

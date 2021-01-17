@@ -1,0 +1,747 @@
+[#chapter07-placing-orders]
+= Création des commandes
+
+Dans les chapitres précédents nous avons traité les associations entre les produits et les utilisateurs. Nous avons aussi vu comment bien les sérialiser en les optimisant afin de pouvoir _scaler_, (c'est-à-dire s'adapter facilement à une forte demande sur notre application). Maintenant, il est temps de commencer à passer des commandes. Cela va être une situation plus complexe parce que nous allons gérer les associations entre les trois modèles. Nous devons être assez malins pour gérer la sortie JSON que nous fournissons.
+
+Dans ce chapitre, nous allons faire plusieurs choses:
+
+* Créer un modèle de commande avec les spécifications correspondantes
+* Gérer l’association de sortie JSON entre l’utilisateur de la commande et les modèles de produits
+* Envoyer un courriel de confirmation avec le récapitulatif de la commande
+
+Maintenant que tout est clair, nous pouvons commencer à travailler. Créons une nouvelle branche afin de commencer à travailler:
+
+[source,bash]
+----
+$ git checkout -b chapter07
+----
+
+== Modélisation de la commande
+
+Si vous vous souvenez des associations entre les modèles, vous devez vous souvenir que le modèle `Order` est associé aux modèles `User` et `Product`. C’est en fait très simple de gérer cela avec Rails. La partie délicate est lors de la sérialisation de ces objets. J’en parlerai plus en détail plus tard.
+
+Commençons par créer le modèle de la commande. Celui possédera deux relations `ManyToOne`: `User` et `Product`. Il aura aussi une colonne `total` pour le coût total de la commande et ensuite les colonnes classiques `createdAt` et `updatedAt`. Voici l'implémentation complète.
+
+[source,ts]
+----
+// src/entities/order.entity.ts
+import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
+import {/* ... */} from 'typeorm';
+import {Product} from './product.entity';
+import {User} from './user.entity';
+
+@Entity()
+export class Order {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => User, (user) => user.orders)
+  user: User;
+
+  @IsNumber()
+  @ValidateIf((total) => total >= 0)
+  @Column({ type: "number", unsigned: true })
+  total: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Order)
+export class OrderRepository extends Repository<Order> {}
+----
+
+Comme vous pouvez le constater, l'implémentation n'apporte rien de nouveau comparé à ce que nous avons déjà vu.
+
+J'en ai profité pour ajouter la contrainte `ValidateIf` sur le champ `total` qui est un `number unsigned`. Cela signifie  qu'il ne peut pas être négatif.
+
+Mais avant d'oublier, nous devons aussi définir la relation côté `User`:
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+import {Order} from './order.entity';
+
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Order, (order) => order.user)
+  orders: Order[];
+  // ...
+}
+----
+
+Parfait! Nous sommes prêt à passer à la suite. _Commitons_ tout cela avant:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Generate orders"
+----
+
+=== Les commandes et les produits
+
+Nous devons établir la liaison entre la commande et les produits. Cela se fait avec une association _many-to-many_ car les produits seront associé à plusieurs commandes et les commandes auront plusieurs produits. Dans ce cas, nous avons donc besoin d’un modèle supplémentaire qui joindra ces deux autres objets et mappera l’association appropriée. Voici l'implémentation:
+
+
+[source,ts]
+----
+// src/entities/placement.entity.ts
+import {IsDefined, validateOrReject} from 'class-validator';
+import {/* ... */} from 'typeorm';
+import {Order} from './order.entity';
+import {Product} from './product.entity';
+import {User} from './user.entity';
+
+@Entity()
+export class Placement {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => Product, (product) => product.placements)
+  product: Product;
+
+  @ManyToOne(() => Order, (order) => order.placements)
+  order: User;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Placement)
+export class PlacementRepository extends Repository<Placement> {}
+----
+
+.Ajout de la relation `placements` au modèle `Product`
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @OneToMany(() => Placement, (placement) => placement.product)
+  placements: Placement[];
+  // ...
+}
+// ...
+----
+
+.Ajout de la relation `placements` au modèle `Order`
+[source,ts]
+----
+// src/entities/order.entity.ts
+// ...
+@Entity()
+export class Order {
+  // ...
+  @OneToMany(() => Placement, (placement) => placement.order)
+  placements: Placement[];
+  // ...
+}
+// ...
+----
+
+_Commitons_ les changements:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Associates products and orders with a placements model"
+----
+
+== Exposer le modèle d’utilisateur
+
+Il est maintenant temps de préparer le contrôleur des commandes à exposer les bonnes commandes. Si vous vous souvenez des chapitres précédents où l’on avait utilisé https://github.com/SeyZ/jsonapi-serializer/[jsonapi-serializer] vous devez vous rappeler que c’était vraiment facile.
+
+Définissons d’abord quelles actions nous allons mettre en place:
+
+. Une action d’indexation pour récupérer les commandes des utilisateurs en cours
+. Une action show pour récupérer une commande particulière de l’utilisateur courant
+. Une action de création pour passer réellement la commande
+
+Commençons par l’action `index`. Nous devons d’abord créer le contrôleur de commandes. Mais avant de commencer à taper du code, nous devons nous demander:
+
+> Est-ce que je dois laisser les routes de ma commande imbriqués dans le `UsersController` ou bien dois je les isoler?
+
+La réponse est vraiment simple: cela dépend de la quantité d’informations que vous voulez exposer au développeur.
+
+Dans notre cas, nous n'allons pas le faire car nous allons récupérer les commandes de utilisateur sur la route `/orders`. Commençons par quelques tests:
+
+.Tests fonctionnels de la méthode `OrdersController.index`
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrdersController", () => {
+  let userRepository: UserRepository;
+  let orderRepository: OrderRepository;
+  let jsonWebTokenService: JsonWebTokenService;
+  let user: User;
+  let stranger: User;
+  let jwt: string;
+  let strangerJwt: string;
+  let order: Order;
+
+  before(async () => {
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
+
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+    orderRepository = await databaseService.getRepository(OrderRepository);
+
+    stranger = await userRepository.save(generateUser());
+    strangerJwt = jsonWebTokenService.encode({ userId: stranger.id });
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    order = await orderRepository.save(generateOrder({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
+
+  describe("index", () => {
+    it("should forbid orders without auth", () => agent.get("/orders").expect(403));
+
+    it("should get orders of user", () =>
+      agent
+        .get("/orders")
+        .set("Authorization", jwt)
+        .expect(200)
+        .then(({ body }) => assert.ok(body.data.some(({ id }) => id === String(order.id)))));
+  });
+});
+----
+
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+export function randomInteger(min: number = 0, max: number = 100): number {
+  return Math.floor(Math.random() * (max - min) + min);
+}
+// ...
+export function generateOrder(order?: Partial<Order>): Order {
+  const newOrder = new Order();
+  newOrder.user = order?.user ?? generateUser();
+  newOrder.total = randomInteger(1); // TODO
+
+  return newOrder;
+}
+----
+
+L'implémentation de ce test devrait vous rappeler celle de `product.controller.spec.ts`. Nous essayons d'accéder au nouvel `endpoint` avec un utilisateur possédant une `Order` et nous vérifions que cette commande apparaît bien dans le retour JSON.
+
+NOTE: Vous avez certainement remarqué la syntaxe `({body}) \=> ...`. Il s'agit de la fonctionnalité de https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition[la décomposition d'objet]. Elle permet tout simplement de récupérer une propriété contenue dans un object directement dans une variable du même nom. Ainsi `const data = {a: 1}; const a = data.a;` peut être simplifié en `const { a } = {a: 1}`. Cette syntaxe peu perturber donc j'ai préféré l'utiliser qu'à partir de ce chapitre.
+
+Si nous exécutons la suite de tests maintenant, comme vous pouvez vous y attendre, les deux tests échoueront. C’est normal car nous n’avons même pas défini le contrôleur ni même le sérialiseur spécifique aux commandes. Alors faisons le.
+
+Alors commençons par le sérialiseur:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const ordersSerializer = new Serializer("orders", {
+  attributes: ["total", "createdAt", "updatedAt"],
+} as any);
+----
+
+Et maintenant nous pouvons l'utiliser dans notre tout nouveau contrôleur:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+import {ordersSerializer} from '../utils/serializers.utils';
+
+@controller("/orders", TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  public constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
+
+  @httpGet("/")
+  public async index({ user }: Request & { user: User }) {
+    const repository = await this.databaseService.getRepository(OrderRepository);
+    const orders = await repository.find({ user });
+    return ordersSerializer.serialize(orders);
+  }
+}
+----
+
+Dans le premier décorateur `@controller`, nous injection globalement le _middleware_ `FetchLoggedUserMiddleware`. Cela signifie qu'il faudra donner une jeton JWT pour accéder à toutes les actions de ce contrôleur. Cela nous permet donc de récupérer l'utilisateur dans la méthode `index` et de l'utiliser directement dans la méthode `find`. Nous utilisons le sérialseur pour formatter les données et les renvoyer.
+
+N'oublions pas de charger notre contôleur puisqu'il s'agit d'un tout nouveau contrôleur:
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+import "../controllers/orders.controller";
+// ...
+----
+
+Et maintenant nos tests devraient passer:
+
+[source,bash]
+----
+$ npm test
+...
+  OrderController
+    index
+      ✓ should forbid orders without auth (44ms)
+      ✓ should get orders of user
+...
+----
+
+Nous aimons nos commits très petits. Alors _commitons_ dès maintenant:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Adds the index action for order"
+----
+
+
+=== Afficher une seule commande
+
+Comme vous pouvez déjà l’imaginer, cette route est très facile. Nous n’avons qu’à mettre en place quelques configurations (routes, action du contrôleur) et un nouveau _middleware_ qui va s'occuper de récupérer la commande et ce sera tout pour cette section. Nous inclurons plus tard les produits liés à cette commande dans le JSON de sortie.
+
+Commençons par ajouter quelques tests:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrdersController", () => {
+  // ...
+  describe("show", () => {
+    it("should forbid show order for other users", () => {
+      agent.get(`/orders/${order.id}`).set("Authorization", strangerJwt).expect(403);
+    });
+
+    it("should show order", () => {
+      agent
+        .get(`/orders/${order.id}`)
+        .set("Authorization", jwt)
+        .expect(200)
+        .then(({ body }) => assert.strictEqual(body.data.id, String(order.id)));
+    });
+  });
+  // ...
+});
+----
+
+Passons à l'implémentation. Nous allons commencer par créer un _middleware_ qui se chargera de chercher la commande en fonction du paramètre. Le code est vraiment très similaire au `FetchProductMiddleware` donc je passerai un peu plus vite la dessus:
+
+.Création du `FetchOrderMiddleware`
+[source,ts]
+----
+// src/middlewares/fetchUser.middleware.ts
+// ...
+@injectable()
+export class FetchOrderMiddleware extends BaseMiddleware {
+  constructor(
+    @inject(TYPES.DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {
+    super();
+  }
+
+  public async handler(req: Request & { order: Order }, res: Response, next: NextFunction): Promise<void | Response> {
+    const orderId = req.query.orderId ?? req.params.orderId;
+    const repository = await this.databaseService.getRepository(OrderRepository);
+    req.order = await repository.findOne(Number(orderId), {
+      relations: ["user"],
+    });
+
+    if (!req.order) {
+      return res.status(404).send("order not found");
+    }
+    next();
+  }
+}
+----
+
+.Ajout du `Symbol` pour l'injection dans le container
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  FetchOrderMiddleware: Symbol.for("FetchOrderMiddleware"),
+};
+----
+
+.Ajout `FetchOrderMiddleware` dans le container
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+export const container = new Container();
+// ...
+container.bind(TYPES.FetchOrderMiddleware).to(FetchOrderMiddleware);
+----
+
+Tous nos tests passent désormais:
+
+[source,bash]
+----
+$ npm test
+  OrderController
+    index
+      ✓ should forbid orders without auth (44ms)
+      ✓ should get orders of user
+    show
+      ✓ should forbid show order for other users
+      ✓ should show orders
+----
+
+_Commitons_ les changements et passons à la suite.
+
+[source,bash]
+----
+$ git commit -am "Adds the show action for order"
+----
+
+=== Placement et commandes
+
+Il est maintenant temps de donner la possibilité à l’utilisateur de passer quelques commandes. Cela ajoutera de la complexité à l’application, mais ne vous inquiétez pas, nous allons faire les choses une étape à la fois.
+
+Avant de lancer cette fonctionnalité, prenons le temps de réfléchir aux implications de la création d’une commande dans l’application. Je ne parle pas de la mise en place d’un service de transactions comme https://stripe.com/[Stripe] ou https://www.braintreepayments.com/[Braintree] mais de choses comme:
+
+* la gestion des produits en rupture de stock
+* la diminution de l’inventaire de produits
+* ajouter une certaine validation pour le placement de la commande pour s’assurer qu’il y a suffisamment de produits au moment où la commande est passée
+
+On dirait qu’il reste un paquet de chose à faire mais croyez-moi: vous êtes plus près que vous ne le pensez et ce n’est pas aussi dur que ça en a l’air. Pour l’instant, gardons les choses simples et supposons que nous avons toujours assez de produits pour passer un nombre quelconque de commandes. Nous nous soucions juste de la réponse du serveur pour le moment.
+
+Si vous vous rappelez le modèle de commande, nous avons besoin de trois choses: un total pour la commande, l’utilisateur qui passe la commande et les produits pour la commande. Compte tenu de cette information, nous pouvons commencer à ajouter quelques tests:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  describe('create', () => {
+    let product1: Product;
+    let product2: Product;
+
+    before(async () => {
+      product1 = await manager.save(generateProduct());
+      product2 = await manager.save(generateProduct());
+    });
+
+    it('should create order', () =>
+      agent
+        .post('/orders')
+        .set('Authorization', jwt)
+        .send({productIds: [product1.id, product2.id]})
+        .expect(201));
+
+    it('should not create product without auth', () =>
+      agent
+        .post('/orders')
+        .send({productIds: [product1.id, product2.id]})
+        .expect(403));
+
+    it('should not create order with missing title', () =>
+      agent.post('/orders').set('Authorization', jwt).send({productIds: []}).expect(400));
+  });
+  // ...
+});
+----
+
+Encore une fois, nous allons créer des tests qui couvrent tous les cas possibles. Respectivement:
+
+* le cas ou tout se passe bien
+* le cas ou l'utilisateur n'a pas envoyé les paramètres nécessaires
+* le cas ou l'utilisateur n'a pas spécifié sont jeton JWT
+
+Comme vous pouvez le voir dans le premier cas, l'utilisateur envoie un tableau des produits qu'il souhaite ajouter à sa commande. Nous allons donc dans le contrôleur:
+
+1. récupérer la liste des produits associés via les IDs
+2. calculer la somme totale que représente ces produits
+3. créer l'`Order`
+4. créer les `Placements` associé à cette commande
+
+Cela parait compliqué mais voyez l'implémentation:
+
+// -- current
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller("/orders", TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+
+  @httpPost('/')
+  public async create(@requestBody() body: {productIds: number[]}, {user}: Request & {user: User}, res: Response) {
+    const productRepository = await this.databaseService.getRepository(ProductRepository);
+    const orderRepository = await this.databaseService.getRepository(OrderRepository);
+    const placementRepository = await this.databaseService.getRepository(PlacementRepository);
+
+    if (!body.productIds?.length) {
+      return res.status(400).json({errors: {productIds: 'should be an array of products ids'}});
+    }
+
+    const products = await productRepository.findByIds(body.productIds);
+
+    const total = products.reduce((sum, product) => sum + product.price, 0);
+    const order = await orderRepository.save({user, total});
+
+    const placements = products.map((product) => ({order, product}));
+    order.placements = await placementRepository.save(placements);
+
+    return res.sendStatus(201);
+  }
+  // ...
+}
+----
+
+Et maintenant, nos tests devraient tous passer:
+
+[source,bash]
+----
+$ npm test
+...
+  OrderController
+...
+    create
+      ✓ should create order
+      ✓ should not create product without auth
+      ✓ should not create order with missing title
+----
+
+_Commitons_ nos changements:
+
+[source,bash]
+----
+$ git commit -am "Adds the create method for the orders controller"
+----
+
+== Envoyer un email de confirmation
+
+La dernière section de ce chapitre sera d’envoyer un courriel de confirmation à l’utilisateur qui vient de créer une commande. Si vous le voulez, vous pouvez sauter cette étape et passer au chapitre suivant! Cette section est plus à un bonus.
+
+Nous allons donc utiliser la librairie https://nodemailer.com/[nodemailer]
+
+
+Installons donc la librairie:
+
+[source,bash]
+----
+$ npm install nodemailer
+$ npm install --save-dev @types/nodemailer
+----
+
+Maintenant créons un nouveau service qui fera l'interface entre la librairie et notre code. Comme je le disait précédemment, c'est toujours une bonne idée de procéder ainsi car cela va nous permettre de _Mocker_ cette fonctionnalité durant nos tests. Ne vous inquiétez pas, nous en reparlerons juste après.
+
+.Implémentation d'un service faisant interface à nodemailer.
+[source,ts]
+----
+// src/services/mailer.service.ts
+import {inject, injectable} from 'inversify';
+import {createTestAccount, createTransport, SendMailOptions, Transporter} from 'nodemailer';
+import {TYPES} from '../core/types.core';
+import {Logger} from './logger.service';
+
+@injectable()
+export class MailerService {
+  private static transporter: Transporter;
+
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  public async sendEmail(options: SendMailOptions): Promise<void> {
+    await this.initializeTransporter();
+
+    await MailerService.transporter.sendMail(options);
+
+  }
+
+  private async initializeTransporter() {
+    if (MailerService.transporter !== undefined) {
+      return;
+    }
+
+    let { user, pass } = await createTestAccount();
+
+    MailerService.transporter = createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: { user, pass },
+    });
+  }
+}
+----
+
+Comme vous le voyez, notre service ne fais pas grand chose. Nous initialisons juste ici un `transporter` qui permet de se connecter à un compte SMTP. Vous pouvez utiliser le compte mail de votre choix et de déplacer les valeurs dans le fichier `.env` mais ici j'ai choisi d'utiliser la méthode `createTestAccount` qui permet de créer un compte test à la volée.
+
+Et comme nous venons de créer un service, nous devons l'ajouter au container:
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  MailerService: Symbol.for("MailerService"),
+  // ...
+};
+
+----
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+container.bind(TYPES.MailerService).to(MailerService);
+// ...
+----
+
+Et voilà. Je trouve que c'est une bonne idée d'ajouter la création du mail du produit dans le `MailerService`. En revanche, il faut faire attention à ce que ce service ne devienne pas trop gros au fur et à mesure de l'extension de notre application et ne pas hésiter à le redécouper si nécessaire. Dans notre cas cela ne pose pas de problème. Voici donc la méthode:
+
+[source,ts]
+----
+// src/services/mailer.service.ts
+// ...
+@injectable()
+export class MailerService {
+  // ...
+  public async sendNewOrderEmail(order: Order): Promise<void> {
+    const productText = order.placements.map((p) => `- ${p.product.title}`);
+    const text = `Details of products:\n${productText}\nTOTAL:${order.total}€`;
+
+    await this.sendEmail({
+      to: order.user.email,
+      text,
+      subject: "Thanks for order",
+    });
+  }
+  // ...
+}
+----
+
+Nous pouvons maintenant appeler cette méthode directement donc notre contrôleur:
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller("/orders", /* ... */)
+export class OrdersController {
+  // ...
+  @httpPost("/")
+  public async create(/* ... */) {
+    // ...
+    await this.mailerService.sendNewOrderEmail(order);
+    return res.sendStatus(201);
+  }
+  // ...
+}
+----
+
+Et voilà!
+
+NOTE: Si notre application grandie, il serait plus intéressant d'utiliser une librairie spécialisée dans la gestion de job comme https://github.com/graphile/worker[graphile-worker] afin de différer l'envoie d'email. Cela nous permettrait aussi de prioriser les tâches mais aussi de relancer plus tard les tâches qui n'ont pas fonctionnés. Dans notre cas, je ne l'ai pas mis en place afin de garder ce tutoriel plus simple.
+
+Lançons les tests pour êtres sûr:
+
+[source,sh]
+----
+$ npm test
+...
+  OrderController
+...
+    create
+      1) should create order
+      ✓ should not create product without auth
+      ✓ should not create order with missing title
+...
+
+  1) OrderController
+       create
+         should create order:
+     Error: Timeout of 2000ms exceeded.
+----
+
+Nous constatons que notre test ne fonctionne plus car il dépasse le temps alloué à un test. Nous pourrions augmenter le temps alloué à ce test avec la méthode `timeout` mais ce n'est pas optimal. Mais rassurez vous, nous avons une solution très simple offerte par l'injection de dépendence que nous avons mis en place depuis le début: un _Mock_.
+
+L'idée est donc de créer un classe qui implémente les fonctionnalités du `MailerService` mais qui se comporte de la façon que nous voulons spécifiquement dans le contexte donnée. C'est à dire que nous voulons que durant les tests, les mails ne soient pas envoyé. Cela semble compliqué mais c'est en fait très simple:
+
+[source,ts]
+----
+// src/tests/fakeMailer.service.ts
+import {injectable} from 'inversify';
+import {SendMailOptions} from 'nodemailer';
+import {MailerService} from '../services/mailer.service';
+
+@injectable()
+export class FakeMailerService extends MailerService {
+  public async sendEmail(options: SendMailOptions): Promise<void> {}
+  protected async initializeTransporter() {}
+}
+----
+
+Et il suffit de `rebind` le service au début de notre test:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  before(async () => {
+    container.rebind(TYPES.MailerService).to(FakeMailerService);
+    // ...
+  });
+    // ...
+});
+----
+
+Et voilà, nos tests devraient passer à nouveau.
+
+_Commitons_ tout ce que nous venons de faire pour terminer cette section:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Adds order confirmation mailer"
+----
+
+Et comme nous arrivons à la fin de notre chapitre, il est temps d'appliquer toutes nos modifications sur la branche master en faisant un _merge_:
+
+[source,bash]
+----
+$ git checkout master
+$ git merge chapter07
+----
+
+== Conclusion
+
+Ça y est! Vous avez réussi! Vous pouvez vous applaudir. Je sais que ça a été long mais c’est presque fini, croyez moi.
+
+Sur les chapitres à venir, nous continuerons à travailler sur le modèle de commande pour ajouter des validations lors de la passation d’une commande. Certains scénarios sont:
+
+* Que se passe-t-il lorsque les produits ne sont pas disponibles?
+* Diminuer la quantité du produit en cours lors de la passation d’une commande
+
+Le prochain chapitre sera court, mais il est très important pour la santé de l'application. Alors ne le sautez pas.

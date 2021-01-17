@@ -1,0 +1,523 @@
+[#chapter08-improve_orders]
+= Improving orders
+
+Previously we improved our API to place orders and send a confirmation email to the user (just to improve the user experience). This chapter will take care of some validations on the order entity to make sure it is valid. That is:
+
+* Decrease the quantity of the current product when creating an order
+* manage the case where the product is not available
+
+We will also need to update the JSON output for orders a little bit. But let's not divulge the rest.
+
+Let's create a new branch to start working:
+
+[source,bash]
+----
+$ git checkout -b chapter08
+----
+
+== Decrease the quantity of product
+
+In this part, we will update the product quantity to ensure that each order will deliver the actual product.
+
+=== Adding the `product.total` attribute
+
+We will first add a `total` field on the product, representing the available stock of the product.
+
+.Add `total` column to products
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @Column({type: 'integer', default: 0})
+  quantity: number = 0;
+  // ...
+}
+// ...
+----
+
+This field must also be available when creating the product. So we need to update our controller:
+
+.Handle `quantity` attribute in products creation endpoint
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/products')
+export class ProductController {
+  // ...
+  public async create(/* ... */) {
+    // ...
+    const product = new Product();
+    product.quantity = Number(body.quantity);
+    // ...
+  }
+  // ...
+}
+----
+
+We also need to update the `generateProduct` method, which must handle this new attribute:
+
+.Handle `quantity` attribute in tests utilities
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+export function generateProduct(product?: Partial<Product>): Product {
+  // ...
+  newProduct.quantity = product?.quantity ?? randomInteger(1);
+  // ...
+}
+// ...
+----
+
+Now we have to check that the total can never be less than zero. This will secure our application and prevent an order from being placed if there is no stock on the product.
+
+So let's start by adding a test that will describe the desired behavior:
+
+.Implement a tests to ensure a negative quantity is not valid
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe('ProductRepository', () => {
+  // ...
+  describe('validate', () => {
+    it('should have a positive quantity', async () => {
+      const product = generateProduct({quantity: -1});
+      try {
+        await productRepository.save(product);
+        assert.fail('Should not validate product');
+      } catch (errors) {
+        assert.ok(errors.some(error => error.property === 'quantity'));
+      }
+    });
+  });
+});
+----
+
+Passing the test is very easy thanks to the `class-validator` decorators. Just add the decorators `@IsInt` and `@Min` like this:
+
+.Add product quantity validation
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @IsInt()
+  @Min(0)
+  @Column({type: 'integer', default: 0})
+  quantity: number = 0;
+  // ...
+}
+// ...
+----
+
+As you can see it's really very simple and the code is very readable. And that's it. Let's start the changes:
+
+[source,sh]
+----
+$ git commit -am "Add quantity to products"
+----
+
+=== Setting up the functional test
+
+Before we start going further, we need to change the way we handle order creation because we now have to consider a quantity for each product. If you remember, until now, we have been waiting for a table of product identifiers. I'll try to keep things simple, and we will now accept an object table containing the attributes `id` and `quantity`. A quick example would be something like this:
+
+[source,ts]
+----
+const productOrderParams = [
+  { id: 1, quantity: 4 },
+  { id: 3, quantity: 5 }
+]
+----
+
+So let's start by modifying our functional test about the order controller:
+
+.Update functional test about order creation with new params
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe("OrderController", () => {
+  // ...
+  describe("create", () => {
+    let productsParams;
+
+    before(async () => {
+      const product1 = await productRepository.save(generateProduct());
+      const product2 = await productRepository.save(generateProduct());
+
+      productsParams = [
+        {id: product1.id, quantity: 1},
+        {id: product2.id, quantity: 1},
+      ];
+    });
+
+    it('should create order', () =>
+      agent
+        .post('/orders')
+        .set('Authorization', jwt)
+        .send({products: productsParams})
+        .expect(201));
+    // ...
+  });
+  // ...
+});
+----
+
+As you can see, we have simply updated the parameters we pass to the query.
+
+Let's recap what we need to change in the controller. We need to find the product associated with the `id` in the table that creates the `placements`. Let's see the implementation of the controller:
+
+.Implementation to handle multiple products in orders controller
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller('/orders', TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+  @httpPost('/')
+  public async create(
+    @requestBody() body: {products: {id: number; quantity: number}[]},
+    // ...
+  ) {
+    const {manager} = await this.databaseService.getConnection();
+
+    if (!body.products?.length) {
+      return res.status(400).json({
+        errors: {
+          products: 'should be an array of `{id, quantity}`',
+        },
+      });
+    }
+
+    const order = await manager.save(Order, {
+      user,
+      total: 0,
+      placements: [],
+    } as Order);
+
+    for (const {id, quantity} of body.products) {
+      const placement = new Placement();
+      placement.product = await manager.findOneOrFail(Product, {id});
+      placement.order = order;
+      placement.quantity = quantity;
+
+      order.placements.push(await manager.save(Placement, placement));
+    }
+    // ...
+  }
+  // ...
+}
+----
+
+Wow. The code is getting a bit longer and deserves some explanations:
+
+- we create the order with a total equal to zero (We will see in the next section how to make this total update automatically).
+- we check the user's data by checking that `req.body.products` contains values
+- we make a loop on `req.body.products` in which we retrieve the product, create an `Investment`, and add it to the `order.investments` table
+- the rest remains unchanged
+
+
+=== The subscriber
+
+It is now time to update the product quantity once an order is placed.
+
+We would be tempted to do this quickly in the `OrderController.create` action, but that would be a bad idea because we would have to duplicate this logic on the `OrderController.update` and `OrderController.destroy` actions, which must also update the product quantity. It also goes against the good practice to minimize the responsibility of the controllers.
+
+That's why I think a https://github.com/typeorm/typeorm/blob/master/docs/listeners-and-subscribers.md[*Subscribers from TypeORM*] is a much better place for the simple reason that we are sure that our subscriber will be called no matter what happens without us having to worry about it.
+
+NOTE: It would be possible to use the *entity listeners* as `@afterInsert` on the `UserRepository.validate` method, but I really recommend using the _subscriber_ when we want to manipulate multiple entity types. This allows us to better split our code and not make one class depend on another.
+
+The behavior we will implement is the following:
+
+- when a placement is created
+  - we remove `placement.quantity` from the attribute `product.quantity`.
+  - we recalculate the total cost of the order
+- when an investment is created
+  - we add `placement.quantity` to the attribute `product.quantity`.
+  - we recalculate the total cost of the order
+
+The subscriber will materialize into a class that extends `EntitySubscriberInterface`. If we take a closer look at this interface, we see that we have access to a bunch of methods:
+
+.Some methods of the `EntitySubscriberInterface` interface
+[source,ts]
+----
+// node_modules/typeorm/subscriber/EntitySubscriberInterface.d.ts
+export interface EntitySubscriberInterface<Entity = any> {
+  // ...
+  beforeInsert?(event: InsertEvent<Entity>): Promise<any> | void;
+  afterInsert?(event: InsertEvent<Entity>): Promise<any> | void;
+  beforeUpdate?(event: UpdateEvent<Entity>): Promise<any> | void;
+  afterUpdate?(event: UpdateEvent<Entity>): Promise<any> | void;
+  beforeRemove?(event: RemoveEvent<Entity>): Promise<any> | void;
+  afterRemove?(event: RemoveEvent<Entity>): Promise<any> | void;
+  // ...
+}
+----
+
+So we can create a brand new class who implements `EntitySubscriberInterface`:
+
+.Create `PlacementSubscriber`
+[source,ts]
+----
+// src/subscribers/placement.subscriber.ts
+import {/*...*/} from 'typeorm';
+import {Order} from '../entities/order.entity';
+import {Placement} from '../entities/placement.entity';
+import {Product} from '../entities/product.entity';
+
+@EventSubscriber()
+export class PlacementSubscriber
+  implements EntitySubscriberInterface<Placement> {
+
+  listenTo() {
+    return Placement;
+  }
+
+  async afterInsert({entity, manager}: InsertEvent<Placement>) {/*...*/}
+  async beforeRemove({entity, manager}: RemoveEvent<Placement>) {/*...*/}
+  async afterRemove({entity, manager}: RemoveEvent<Placement>) {/*...*/}
+}
+----
+
+You can also notice that I have implemented the `listenTo` method, which will specify this subscriber's listening field. But before moving on, we need to tell TypeORM where our migration is via the following configuration variable that you need to add to your `.env` and `.test.env` file.
+
+.Adding the configuration of subscribers
+[source,env]
+----
+TYPEORM_SUBSCRIBERS=src/subscribers/*.subscriber.ts
+----
+
+We are now ready to move on to the implementation of the methods!
+
+As usual, we will create a test dedicated to this new class. This test will simply create a product with a sufficient quantity and then create a `Placement` and check that the total has been updated. We then do the opposite by deleting the product and checking that the original quantity is found.
+
+.Create test to ensure `product.entity` is updated
+[source,ts]
+----
+// src/subscribers/placement.subscriber.spec.ts
+// ...
+describe('PlacementSubscriber', () => {
+  let manager: EntityManager;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(
+      TYPES.DatabaseService,
+    );
+    const connection = await databaseService.getConnection();
+    manager = connection.manager;
+  });
+
+  it('should update product.quantity after insert', async () => {
+    let product = await manager.save(generateProduct({quantity: 10}));
+    const order = await manager.save(generateOrder());
+
+    const placement = await manager.save(
+      generatePlacement({order, product, quantity: 2}),
+    );
+
+    product = await manager.findOne(Product, product.id);
+    assert.strictEqual(product.quantity, 10 - placement.quantity);
+
+    await manager.remove(placement);
+    product = await manager.findOne(Product, product.id);
+    assert.strictEqual(product.quantity, 10);
+  });
+});
+----
+
+The implementation of the subscriber is really very simple. We will use the `beforeInsert` and `beforeRemove` methods to increment or decrement the product total and then save the product.
+
+.Complete subscriber to update `product.quantity`
+[source,ts]
+----
+// src/subscribers/placement.subscriber.ts
+// ...
+@EventSubscriber()
+export class PlacementSubscriber
+  implements EntitySubscriberInterface<Placement> {
+  // ...
+  async afterInsert({entity, manager}: InsertEvent<Placement>) {
+    const productId = entity.product.id;
+    const product = await manager.findOneOrFail(Product, {id: productId});
+    product.quantity -= entity.quantity;
+    await manager.save(product);
+  }
+
+  async beforeRemove({entity, manager}: RemoveEvent<Placement>) {
+    const productId = entity.product.id;
+    const product = await manager.findOneOrFail(Product, {id: productId});
+    product.quantity += entity.quantity;
+    await manager.save(product);
+  }
+}
+----
+
+NOTE: We retrieve the product via the `manager` instead of simply retrieving via the `entity.product` relationship to ensure that we have the latest version stored in the database.
+
+And there you go. It was easy, wasn't it? Let's run the tests to be sure.
+
+[source,sh]
+----
+$ npm test
+...
+  PlacementSubscriber
+    ✓ should update product.quantity after insert (40ms)
+----
+
+Perfect, let's move on.
+
+=== Update of the total stroke of the order
+
+If you understood the previous section correctly, you could guess that the order stroke update will be quite similar.
+
+Let's start by writing the tests. So we will create a `Product`, then an `Order` and then a `Placement` to check that the order total has updated. We will then remove this `Placement` and check that the
+
+[source,ts]
+----
+// src/subscribers/placement.subscriber.spec.ts
+// ...
+describe('PlacementSubscriber', () => {
+  // ...
+  it('should update order.total after insert', async () => {
+    const product = await manager.save(
+      generateProduct({quantity: 10, price: 5}),
+    );
+    let order = await manager.save(generateOrder());
+
+    const placement = generatePlacement({order, product, quantity: 2});
+    await manager.save(placement);
+
+    order = await manager.findOne(Order, order.id);
+    assert.strictEqual(order.total, 2 * product.price);
+
+    await manager.remove(placement);
+    order = await manager.findOne(Order, order.id);
+    assert.strictEqual(order.total, 0);
+  });
+});
+----
+
+And there you go. This test really looks like the previous one. So let's move quickly to the implementation:
+
+[source,ts]
+----
+// src/subscribers/placement.subscriber.ts
+// ...
+@EventSubscriber()
+export class PlacementSubscriber
+  implements EntitySubscriberInterface<Placement> {
+  // ...
+  async afterInsert({entity, manager}: InsertEvent<Placement>) {
+    // ...
+    await this.updateOrderTotal(manager, entity.order);
+  }
+  // ...
+  async afterRemove({entity, manager}: RemoveEvent<Placement>) {
+    await this.updateOrderTotal(manager, entity.order);
+  }
+
+  private async updateOrderTotal(manager: EntityManager, order: Order) {
+    const placements = await manager.find(Placement, {
+      where: {order},
+      relations: ['product'],
+    });
+
+    order.total = placements.reduce(
+      (sum, placement) => sum + placement.quantity * placement.product.price,
+      0,
+    );
+
+    await manager.save(Order, order);
+  }
+}
+----
+
+Let's take a closer look at the `updateOrderTotal` method:
+
+1. we get all the `placements` of the order passed in parameter with the associated products
+2. we add up the total investment
+
+.The query builder of TypeORM
+****
+It is possible to rewrite the previous code with the _Query Builder_ of TypeORM. The _Query Builder_ gives you more control over the generated SQL query. The code can be more complex and more powerful because we don't need to load several objects in memory.
+
+This is the case here, so I wanted to make a little sidebar. Here is the equivalent with the Query Builder.
+
+[source,ts]
+----
+const result = await manager
+  .createQueryBuilder(Placement, 'pl')
+  .select('SUM(pl.quantity) * p.price', 'total')
+  .innerJoin('pl.order', 'o')
+  .innerJoin('pl.product', 'p')
+  .where('o.id = :orderId', {orderId: order.id})
+  .groupBy('o.id')
+  .getRawOne();
+order.total = result?.total ?? 0;
+----
+
+This query will directly total by multiplying the quantity by the price of the related product. Thus, we obtain the result directly in the form of a `number'. This avoids loading several Javascript objects and saves memory.
+
+This code will generate the following SQL query:
+
+[source,sql]
+----
+SELECT SUM("pl". "quantity") * "p". "price" AS "total"
+FROM "placement" "pl"
+INNER JOIN "order" "o" ON "o". "id"="pl". "orderId"
+INNER JOIN "product" "p" ON "p". "id"="pl". "productId"
+WHERE "o". "id" = ?
+GROUP BY "o". "id"
+----
+
+Therefore, I strongly advise you to improve your database managers' knowledge as they can be great allies.
+****
+
+Let's see if the tests pass:
+
+[source,sh]
+----
+$ npm test
+...
+  OrderController
+...
+    create
+      ✓ should create order (74ms)
+      ✓ should not create product without auth
+      ✓ should not create order with missing products
+...
+  PlacementSubscriber
+    ✓ should update product.quantity after insert (42ms)
+    ✓ should update order.total after insert (44ms)
+...
+  42 passing (1s)
+----
+
+Let's go through our changes and recap what we've just done:
+
+[source,bash]
+----
+$ git commit -am "Updates the total calculation for order"
+----
+
+And as we come to the end of our chapter, it's time to apply all our changes to the master branch by doing a merge:
+
+[source,bash]
+----
+$ git checkout master
+$ git merge chapter08
+----
+
+== Conclusion
+
+Oh, you are here! Allow me to congratulate you! It's a long way from the first chapter. But you are one step closer. In fact, the next chapter will be the last one. So try to make the best of it.
+
+The last chapter will discuss how to optimize the API using paging, caching, and background tasks. So buckle up. It's going to be an eventful journey.

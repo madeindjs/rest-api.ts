@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "module": "commonjs",
+    "types": ["node", "mocha"],
+    "target": "es6",
+    "esModuleInterop": true,
+    "lib": ["es6"],
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  },
+  "exclude": ["./**/*.spec.ts"]
+}

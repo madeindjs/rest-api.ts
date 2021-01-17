@@ -1,0 +1,1064 @@
+[#chapter03-presenting-users]
+= Présentation des utilisateurs
+
+Dans le chapitre précédent, nous avons réussi à mettre en place les bases de la configuration de notre application. Ce chapitre va perfectionner cette base et ajouter la couche _Model_ qui sera en charge de stocker les données et aussi d'ajouter les premiers tests.
+
+Dans les prochains chapitres, nous traiterons l’authentification des utilisateurs à l’aide de jetons d’authentification ainsi que la définition de permissions pour limiter l’accès aux utilisateurs connectés. Nous relierons ensuite les produits aux utilisateurs et leur donnerons la possibilité de passer des commandes.
+
+Comme vous pouvez déjà l’imaginer, il existe de nombreuses solutions d’authentification pour Node.js comme http://www.passportjs.org/[Passport.js], https://github.com/ianstormtaylor/permit[Permit] et https://github.com/simov/grant[Devise]. Ces solutions sont des librairies clé en main, c'est à dire qu'elles permettent de gérer tout un tas de choses comme l'authentification, la fonctionnalité d'oubli de mot de passe, la validation, etc..
+
+Nous ne les utiliserons pas afin de mieux appréhender le mécanisme d'authentification. Cela vous permettra de découvrir qu'il n'y a rien de magique derrière le chiffrement des mots de passe et la création des jetons d'authentifications.
+
+Ce chapitre sera complet. Il sera peut-être long mais je vais essayer d’aborder autant de sujets que possible. N’hésitez pas à vous prendre un café et allons-y. A la fin de ce chapitre, vous aurez construit toute la logique des utilisateurs ainsi que la validation et la gestion des erreurs.
+
+== Mise en place de TypeORM
+
+Ici nous allons mettre e place la couche _Model_ du _design patern_ MVC. Il s'agit de la couche relative à la base de données.
+
+Afin d'accéder a la base de données, nous allons utiliser un ORM (Object Relational Mapper). Le but d'un ORM est de dialoguer avec la base de données et de vous éviter d'écrire les requêtes SQL à la main. Il nous permet aussi d'ajouter une couche d'abstraction au type de base de données et nous permet de ne pas nous soucier des différences entre PostgreSQL et SQLite par exemple.
+
+Il existe plusieurs ORM pour Nodejs: https://sequelize.org/[Sequelize], https://mongoosejs.com/[Mongoose] et https://typeorm.io/[TypeORM]. J'ai choisis le dernier car c'est celui qui s'intègre le mieux avec Typescript. Il propose aussi une approche https://typeorm.io/#/active-record-data-mapper[Active Record ET Data Mapper] que j'apprécie beaucoup.
+
+Pour l'installer c'est très facile. Nous allons installer la librairie TypeORM mais aussi deux librairies supplémentaires :
+
+* `sqlite3` qui va nous permettre de dialoguer avec notre base de données Sqlite
+* https://www.npmjs.com/package/dotenv[`dotenv`] qui va nous permettre de commencer à définir des *variables d'environnement* comme la connexion à notre base de données.
+
+C'est parti:
+
+.Ajout des librairies pour installer TypeORM
+[source,bash]
+----
+$ npm add typeorm sqlite3 dotenv --save
+----
+
+Nous allons maintenant générer notre fichier de configuration. Par défault, `dotenv` va chercher un fichier nomé `.env`. Créons le:
+
+[source,bash]
+----
+$ touch .env
+----
+
+Et commençons par définir https://github.com/typeorm/typeorm/blob/master/docs/using-ormconfig.md#using-environment-variables[les variables d'environnement de TypeORM] pour une connexion basique à une base de donnée SQLite:
+
+.La configuration de base de TypeORM pour une connexion à SQLite
+[source,env]
+----
+TYPEORM_CONNECTION=sqlite
+TYPEORM_DATABASE=db/development.sqlite
+TYPEORM_LOGGING=true
+TYPEORM_SYNCHRONIZE=true
+TYPEORM_ENTITIES=src/entities/*.entity.ts,dist/entities/*.entity.js
+----
+
+Comme vous pouvez le voir on définis que nous utiliserons Sqlite et que la base de données sera stockée dans le dossier `db/`. `TYPEORM_SYNCHRONIZE` permet d'éviter de ne pas se soucier des migrations et ainsi laisser TypeORM faire les modifications sur le schéma de notre base de données si nécessaire. Nous spécifions ensuite ou sont situé nos entités avec `TYPEORM_ENTITIES`.
+
+Il ne nous reste plus qu'a configurer `dotenv` pour charger ce fichier. Pour faire cela, j'utilise le _flag_ `--require` de Node.js qui permet de pré-charger une librairie. Il suffit donc de modifier le `package.json`:
+
+.La configuration de base de TypeORM pour une connexion à SQLite
+[source,jsonc]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js -r dotenv/config",
+    "start:watch": "nodemon",
+    // ...
+  },
+  // ...
+}
+----
+
+Nous allons maintenant créer un service `DatabaseService` qu va s'occuper de connecter TypeORM à notre base de données. Comme nous avons mis en place l'injection de dépendance, ce service sera lui aussi injectable. Voici l'implémentation complète. Pas de panique, je vous détaille la logique ensuite.
+
+.Implémentation du service d'initialisation de TypeORM
+[source,ts]
+----
+// src/services/database.service.ts
+import {inject, injectable} from 'inversify';
+import {Connection, createConnection, ObjectType} from 'typeorm';
+import {TYPES} from '../core/types.core';
+import {Logger} from './logger.service';
+
+@injectable()
+export class DatabaseService {
+  private static connection: Connection;
+
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  public async getConnection(): Promise<Connection> {
+    if (DatabaseService.connection instanceof Connection) {
+      return DatabaseService.connection;
+    }
+
+    try {
+      DatabaseService.connection = await createConnection();
+      this.logger.log('INFO', `Connection established`);
+    } catch (e) {
+      this.logger.log('ERROR', 'Cannot establish database connection', e);
+      process.exit(1);
+    }
+
+    return DatabaseService.connection;
+  }
+
+  public async getRepository<T>(repository: ObjectType<T>): Promise<T> {
+    const connection = await this.getConnection();
+    return await connection.getCustomRepository<T>(repository);
+  }
+}
+----
+
+Cette classe possède deux méthodes :
+
+- `getConnection` : cette méthode va initialiser une nouvelle connection à la base de données. Celle-ci va appeler la méthode `createConnection` qui va chercher https://typeorm.io/#/using-ormconfig[un fichier de ormconfig] (dans notre cas les variables d'environnement chargée par `dotenv`) et établir une connection. Une fois la connection effectuée, elle est stoquée dans une propriété statique qui sera retournée directement la prochaine fois
+- `getRepository` : cette méthode va nous permettre de manipuler nos modèles via les repository. Nous en parlerons en détails plus loin
+
+NOTE: C'est une bonne pratique de cacher la logique de la librairie par nos propres classe. Cela nous permettrai de moi dépendre de la librairie et de pouvoir migrer plus facilement si un jours nous souhaiterions changer.
+
+Maintenant que notre service est créé, il faut l'ajouter à notre container :
+
+.Ajout du `Symbol` lié au service `DatabaseService`
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  DatabaseService: Symbol.for('DatabaseService'),
+};
+----
+
+.Enregistrement du service `DatabaseService` dans le container Inversify
+[source,ts]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
+import {DatabaseService} from '../services/database.service';
+// ...
+export const container = new Container();
+// ...
+container.bind(TYPES.DatabaseService).to(DatabaseService);
+----
+
+Et voilà.
+
+Nous pouvons maintenant créer notre premier modèle `User`. En utilisant le _patern Data Mapper_ il va falloir créer deux classe :
+
+- l'_entity_ : elle va définir les attributs des champs à sauvegarder dans la base de donnée. Dans notre cas, je vais simplement créer deux attributs: `email` et `password` (le mot de passe sera chiffrée plus tards).
+- le _repository_ : elle va ajouter certaines logiques pour sauvegarder nos entités.
+
+Afin de simplifier l'exemple, je vais mettre ces deux classes dans le même fichier mais vous pouvez très bien les séparer :
+
+.Première implémentation de la classe `User`
+[source,ts]
+----
+// src/entities/user.entity.ts
+import {
+  Column,
+  Entity,
+  EntityRepository,
+  PrimaryGeneratedColumn,
+  Repository,
+} from 'typeorm';
+
+@Entity()
+export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({unique: true})
+  email: string;
+
+  @Column()
+  password: string;
+}
+
+@EntityRepository(User)
+export class UserRepository extends Repository<User> {}
+----
+
+Et voilà. Le résultat est vraiment très simple gràce aux décorateurs `@columns` proposées par TypeORM. Ceux-ci peuvent aussi définir le type d'information a stocker (Tex te, date, etc..). L'implémentation de ce modèle est suffisante pour le moment.
+
+Pour l'instant notre travail n'est pas très visible mais tenez bon car vous allez voir le résultat dans la prochaine section.
+
+Nous pouvons commiter les changements effectuées jusqu'à maintenant:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Setup TypeORM"
+----
+
+== Création du contrôleur des utilisateurs
+
+Il est maintenant temps d'entrer dans la partie concrète et de créer le contrôleur qui va gérer les utiliseurs. Ce contrôleur va respecter les normes REST et proposer les actions CRUD classiques. C'est à dire _**C**reate_, _**R**ead_, _**U**pdate_ et _**D**elete_.
+
+=== Lister les utilisateurs
+
+Nous allons commencer par la méthode `index` qui est la plus simple.
+
+Comme nous l'avons vu plutôt, les contrôleurs peuvent injecter nos services. Nous allons donc injecter le `DatabaseService` afin de pouvoir récupérer le `UserRepository`. Il suffira ensuite d'appeler la méthode `userRepository.find` afin de récupérer la liste de tous les utilisateur (qui est vide pour le moment).
+
+Voici l'implémentation de notre contrôleur:
+
+.Création du `UserController` avec la méthode `index`
+[source,ts]
+----
+// src/controllers/users.controller.ts
+import {Request, Response} from 'express';
+import {inject} from 'inversify';
+import {controller, httpGet} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+
+@controller('/users')
+export class UsersController {
+  public constructor(@inject(TYPES.DatabaseService) private readonly database: DatabaseService) {}
+
+  @httpGet('/')
+  public async index(req: Request, res: Response) {
+    const userRepository = await this.database.getRepository(UserRepository);
+
+    const users = await userRepository.find();
+    return res.json(users);
+  }
+}
+----
+
+
+Et bien sûr, il ne faut pas oublier d'ajouter l'import de ce nouveau contrôleur dans le container:
+
+[source,diff]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
+import "../controllers/home.controller";
++ import "../controllers/users.controller";
+import {DatabaseService} from '../services/database.service';
+import {Logger} from '../services/logger.service';
+// ...
+----
+
+Et voilà. Lancez la commande `npm run start:watch` pour démarrer le serveur si vous l'avez arrêté et testons la fonctionnalité avec `cURL`:
+
+[source,bash]
+----
+$ curl http://localhost:3000/users
+----
+
+Le retour de la commande nous indique un tableau vide: c'est normal car il n'y a pas encore d'utilisateur. En revanche, le terminal du serveur nous indique qu'il s'est passé beaucoup de chose:
+
+....
+query: BEGIN TRANSACTION
+query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" IN ('user')
+query: SELECT * FROM "sqlite_master" WHERE "type" = 'index' AND "tbl_name" IN ('user')
+query: SELECT * FROM "sqlite_master" WHERE "type" = 'table' AND "name" = 'typeorm_metadata'
+query: CREATE TABLE "user" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "email" varchar NOT NULL, "password" varchar NOT NULL)
+query: COMMIT
+2020-11-15T22:09:25.476Z - INFO - Connection established - {}
+query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User"
+....
+
+Il s'agit des logs de TypeORM. Ceux-ci nous indiquent que:
+
+. TypeORM a essayé de voir s'il existait une table nommée `user`
+. TypeORM a crée cette table puisqu'elle n'existait pas
+. la connexion a la base de données été établie
+. La requête SQL pour retrouver tous les utilisateurs a été exécutée
+
+Cela nous indique que tout fonctionne parfaitement ! Mais je vous sent un peu déçu car nous n'avons pas encore d'utilisateur. Passons à la suite !
+
+=== Create
+
+Maintenant que toute notre structure a été mise en place, la suite va aller beaucoup plus vite. Passons directement à l'implémentation et je fous explique le code ensuite:
+
+.Ajout de la méthode `create` à la classe `UserRepository`
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {controller, httpGet, httpPost, requestBody} from 'inversify-express-utils';
+// ...
+
+interface CreateUserBody {
+  email: string;
+  password: string;
+}
+
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpPost('/')
+  public async create(@requestBody() body: CreateUserBody, req: Request, res: Response) {
+    const repository = await this.database.getRepository(UserRepository);
+    const user = new User();
+    user.email = body.email;
+    user.password = body.password;
+    repository.save(user);
+    return res.sendStatus(201);
+  }
+}
+----
+
+Cela fait un peut de code mais pas de panique. `CreateUserBody` est une interface qui définie les paramètres HTTP qui peuvent être reçu. Nous prenons ces paramètres et nous les envoyons directement au `repository`.
+
+Testons que tout cela fonctionne:
+
+.Création d'un utilisateur avec `cURL`
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=test" http://localhost:3000/users
+----
+
+Parfait. On voit que tout fonctionne correctement!
+
+Passons à la suite pour récupérer les information de cet utilisateur.
+
+=== Show
+
+La méthode `show` va s'occuper de retrouver les informations d'un utilisateur. Cette méthode va prendre l'identifiant de l'utilisateur. On va ensuite utiliser le `repository` pour récupérer l'utilisateur.
+
+Voici l'implémentation :
+
+.Ajout de la méthode `create` à la classe `UserRepository`
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpGet('/:userId')
+  public async show(@requestParam('userId') userId: number) {
+    const repository = await this.database.getRepository(UserRepository);
+    return repository.findOneOrFail(userId);
+  }
+}
+----
+
+L'implémentation est vraiment très simple. Il faut simplement retourner un objet et `inversify-express-utils` va s'occuper de convertir l'objet JavaScript en JSON.
+
+Essayons pour voir:
+
+[source,bash]
+----
+$ curl http://localhost:3000/users/1
+{"id":1,"email":"test@test.fr","password":"test"}
+----
+
+Et voilà. Tous fonctionne correctement. Essayons maintenant de modifier cet utilisateur.
+
+=== Update
+
+La méthode `update` va s'occuper de récupérer, modifier et enregistrer l'utilisateur. Comme pour la méthode précédente, TypeORM nous facilite beaucoup la tâche :
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+interface UpdateUserBody {
+  email: string;
+  password: string;
+}
+
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpPut('/:userId')
+  public async update(
+    @requestBody() body: UpdateUserBody,
+    @requestParam('userId') userId: number,
+    req: Request,
+    res: Response
+  ) {
+    const repository = await this.database.getRepository(UserRepository);
+    const user = await repository.findOneOrFail(userId);
+    user.email = body.email ?? user.email;
+    user.password = body.password ?? user.password;
+    await repository.save(user);
+    return res.sendStatus(204);
+  }
+  // ...
+}
+----
+
+Et voilà. Comme tout à l'heure, essayons de voir si cela fonctionne :
+
+[source,bash]
+----
+$ curl -X PUT -d "email=foo@bar.com"  http://localhost:3000/users/1
+----
+
+Parfait ! Vous pouvez même voir, notre utilisateur a été mis à jour et il nous est renvoyé sous format JSON. Vous pouvez même voir la requête SQL que TypeORM a effectué dans les logs du terminal
+
+[source,sql]
+----
+query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: [1]
+query: BEGIN TRANSACTION
+query: UPDATE "user" SET "email" = ? WHERE "id" IN (?) -- PARAMETERS: ["foo@bar.com",1]
+query: COMMIT
+----
+
+Passons maintenant à la dernière méthode du controlleur.
+
+=== Delete
+
+La méthode `delete` est la plus facile. Il suffit de récupérer l'utilisateur et d'appeler la méthode `repository.delete`. Allez c'est parti :
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpDelete('/:userId')
+  public async destroy(@requestParam('userId') userId: number, req: Request, res: Response) {
+    const repository = await this.database.getRepository(UserRepository);
+    const user = await repository.findOneOrFail(userId);
+    await repository.delete(user);
+    return res.sendStatus(204);
+  }
+}
+----
+
+Et voilà. Nous pouvons aussi tester cette méthode :
+
+[source,bash]
+----
+$ curl -X DELETE  http://localhost:3000/users/1
+----
+
+Ici encore, nous pouvons vérifier que l'utilisateur a bien été supprimé en regardant les logs de TypeORM :
+
+[source,sql]
+----
+query: SELECT "User"."id" AS "User_id", "User"."email" AS "User_email", "User"."password" AS "User_password" FROM "user" "User" WHERE "User"."id" IN (?) -- PARAMETERS: ["1"]
+query: DELETE FROM "user" WHERE "id" = ? AND "email" = ? AND "password" = ? -- PARAMETERS: [1,"foo@bar.com","test"]
+----
+
+Et voilà. Maintenant que nous arrivons à la fin de de notre controlleur, nous pouvons commiter tous ces changements:
+
+[source,bash]
+----
+$ git commit -am "Implement CRUD actions on user"
+----
+
+== Validation de nos utilisateurs
+
+Tout semble fonctionner mais il rest une problème: nous ne validons pas les données que nous insérons en base. Ainsi, il est possible de créer un utilisateur avec un email faux :
+
+....
+$ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
+....
+
+Encore une fois, nous allons avoir recours a une librairie toute faite: `class-validator`. Cette librairie va nous offrir https://github.com/typestack/class-validator/#table-of-contents[une tonne de décorateurs] pour vérifier très facilement notre instance `User`.
+
+Installons la avec NPM :
+
+....
+$ npm install class-validator --save
+....
+
+Et il suffit ensuite d'ajouter les décorateurs `@IsEmail` et `@IsDefined` comme ceci :
+
+[source,diff]
+----
+// src/entities/user.entity.ts
++ import {IsDefined, IsEmail, validateOrReject} from 'class-validator';
+- import {/* ... */} from 'typeorm';
++ import {BeforeInsert, BeforeUpdate, /* ... */} from 'typeorm';
+
+@Entity()
+export class User {
+  // ...
++  @IsDefined()
++  @IsEmail()
+  @Column()
+  email: string;
+
++  @IsDefined()
+  @Column()
+  password: string;
+
++  @BeforeInsert()
++  @BeforeUpdate()
++  async validate() {
++    await validateOrReject(this);
++  }
+}
+// ...
+----
+
+Il n'a pas fallu beaucoup de code a ajouter. La partie la plus intéressante est la méthode `validate`. Elle possède deux décorateurs `BeforeInsert` et `BeforeUpdate` qui vont permettre d'appeler automatiquement la méthode `validate` lorsqu'on utilise la méthode `save` d'un repository. C'est très pratique et il n'y a rien a faire. Essayons maintenant de créer le même utilisateur avec l'email erroné :
+
+[source,bash]
+----
+$ curl -X POST -d "whatever" -d "password=test" http://localhost:3000/users
+...
+<pre>An instance of User has failed the validation:<br> - property email has failed the following constraints: isDefined, isEmail <br></pre>
+...
+----
+
+On voit que c'est beaucoup mieux. Cependant nous souhaiterions envoyer une erreur formatée en JSON avec le code d'erreur correspondant à la norme REST. Modifions donc le contrôleur :
+
+.Ajout de la validation des utilisateur dans le `UserController`
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpPost("/")
+  public async create(/* ... */): Promise<User | Response> {
+    // ...
+    const errors = await validate(user);
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
+
+    return repository.save(user);
+  }
+
+  @httpPut("/:id")
+  public async update(/* ... */): Promise<User | Response> {
+    // ...
+    const errors = await validate(user);
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
+    return repository.save(user);
+  }
+  // ...
+}
+----
+
+Essayons maintenant :
+
+[source,bash]
+----
+$ curl -X POST -d "test@test.fr" -d "password=test"  http://localhost:3000/users
+{"errors":[{"target":{"password":"test"},"property":"email","children":[],"constraints":{"isDefined":"email should not be null or undefined","isEmail":"email must be an email"}}]}
+----
+
+Le résultat est vraiment complet et permettra a un utilisateur de l'API d'interpréter rapidement l'erreur.
+
+Commitons ces changements:
+
+[source,bash]
+----
+$ git commit -am "Validate user"
+----
+
+== Factorisation
+
+Maintenant que nous avons un code qui fonctionne, il est temps de faire une passe pour *factoriser tout ça*.
+
+Pendant la mise en place, vous avez sans doute remarqué que la méthode `show`, `update` et `destroy` possédait un logique commune: elles récupèrent toute l'utilisateur.
+
+Pour factoriser ce code il y aurait deux solutions :
+
+. déplacer le bout de code dans un méthode privée et l'appeler
+. créer un *Middleware* qui va être exécuté avant le contrôleur
+
+J'ai choisi la deuxième option car elle permet de réduire le code et la responsabilité du contrôleur. De plus, avec `inversify-express-utils` c'est très facile. Laissez moi vous montrer :
+
+[source,typescript]
+----
+import {NextFunction, Request, Response} from 'express';
+import {inject, injectable} from 'inversify';
+import {BaseMiddleware} from 'inversify-express-utils';
+import {TYPES} from '../core/types.core';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+
+@injectable()
+export class FetchUserMiddleware extends BaseMiddleware {
+  constructor(@inject(TYPES.DatabaseService) private readonly database: DatabaseService) {
+    super();
+  }
+
+  public async handler(
+    req: Request & { user: User },
+    res: Response,
+    next: NextFunction
+  ): Promise<void | Response> {
+    const userId = req.query.userId ?? req.params.userId;
+    const repository = await this.database.getRepository(UserRepository);
+    req.user = await repository.findOne(Number(userId));
+
+    if (!req.user) {
+      return res.status(404).send("User not found");
+    }
+
+    next();
+  }
+}
+----
+
+Voici quelques explications sur ce code :
+
+. `inversify-express-utils` nous donne accès a une classe abstraite `BaseMiddleware`. Nous devons aussi ajouter le décorateur `@injectable` pour l'utiliser plus tard dans notre contrôleur
+. un middleware est une simple méthode `handle` qui prend en paramètre :
++
+`req`::
+  la requête envoyée par l'utilisateur
+`res`::
+  la réponse HTTP à renvoyer.
+`next`::
+  un callback a appeler une fois que notre traitement est finit
+. la méthode `handle` s'occupe de récupérer l'utilisateur et de l'ajouter à l'objet `req` pour qu'il soit utilisé plus tard
+. si l'utilisateur n'existe pas, nous utilisons `res` pour renvoyer directement une réponse 404 sans même passer par l'utilisateur
+
+Vu que nous avons défini un nouvel injectable, il faut l'ajouter à notre container :
+
+[source,diff]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  Logger: Symbol.for("Logger"),
+  DatabaseService: Symbol.for("DatabaseService"),
++   // Middlewares
++   FetchUserMiddleware: Symbol.for("FetchUserMiddleware"),
+};
+----
+
+[source,diff]
+----
+// src/core/container.core.ts
+// ...
++ import {FetchUserMiddleware} from '../middlewares/fetchUser.middleware';
+
+export const container = new Container();
+// services
+container.bind(TYPES.Logger).to(Logger);
+container.bind(TYPES.DatabaseService).to(DatabaseService);
++ // middlewares
++ container.bind(TYPES.FetchUserMiddleware).to(FetchUserMiddleware);
+----
+
+Désormais nous pouvons utiliser ce middleware dans notre contrôleur en ajoutant `TYPE.FetchUserMiddleware` au décorateur. Voici donc la modification :
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpGet('/:userId', TYPES.FetchUserMiddleware)
+  public async show(/* ... */) {
+    return req.user;
+  }
+
+  @httpPut('/:userId', TYPES.FetchUserMiddleware)
+  public async update(/* ... */) {
+    // ...
+    req.user.email = body.email ?? req.user.email;
+    req.user.password = body.password ?? req.user.password;
+    // ...
+  }
+
+  @httpDelete('/:userId', TYPES.FetchUserMiddleware)
+  public async destroy(/* ... */) {
+    // ...
+    await repository.delete(req.user);
+    // ...
+  }
+}
+----
+
+Pas mal non ? Commitons les modifications avant d'aller plus loin :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Factorize user controller with middleware"
+----
+
+== Hashage du mot de passe
+
+=== La théorie
+
+Nous allons utiliser la librairie de base de Node.js : https://nodejs.org/api/crypto.html[Crypto]. Voici un exemple d'une méthode pour hasher le mot de pass:
+
+[source,ts]
+----
+import {createHash} from 'crypto';
+
+function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex");
+}
+
+console.log(hashPassword("$uper_u$er_p@ssw0rd"));
+// => 51e649c92c8edfbbd8e1c17032...
+----
+
+Et voilà! Pour savoir si le mot de passe correspond il suffit de vérifier si le hash correspond au précédent :
+
+[source,ts]
+----
+import {createHash} from 'crypto';
+
+function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex");
+}
+
+function isPasswordMatch(hash: string, password: string): boolean {
+  return hash === hashPassword(password);
+}
+
+const hash = hashPassword("$uper_u$er_p@ssw0rd");// => 51e649c92c8edfbbd8e1c17032...
+
+isPasswordMatch(hash, "$uper_u$er_p@ssw0rd");// => true
+isPasswordMatch(hash, "wrong password");// => false
+----
+
+Impeccable. Il y a néanmoins un petit problème avec ce type de méthode.
+
+Si vos mots de passe fuite, il sera assez facile à retrouver le mot de passe correspondant en construisant un *bibliothèque de hash*. Concrètement, le malveillant utiliserait les mots de passe courant, les hasherai un par avec le même algorithme et les comparerait aux notre. Pour corriger cela, il faut utiliser un sel de hashage.
+
+Le sel de hachage consiste a rajouter un texte définis à chaque mot de passe. Voici la modification :
+
+[source,ts]
+----
+import {createHash} from 'crypto';
+
+const salt = "my private salt";
+
+function hashPassword(password: string, salt: string): string {
+  return createHash("sha256").update(`${password}_${salt}`).digest("hex");
+}
+
+function isPasswordMatch(hash: string, password: string): boolean {
+  return hash === hashPassword(password, salt);
+}
+
+const hash = hashPassword("$uper_u$er_p@ssw0rd", salt);// => 3fdd2b9c934cd34c3150a72fb4c98...
+
+isPasswordMatch(hash, "$uper_u$er_p@ssw0rd");// => true
+isPasswordMatch(hash, "wrong password");// => false
+----
+
+Et voilà ! Le fonctionnement est le même mais notre application est plus sécurisée. Si quelqu'un accedait à notre base de données, il faudrait qu'il ait en possession le *sel de hachage* pour retrouver les mots de passe correspondant.
+
+=== L'implémentation
+
+Maintenant que nous avons vu la théorie, passons à la pratique. Nous allons utiliser les mêmes méthodes dans un fichier `password.utils.ts`. C'est parti:
+
+[source,ts]
+----
+// src/utils/password.utils.ts
+import {createHash} from 'crypto';
+
+const salt = "my private salt";
+
+export function hashPassword(password: string, salt: string): string {
+  return createHash("sha256").update(`${password}_${salt}`).digest("hex");
+}
+
+export function isPasswordMatch(hash: string, password: string): boolean {
+  return hash === hashPassword(password, salt);
+}
+----
+
+Nous allons maintenant utiliser la méthode `hashPassword` dans l'entité `User`. Avec TypeORM c'est très facile en utilisant les hooks comme nous l'avons fait avec la validation.
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+import {hashPassword} from '../utils/password.utils';
+
+@Entity()
+export class User {
+  // ...
+  @IsDefined()
+  @Column()
+  hashedPassword: string;
+
+  set password(password) {
+    if (password) {
+      this.hashedPassword = hashPassword(password);
+    }
+  }  // ...
+}
+// ...
+----
+
+Quelques explications s'imposent :
+
+* nous avons crée un attribut `hashedPassword` qui contient le mot de passe de l'utilisateur hashé. Cette valeur sera sauvegardée en base car nous avons ajouté le décorateur `@column`. Nous en aurons besoin plus tard pour savoir si le mot de passe fournis par l'utilisateur correspond a celui qu'il avait définit
+* l'attribut `password` devient un *setter*. C'est comme un attribut virtuel qui va être appelé lors de l'assignation. Ainsi en faisant `user.password = 'toto'`, cette méthode sera appelé. C'est parfait car nous ne voulons plus le stocker le mot de passe au cas ou notre base de données fuite.
+
+Maintenant essayons de créer un utilisateur via l'API:
+
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.fr" -d "password=test"  http://localhost:3000/users
+{"email":"test@test.fr","password":"test","hashedPassword":"8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b","id":1}
+----
+
+Tout semble parfaitement fonctionner car on voit que l'utilisateur possède bien un mot de passe hashé. Si on change le mot de passe, le hash change correctement :
+
+[source,bash]
+----
+$ curl -X PUT   -d "password=helloWorld"  http://localhost:3000/users/4
+{"id":4,"email":"test@test.fr","hashedPassword":"bdbe865951e5cd026bb82a299e3e1effb1e95ce8c8afe6814cecf8fa1e895d1f"}
+----
+
+Tout marche parfaitement bien. Faisons un commit avant d'aller plus loin.
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Hash user password"
+----
+
+=== Mise en place d'un test unitaire
+
+Nous avons un code qui fonctionne et c'est cool. Si nous pouvons nous assurer qu'il fonctionne comme cela à chaque évolution c'est encore mieux. C'est donc ici qu'interviennent les *tests unitaires*.
+
+Le rôle du test unitaire est de s'assurer que notre méthode fonctionne toujours de la même façon que nous l'avons décidé. Nous allons donc ici mettre en place un test simpliste pour s'assurer que tout fonctionne bien.
+
+Il existe plusieurs librairie de tests en JavaScript. J'ai choisi `Mocha` car c'est une des librairie les plus populaire et elle se met très facilement en place. Nous installons aussi `ts-mocha` qui va transpiler le TypeScript à la volée :
+
+[source,bash]
+----
+$ npm install mocha ts-mocha @types/mocha --save-dev
+----
+
+Il faut aussi modifier un peut notre `tsconfig.json` pour ajouter les déclaration de de Mocha et spécifier à Typescript de ne pas compiler ces fichier :
+
+[source,diff]
+----
+{
+  "compilerOptions": {
+    // ..
+    "types": [
+      "node",
++      "mocha"
+    ],
+    // ...
+  },
++   "exclude": ["./**/*.spec.ts"]
+}
+----
+
+Nous voici prêt à créer notre premier test :
+
+[source,ts]
+----
+// src/entities/user.entity.spec.ts
+import assert from 'assert';
+import {hashPassword} from '../utils/password.utils';
+import {User} from './user.entity';
+
+describe("User", () => {
+  it("should hash password", () => {
+    const user = new User();
+    user.password = "toto";
+    const expected = hashPassword("toto");
+    assert.strictEqual(user.hashedPassword, expected);
+  });
+});
+----
+
+Comme je vous le disait, c'est un test vraiment très simple. Ajoutons maintenant la commande qui va nous permettre de lancer ce test dans le fichier `package.json` :
+
+[source,diff]
+----
+{
+  // ...
+  "scripts": {
+    "start": "tsc && node dist/main.js",
+    "start:watch": "nodemon",
++     "test": "DOTENV_CONFIG_PATH=.test.env ts-mocha -r reflect-metadata -r dotenv/config src/**/*.spec.ts",
+    "build": "tsc"
+  },
+  // ...
+}
+----
+
+Quelques explications sur cette commande:
+
+* `-r reflect-metadata` charge la librairie `reflect-metadata` et nous évite de l'importer manuellement
+* `-r dotenv/config` charge la librairie `dotenv` pour ainsi avoir les variables d'environnement de TypeORM
+* `DOTENV_CONFIG_PATH` va charger un fichier `.env` particulier que nous allons créer juste après
+
+Lorsque nous testons notre application, nous ne voulons pas polluer notre base de données avec des données que nous créons pendant les tests. C'est donc une bonne pratique de créer une base de donnée dédiée. Dans notre cas, nous allons utiliser une base SQLite _in memory_. C'est a dire qu'elle n'est pas stockée sur le disque dur mais directement dans la mémoire vive. Voici donc le fichier `.test.env`:
+
+[source,env]
+----
+TYPEORM_CONNECTION=sqlite
+TYPEORM_DATABASE=:memory:
+TYPEORM_LOGGING=true
+TYPEORM_SYNCHRONIZE=true
+TYPEORM_ENTITIES=src/entities/*.entity.ts
+----
+
+NOTE: La directive `TYPEORM_ENTITIES` pointe aussi les fichier Typescript car `ts-mocha` transpile et execute directement ces fichiers.
+
+Et voilà. Nous pouvons maintenant exécuter ce test :
+
+[source,bash]
+----
+$ npm test
+
+  User
+    ✓ should hash password
+
+
+  1 passing (5ms)
+----
+
+Et tant qu'à faire, nous pouvons aussi ajouter un autre test unitaire sur la méthode de comparaison du mot de passe `isPasswordMatch` :
+
+[source,ts]
+----
+// src/utils/password.utils.spec.ts
+import assert from 'assert';
+import {hashPassword, isPasswordMatch} from './password.utils';
+
+describe("isPasswordMatch", () => {
+  const hash = hashPassword("good");
+  it("should match", () => {
+    assert.strictEqual(isPasswordMatch(hash, "good"), true);
+  });
+  it("should not match", () => {
+    assert.strictEqual(isPasswordMatch(hash, "bad"), false);
+  });
+});
+----
+
+Encore une fois, ce genre de test peut vous sembler simpliste mais ils sont très rapide et permettent d'avoir une sécurité supplémentaire. Lançons les tests :
+
+[source,bash]
+----
+$ npm test
+...
+  User
+    ✓ should hash password
+
+  isPasswordMatch
+    ✓ should match
+    ✓ should not match
+
+
+  3 passing (6ms)
+----
+
+Maintenant que vous êtes échauffé, commitons et passons à la suite :
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Add unit test about password hash"
+----
+
+== Ajout des tests fonctionnels
+
+Maintenant que nous avons mis en place des tests unitaires, il est temps de mettre en place les *tests fonctionnels*. Ce type de test va  tester des fonctionnalités plutôt que des méthodes.
+
+Une bonne pratique que j'ai appris en développant avec le _framework_ Ruby on Rails est de tester le comportement des contrôleurs. C'est très facile car il suffit d'appeler un _endpoint_ avec des paramètres et de vérifier le résultat. Ainsi par exemple, si j'envoie une requête de Type `GET` sur la route `/users` je dois m'attendre à recevoir une liste d'utilisateur. La librairie https://www.npmjs.com/package/supertest[supertest] nous permet de faire cela sans même démarrer le serveur.
+
+Installons donc cette librairie:
+
+[source,bash]
+----
+$ npm install supertest @types/supertest --save-dev
+----
+
+Maintenant créons notre agent qui sera utilisé dans tous nos tests:
+
+[source,ts]
+----
+// src/tests/supertest.utils.ts
+import supertest, { SuperTest, Test} from 'supertest';
+import {server} from '../core/server';
+
+export const agent: SuperTest<Test> = supertest(server.build());
+----
+
+Et maintenant commençons pas créer notre premier test pour la méthode `index` par exemple:
+
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {UserRepository} from '../entities/user.entity';
+import {agent} from '../tests/supertest.utils';
+
+describe("UsersController", () => {
+  let userRepository: UserRepository;
+
+  describe("index", () => {
+    it("should respond 200", (done) => {
+      agent.get("/users").expect(200, done);
+    });
+  });
+});
+----
+
+Le test est vraiment très simple et la syntaxe de `supertest` rend le test très lisible. Ce test veut dire "envoie une requête HTTP de type `Get` et attends toi à recevoir une réponse de type `200`". Essayons de lancer les tests
+
+[source,sh]
+----
+$ npm test
+...
+  UsersController
+    index
+      ✓ should respond 200
+...
+----
+
+NOTE: les requêtes SQL de TypeORM sont peut être loggé chez vous car nous avons laissé la directive `TYPEORM_LOGGING=true`. Vous pouvez la passer à `false` pour ne plus les voir.
+
+Maintenant voici le même tests pour `create`. Celui-ci est différent car il envoie des paramètres HTTP.
+
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  let userRepository: UserRepository;
+  // ..
+  describe("create", () => {
+    it("should create user", (done) => {
+      const email = `${new Date().getTime()}@test.io`;
+      agent.post("/users").send({ email, password: "toto" }).expect(201, done);
+    });
+
+    it("should not create user with missing email", (done) => {
+      const email = `${new Date().getTime()}@test.io`;
+      agent.post("/users").send({ email }).expect(400, done);
+    });
+  });
+});
+----
+
+NOTE: `new Date().getTime()` renvoie un `Number` du nombre de millisecondes écoulées depuis le 01/01/1970. Je l'utilise afin d'avoir un nombre unique. Nous verrons plus loins comment améliorer cela.
+
+Ici nous testons deux choses:
+
+1. si l'on envoie les bonnes informations, on doit avoir un retour de type `200`
+2. si l'on ne spécifie pas de mot de passe, on doit avoir un retour de type `400`
+
+Ce test est très simple et vous pouvez en rajouter d'autres comme _"should not create user with invalid email"_ par exemple. Ces tests sont faciles à mettre en place et *valident un comportement global*.
+
+Vous pouvez maintenant commiter les changements:
+
+[source,sh]
+----
+$ git add && git commit -m "Add functional tests"
+----
+
+== Conclusion
+
+Oh vous êtes là! Bien joué! Je sais que c’était probablement le chapitre le plus long mais n’abandonnez pas!
+
+Si vous n'avez pas l'habitude d'utiliser des tests, nous verrons dans le chapitre comment les utiliser pour définir à l'avance le comportement que nous souhaitons avant même de coder les fonctionnalité. Nous mettrons donc en place les tests pour les méthodes `show`, `update` et `destroy` qui auront besoin d'une authentification. En d'autres termes, nous commencerons à faire du développement dirigé par les tests _Test Driven Development_. Il s'agit très certainement de la partie la plus importante du livre!

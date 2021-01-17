@@ -1,0 +1,22 @@
+[#chapter00-before]
+= Foreword
+
+"REST-API.ts" is an adaptation of my previous book https://leanpub.com/apionrails6[API on Rails] in which I built an API with the Ruby on Rails framework. This book is one of my nice Open-Source experience since the book is very active and has https://github.com/madeindjs/api_on_rails/graphs/contributors[has several contributors] (which I thank again here). I also had much positive feedback. So I decided to retry the experience with different technologies than Ruby on Rails, which I appreciate a lot.
+
+So I hope this book will be alive and evolving following the best practices of the moment. I also want it to be an entry point for beginners, as other resources were for me when I started developing.
+
+So this book is naturally Open-Source and freely available https://github.com/madeindjs/rest-api.ts[on Github]. You will find the PDF, EPUB versions, and also the sources in https://asciidoctor.org[Asciidoctor] format. A paid version is available on https://leanpub.com/rest-api-ts[leanpub] if you want to contribute to the project. Of course, this is not the only way to do it. You can also propose improvements by https://github.com/madeindjs/rest-api.ts/fork[forking] the project, talk about this book around you or thank me by mail mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr].
+
+== About the original author
+
+My name is https://rsseau.fr[Alexandre Rousseau], and I am a passionate developer. I like to share my experience through https://rsseau.fr/blog/[my blog] and some books like https://leanpub.com/apionrails6[API on Rails] or even this one.
+
+I am currently a partner at https://isignif.fr/[iSignif], where I build and maintain a SAAS-like product using https://rubyonrails.org[Ruby on Rails]. I also contribute to the Ruby community by producing and now some gems that you can see on https://rubygems.org/profiles/madeindjs[my Rubygem profile]. Most of my projects are on GitHub, so don't hesitate to visit https://github.com/madeindjs[follow me].
+
+== Copyrights and license
+
+"REST-API.ts" from https://rsseau.fr[Alexandre Rousseau] is made available under the terms of the license http://creativecommons.org/licenses/by-sa/4.0/[Creative Commons Attribution - Share Alike 4.0 International].
+
+== Thank you
+
+Many thanks to https://github.com/madeindjs/rest-api.ts/graphs/contributors[all API on Rails contributors], to all those who supported the project at https://leanpub.com/rest-api-ts[buying a paid version of this book] and to https://github.com/madeindjs/rest-api.ts/graphs/contributors[all API on Rails contributors].

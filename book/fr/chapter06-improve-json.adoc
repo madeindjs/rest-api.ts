@@ -1,0 +1,1062 @@
+[#chapter06-improve-json]
+= Modélisation du JSON
+
+Dans le chapitre précédent, nous avons ajouté les produits à l’application et construit toutes les routes nécessaires. Nous avons également associé un produit à un utilisateur et restreint certaines des actions de `ProductsController`.
+
+Maintenant, vous devriez être satisfaits de tout ce travail. Mais nous avons encore du pain sur la planche. Actuellement, nous avons une sortie JSON qui n’est pas parfaite. La sortie JSON ressemble à celle-ci:
+
+[source,jsonc]
+----
+[
+  {
+    "id": 1,
+    "title": "Tag Case",
+    "price": 98.77,
+    "published": false,
+    "userId": 1,
+    "createdAt": "2018-12-20T12:47:26.686Z",
+    "updatedAt": "2018-12-20T12:47:26.686Z"
+  },
+]
+----
+
+Or nous voulons une sortie qui ne contienne pas les champs `userId`, `createdAt` et `updatedAt`.
+
+De plus, une partie importante et difficile lors de la création de votre API est de décider le format de sortie. Heureusement, certaines organisations ont déjà fait face à ce genre de problème et elles ont ainsi établi certaines conventions que vous allez découvrir dans ce chapitre.
+
+Vous pouvez clôner le projet jusqu’à ce point avec:
+
+[source,bash]
+----
+$ git checkout tags/checkpoint_chapter06
+----
+
+Commençons une nouvelle branche pour ce chapitre:
+
+[source,bash]
+----
+$ git checkout -b chapter06
+----
+
+== Présentation de https://jsonapi.org/[JSON:API]
+
+Comme je le disais plus tôt, une partie importante et difficile lors de la création de votre API est de décider le format de sortie. Heureusement, certaines conventions existent déjà.
+
+L'une d'elles, certainement la plus utilisée est https://jsonapi.org/[JSON:API]. La https://jsonapi.org/format/#document-structure[documentation de JSON:API] nous donne quelques règles à suivre concernant le formatage du document JSON.
+
+Ainsi, notre document *doit* contenir ces clefs:
+
+* `data` qui doit contenir les données que nous renvoyons
+* `errors` qui doit contenir un tableau des erreurs qui sont survenues.
+* `meta` qui contient un https://jsonapi.org/format/#document-meta[objet meta]
+
+Le contenu de la clé `data` est lui aussi assez strict:
+
+* il doit posséder une clé `type`qui décrit le type du modèle JSON (si c’est un article, un utilisateur, etc..)
+* les propriétés de l’objet doivent être placées dans une clé `attributes` et les _undescore_ (`_`) sont remplacés par des tirets (`-`)
+* les liaisons de l’objets doivent être placées dans une clé `relationships`
+
+Dans ce chapitre, nous allons personnaliser la sortie JSON en utilisant la librairie https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer] qui respecte toutes les normes https://jsonapi.org/[JSON:API].
+
+Installons donc cette dépendance:
+
+[source,bash]
+----
+$ npm install jsonapi-serializer
+$ npm install @types/jsonapi-serializer --save-dev
+----
+
+Vous devriez être prêts à continuer avec ce tutoriel.
+
+
+== Sérialiser l’utilisateur
+
+`jsonapi-serializer` utilise des *sérialiseurs*. Les sérialiseurs représentent des méthodes qui seront responsables de convertir un objet en un autre objet respectant la norme JSON:API.
+
+Nous devons d’abord ajouter un fichier `serializers.utils.ts` qui contiendra tous les sérialseurs. Et dans la foulée, je commence directement par l'implémentation de `userSerializer`:
+
+.Création du sérialseur `userSerializer`
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+import {Serializer} from 'jsonapi-serializer';
+
+export const userSerializer = new Serializer("users", {
+  attributes: ["email"],
+  dataLinks: {
+    self: (user) => `/users/${user.id}`,
+  },
+});
+----
+
+Ce _serializer_ va nous permettre de convertir notre objet `User` en JSON qui implémente correctement la norme JSON:API. Nous avons spécifié l'attribut `email` afin qu'il soit présent dans le tableau `data`. En listant les champs que nous voulons voir apparaître, cette librairie nous corrige le problème de l'attribut `hashedPassword` qui était envoyé par notre API.
+
+
+Il ne nous reste plus qu'à utiliser cette instance dans notre contrôleur:
+
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {userSerializer} from '../utils/serializers.utils';
+
+@controller('/users')
+export class UsersController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return userSerializer.serialize(users);
+  }
+  // ...
+  @httpGet('/:userId', TYPES.FetchLoggedUserMiddleware)
+  public async show(/* ... */) {
+    // ...
+    return userSerializer.serialize(req.user);
+  }
+  // ...
+}
+----
+
+Comme vous pouvez le constater, cela ne change pas grand chose! Nous important simplement notre sérialiseur et nous utilisons sa méthode `serialize`.
+
+Essayons tout cela avec `cURL`:
+
+[source,sh]
+----
+$ curl http://localhost:3000/users
+----
+.Sortie JSON des utilisateurs
+[source,jsonc]
+----
+{
+  "data": [
+    {
+      "type": "users",
+      "id": "1",
+      "attributes": {
+        "email": "test@test.io"
+      }
+    }
+  ]
+}
+----
+
+_Commitons_ ces changements et continuons d’avancer:
+
+[source,bash]
+----
+$ git add .
+$ git commit -am "Adds user serializer for customizing the json output"
+----
+
+== Sérialiser les produits
+
+Maintenant que nous comprenons comment fonctionne la gemme de sérialisation, il est temps de personnaliser la sortie des produits. La première étape est identique à celle pour l’utilisateur, nous avons besoin d’un sérialiseur de produit, alors faisons-le:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const productsSerializer = new Serializer("products", {
+  attributes: ["title", "price", "published", "user"],
+});
+----
+
+Et voilà. Ce n’est pas plus compliqué que cela. Modifions un petit peu notre contrôleur.
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {productsSerializer} from '../utils/serializers.utils';
+
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return productsSerializer.serialize(products);
+  }
+  // ...
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(req: Request & { product: Product }) {
+    return productsSerializer.serialize(req.product);
+  }
+  // ...
+}
+----
+
+Vous pouvez lancer les tests pour vérifier mais ils devraient encore être bons. _Commitons_ ces petits changements:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Adds product serializer for custom json output"
+----
+
+=== Sérialiser les associations
+
+Nous avons travaillé avec des sérialiseurs et vous remarquerez peut-être que c’est très simple. Dans certains cas, la décision difficile est de savoir comment nommer vos routes ou comment structurer la sortie JSON afin que votre solution soit pérenne. Lorsque vous travaillez avec des associations entre les modèles sur une API, il existe de nombreuses approches que vous pouvez prendre.
+
+Nous n'avons pas à nous soucier de ce problème dans notre cas, la norme JSON:API l'a fait pour nous!
+
+Pour résumer, nous avons une association de type `has_many` entre l’utilisateur et le modèle de produit.
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+  // ...
+}
+// ...
+----
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+@Entity()
+export class Product {
+  // ...
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+  // ...
+}
+// ...
+----
+
+C’est une bonne idée d’intégrer les utilisateurs dans les sortie JSON des produits. Cela rendra la sortie plus lourde mais ça évitera au client de l'API d'éxecuter d'autres requêtes pour récupérer les informations des utilisateurs liées aux produits. Cette méthode peut vraiment vous éviter un énorme goulet d'étranglement.
+
+== Théorie de l'injection des relations
+
+Imaginez un scénario où vous allez chercher les produits dans l’API, mais dans ce cas, vous devez afficher une partie des informations de l’utilisateur.
+
+Une solution possible serait d’ajouter l’attribut `user_id` au `product_serializer` pour que nous puissions récupérer l’utilisateur correspondant plus tard. Cela peut sembler être une bonne idée, mais si vous vous souciez de la performance, ou si les transactions de votre base de données ne sont pas assez rapides, vous devriez reconsidérer cette approche. Vous devez comprendre que pour chaque produit que vous récupérez, vous allez devoir récupérer son utilisateur correspondant.
+
+Face à ce problème, il y a plusieurs alternatives possibles.
+
+=== Intégrer dans un attribut meta
+
+Une bonne solution à mon avis est d’intégrer les identifiants des utilisateurs liés aux produits dans un attribut meta, donc nous aurions une sortie JSON comme:
+
+
+[source,jsonc]
+----
+{
+  "meta": { "user_ids": [1,2,3] },
+  "data": [
+
+  ]
+}
+----
+
+Cela peut nécessiter une configuration supplémentaire sur le terminal de l’utilisateur, afin que le client puisse récupérer ses utilisateurs à partir de ces `user_ids`.
+
+=== Incorporer l'objet dans l'attribut
+
+Une autre solution, est d’incorporer l’objet `user` dans l’objet `product`. Ce qui peut rendre la première requête un peu plus lente, mais de cette façon le client n’a pas besoin de faire une autre requête supplémentaire. Un exemple des résultats escomptés est présenté ci-dessous:
+
+[source,jsonc]
+----
+{
+  "data":
+  [
+    {
+        "id": 1,
+        "type": "product",
+        "attributes": {
+          "title": "First product",
+          "price": "25.02",
+          "published": false,
+          "user": {
+            "id": 2,
+            "attributes": {
+              "email": "stephany@lind.co.uk",
+              "created_at": "2014-07-29T03:52:07.432Z",
+              "updated_at": "2014-07-29T03:52:07.432Z",
+              "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+            }
+          }
+        }
+    }
+  ]
+}
+----
+
+Le problème de cette approche est que nous devons dupliquer les objets `User` pour tous les produits qui appartiennent au même utilisateur:
+
+[source,jsonc]
+----
+{
+  "data":
+  [
+    {
+        "id": 1,
+        "type": "product",
+        "attributes": {
+          "title": "First product",
+          // ...
+          "user": {
+            "id": 2,
+            "type": "user",
+            "attributes": {
+              "email": "stephany@lind.co.uk",
+              // ...
+            }
+          }
+        }
+    },
+    {
+        "id": 2,
+        "type": "product",
+        "attributes": {
+          "title": "Second product",
+          // ...
+          "user": {
+            "id": 2,
+            "type": "user",
+            "attributes": {
+              "email": "stephany@lind.co.uk",
+              // ...
+            }
+          }
+        }
+    }
+  ]
+}
+----
+
+=== Incorporer les relation dans `include`
+
+La troisième solution, choisie par la norme JSON:API, est un mélange des deux premières.
+
+Nous allons inclure toutes les relations dans une clé `include` qui contiendra tous les relations des objets précédemment cités. Aussi, chaque objet inclura une clé `relationships` définissant la relation et qu'il faudra retrouver dans la clé `include`.
+
+Un JSON vaut mille mots:
+
+[source,jsonc]
+----
+{
+  "data":
+  [
+    {
+        "id": 1,
+        "type": "product",
+        "attributes": {
+          "title": "First product",
+          "price": "25.02",
+          "published": false
+        },
+        "relationships": {
+          "user": {
+            "id": 1,
+            "type": "user"
+          }
+        }
+    },
+    {
+        "id": 2,
+        "type": "product",
+        "attributes": {
+          "title": "Second product",
+          "price": "25.02",
+          "published": false
+        },
+        "relationships": {
+          "user": {
+            "id": 1,
+            "type": "user"
+          }
+        }
+    }
+  ],
+  "include": [
+    {
+      "id": 2,
+      "type": "user",
+      "attributes": {
+        "email": "stephany@lind.co.uk",
+        "created_at": "2014-07-29T03:52:07.432Z",
+        "updated_at": "2014-07-29T03:52:07.432Z",
+        "auth_token": "Xbnzbf3YkquUrF_1bNkZ"
+      }
+    }
+  ]
+}
+----
+
+Vous voyez la différence? Cette solution réduit drastiquement la taille du JSON et donc la bande passante utilisée.
+
+== Application de l'injection des relations
+
+Nous allons donc incorporer l’objet utilisateur dans le produit. Commençons par ajouter quelques tests.
+
+Nous allons simplement modifier le test `UsersControllers.show` afin de vérifier que nous récupérons:
+
+.Ajout d'un test pour controller l'ajout du `include` dans la sortie JSON
+[source,ts]
+----
+// src/controllers/users.controller.spec.ts
+// ...
+describe("UsersController", () => {
+  // ...
+  let productRepository: ProductRepository;
+
+  before(async () => {
+    // ...
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    const product = await productRepository.save(generateProduct({ user }));
+    user.products = [product];
+    // ...
+  });
+
+  // ...
+
+  describe("show", () => {
+    // ...
+    it("should show my profile", () => {
+      return agent
+        .get(`/users/${user.id}`)
+        .set("Authorization", jwt)
+        .expect(200)
+        .then((response) => {
+          assert.strictEqual(response.body.data.attributes.email, user.email);
+          assert.strictEqual(response.body.included[0].attributes.title, user.products[0].title);
+        });
+    });
+  });
+// ...
+});
+----
+
+Nous vérifions maintenant deux choses sur le JSON qui est retourné:
+
+. il contient le titre du produit
+. les données de l'utilisateur sont incluses dans la clé `include`
+
+Vous pouvez aussi remarquer que j'ai créer et lier un produit à l'utilisateur sauvegardé dans la méthode `beforeEach`.
+
+
+Pour faire passer ce test nous allons commencer par inclure la relation dans le _serializer_:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const userSerializer = new Serializer("users", {
+  attributes: ["email", "products"],
+  included: true,
+  products: {
+    ref: "id",
+    attributes: ["title", "price", "published"],
+    included: true,
+  },
+} as any);
+// ...
+----
+
+NOTE: à l'heure ou j'écris ces lignes, je n'ai pas trouvé d'autres moyens que le `as any` pour contourner l'erreur de _typing_ de TypeScript. Peut être que la librairie sera mse à jour prochainement.
+
+Cet ajout aura pour effet de rajouter une clé `relationship` contenant l’identifiant de l'utilisateur mais aussi ajouter un clé `include` qui va contenir la relation. Voici un exemple:
+
+
+.Exemple de sortie JSON avec un utilisateur possédant un produit
+[source,js]
+----
+{
+  data: {
+    type: 'users',
+    id: '16',
+    attributes: {
+      email: 'ddf1bbe99c3a7ee8@random.io'
+    },
+    relationships: {
+      products: {
+        data: [
+          { type: 'products', id: '15' }
+        ]
+      }
+    }
+  },
+  included: [
+    {
+      type: 'products',
+      id: '15',
+      attributes: {
+        title: 'adc643eaa6bc1748',
+        price: 72.45882186217555,
+        published: false
+      }
+    }
+  ],
+}
+----
+
+L’implémentation est très simple: il suffit d’ajouter une ligne au sérialiseur du produit:
+
+[source,bash]
+----
+$ npm test
+
+  ProductsController
+...
+    show
+      ✓ should show product
+...
+----
+
+Faisons un _commit_ pour fêter ça:
+
+[source,bash]
+----
+$ git commit -am "Add user relationship to product"
+----
+
+=== Récupérer l'utilisateur d'un produit
+
+Vous avez compris le principe? Nous avons inclus les informations de l'utilisateur dans le JSON des produits.
+
+Commençons par le test:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("show", () => {
+    it("should show product", () => {
+      agent
+        .get(`/products/${product.id}`)
+        .expect(200)
+        .then((response) => {
+          assert.strictEqual(response.body.data.attributes.title, product.title);
+          assert.strictEqual(response.body.included[0].attributes.email, product.user.email);
+        });
+    });
+  });
+  // ...
+});
+----
+
+Ensuite le _serializer_:
+
+[source,ts]
+----
+// src/utils/serializers.utils.ts
+// ...
+export const productsSerializer = new Serializer("products", {
+  attributes: ["title", "price", "published", "user"],
+  included: true,
+  user: {
+    ref: "id",
+    included: true,
+    attributes: ["email"],
+  },
+} as any);
+----
+
+Et pour terminer le contrôleur:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index() {
+    // ...
+    return productsSerializer.serialize(products);
+  }
+  // ...
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(/* ... */) {
+    return productsSerializer.serialize(req.product);
+  }
+  // ...
+}
+----
+
+Et voilà. Nous obtenons un JSON de cette forme:
+
+[source,js]
+----
+{
+  data: {
+    type: 'products',
+    id: '2',
+    attributes: {
+      title: 'd358a5c96b94a562',
+      price: 56.85800753546402,
+      published: false
+    },
+    relationships: {
+      user: {
+        data: {
+          type: 'users',
+          id: '3'
+        }
+      }
+    }
+  },
+  included: [
+    {
+      type: 'users',
+      id: '3',
+      attributes: {
+        email: 'ddaf230c3d15a057@random.io'
+      }
+    }
+  ]
+}
+----
+
+C'était vraiment facile. Faisons un _commit_:
+
+[source,bash]
+----
+$ git commit -am "Add user relationship to ProductsController.show"
+----
+
+// -- current
+
+== Rechercher les produits
+
+Dans cette dernière section, nous continuerons à renforcer l’action `Products#index` en mettant en place un mécanisme de recherche très simple pour permettre à n’importe quel client de filtrer les résultats. Cette section est facultative car elle n’aura aucun impact sur les modules de l’application. Mais si vous voulez pratiquer davantage avec le TDD, je vous recommande de compléter cette dernière étape.
+
+Il existe des librairies pour construire des formulaires de recherche avancée extrêmement rapidement. Mais ici, comme le but est d'apprendre et que la recherche que nous allons effectuer est très simple, je pense que nous pouvons construire un moteur de recherche à partir de zéro. Nous devons simplement considérer les critères par lesquels nous allons filtrer les attributs. Accrochez-vous bien à vos sièges, ça va être un voyage difficile.
+
+Nous filtrerons donc les produits selon les critères suivants:
+
+* Par titre
+* Par prix
+* Trier par date de création
+
+Cela peut sembler court et facile, mais croyez-moi, cela vous donnera mal à la tête si vous ne le planifiez pas.
+
+Nous allons donc ajouter une méthode `search` au `ProductRepository` qui prendra en paramètre les filtres que je viens d'énumérer plus haut:
+
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  // need to be implemented
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    // need to be implemented
+  }
+}
+----
+
+Vous voyez un peu comment nous allons nous y prendre? Commençons par le premier filtre.
+
+=== Les produits publiés
+
+Comme depuis le début de ce livre, nous allons commencer par écrire le test qui va tester notre nouvelle méthode. Voici la structure de base de notre test qui doit vous sembler familière:
+
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {ProductRepository} from '../entities/product.entity';
+import {DatabaseService} from '../services/database.service';
+
+describe("ProductRepository", () => {
+  let productRepository: ProductRepository;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  describe("search", () => {
+    // will be implemented
+  });
+});
+----
+
+Ce tests aura besoin de plusieurs produits déja existants en base de données que nous allons créer à la main. Voici donc la structure de notre test:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+import {Product, ProductRepository} from '../entities/product.entity';
+import {generateProduct} from '../tests/faker.utils';
+
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    let tvPlosmo: Product;
+    let computer: Product;
+    let tvCheap: Product;
+    let unpublishedProduct: Product;
+
+    before(async () => {
+      tvPlosmo = await productRepository.save(generateProduct({
+        title: "TV Plosmo Philopp",
+        price: 9999.99,
+        published: true,
+      }));
+      computer = await productRepository.save(generateProduct({
+        title: "Azos Zeenbok",
+        price: 499.99,
+        published: true,
+      }));
+      tvCheap = await productRepository.save(generateProduct({
+        title: "Cheap TV",
+        price: 99.99,
+        published: true,
+      }));
+      unpublishedProduct = await productRepository.save(generateProduct({
+        published: false,
+      }));
+    });
+    // ...
+  });
+});
+----
+
+Comme vous pouvez le voir, nous avons inséré en base 4 produits diverses. Dans notre premier test nous allons appeler notre méthode `ProductReposiroty.search` sans paramètre et nous allons vérifier que aucun produit non publié ne nous est retourné. Voici le test:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should not include unpublished products", async () => {
+      const products = await productRepository.search({}).getMany();
+      assert.ok(products.every((p) => p.published));
+    });
+  });
+});
+----
+
+Et commençons donc par définir notre méthode pour faire passer ce test:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters { }
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    const query = this.createQueryBuilder()
+                      .where("published = TRUE")
+                      .orderBy("updatedAt", "DESC");
+
+    return query;
+  }
+}
+----
+
+Et voilà. Le test devrait passer. Passons à notre premier filtre.j
+
+=== Par titre
+
+Maintenant que la structure de nos tests et de l'implémentation est en place, tout va aller plus vite. Voici le test pour le filtre qui ressemble beaucoup au précédent:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should filter products by title", async () => {
+      const products = await productRepository.search({ title: "tv" }).getMany();
+      assert.ok(products.some((p) => p.id === tvPlosmo.id));
+      assert.ok(products.some((p) => p.id === computer.id) === false);
+    });
+  });
+});
+----
+
+Les tests suivants s'assurent que la méthode va rechercher correctement les produits en fonction de leurs titres. Nous utilisons le terme `tv` en minuscule afin de s'assurer que notre recherche ne sera pas sensible à la casse.
+
+L'implémentation est très simple:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  title?: string;
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    // ...
+    if (filters.title !== undefined) {
+      query.andWhere("lower(title) LIKE :title", { title: `%${filters.title}%` });
+    }
+
+    return query;
+  }
+}
+----
+
+L’implémentation est suffisante pour que nos tests passent:
+
+[source,bash]
+----
+$ npm test
+....
+  ProductRepository
+    search
+      ✓ should not include unpublished products
+      ✓ should filter products by title
+....
+----
+
+=== Par prix
+
+Pour filtrer par prix, les choses peuvent devenir un peu plus délicates. Nous allons séparer la logique de filtrer par prix en deux méthodes différentes: l’une qui va chercher les produits plus grands que le prix reçu et l’autre qui va chercher ceux qui sont sous ce prix. De cette façon, nous garderons une certaine flexibilité et nous pouvons facilement tester les _scope_.
+
+Commençons par construire les tests:
+
+[source,ts]
+----
+// src/entities/product.entity.spec.ts
+// ...
+describe("ProductRepository", () => {
+  // ...
+  describe("search", () => {
+    // ...
+    it("should filter products by priceMax", async () => {
+      const products = await productRepository
+        .search({priceMax: 100})
+        .getMany();
+      assert.ok(products.some((p) => p.id === tvCheap.id));
+      assert.ok(products.some((p) => p.id === tvPlosmo.id) === false);
+    });
+
+    it("should filter products by priceMin", async () => {
+      const products = await productRepository
+        .search({priceMin: 500})
+        .getMany();
+      assert.ok(products.some((p) => p.id === tvPlosmo.id));
+      assert.ok(products.some((p) => p.id === tvCheap.id) === false);
+    });
+  });
+});
+----
+
+L’implémentation est très très simple:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+// ...
+interface ProductSearchFilters {
+  title?: string;
+  priceMin?: number;
+  priceMax?: number;
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {
+  public search(filters: ProductSearchFilters): SelectQueryBuilder<Product> {
+    // ...
+    if (filters.priceMin !== undefined) {
+      query.andWhere("price >= :priceMin", { priceMin: filters.priceMin });
+    }
+
+    if (filters.priceMax !== undefined) {
+      query.andWhere("price <= :priceMax", { priceMax: filters.priceMax });
+    }
+
+    return query.getMany();
+  }
+}
+----
+
+C'est suffisant pour que nos tests passent:
+
+[source,bash]
+----
+$ npm test
+...
+  ProductRepository
+    search
+      ✓ should not include unpublished products
+      ✓ should filter products by title
+      ✓ should filter products by priceMax
+      ✓ should filter products by priceMin
+...
+----
+
+Super. La dernière étape est de l'intégrer à notre contrôleur.
+
+=== Intégration dans le contrôleur
+
+Comme d'habitude, nous allons commencer par les tests. Cela va nous aider à définir l'implémentation de notre _endpoint_.
+
+Comme pour les tests précedents, nous allons créer deux produits spécifiques que nous allons ensuite rechercher via les différents filtres que nous venons d'implémenter. Le test risque donc de vous sembler très familier.
+
+Nous allons définir un nouveau `describe` qui va regrouper nos deux tests. Commençons par le `beforeEach`:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    // ...
+    describe("search", () => {
+      let computer: Product;
+      let tvCheap: Product;
+
+      before(async () => {
+        computer = await productRepository.save(
+          generateProduct({
+            title: "Azos Zeenbok",
+            price: 499.99,
+            published: true,
+          })
+        );
+        tvCheap = await productRepository.save(
+          generateProduct({
+            title: "Cheap TV",
+            price: 99.99,
+            published: true,
+          })
+        );
+      });
+    // ...
+    });
+  });
+  // ...
+});
+----
+
+Maintenant passons aux tests en eux-même:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    // ...
+    describe("search", () => {
+      // ...
+      it("should find cheap TV", () => {
+        const params = new URLSearchParams();
+        params.append("title", "tv");
+        params.append("priceMin", "50");
+        params.append("priceMax", "150");
+
+        return agent
+          .get(`/products?${params.toString()}`)
+          .expect(200)
+          .then((response) => assert.ok(response.body.data.some((row) => row.id === String(tvCheap.id))));
+      });
+
+      it("should find computer", () => {
+        const params = new URLSearchParams();
+        params.append("title", "azos");
+        params.append("priceMax", "500");
+
+        return agent
+          .get(`/products?${params.toString()}`)
+          .expect(200)
+          .then((response) => {
+            assert.ok(
+              response.body.data.some((row) => row.id === String(computer.id)),
+              response.body
+            );
+          });
+      });
+    });
+  });
+  // ...
+});
+----
+
+NOTE: nous construisons les paramètres avec la classe https://developer.mozilla.org/fr/docs/Web/API/URLSearchParams[`URLSearchParams`]. Il suffit ensuite d'utiliser la méthode `toString` qui va construire les paramètres `GET`.
+
+Lorsque nous recevons la réponse, nous vérifions que le produit recherché est présent dans la réponse. Tout simplement.
+
+L'implémentation dans la contrôleur est simplissime. Il suffit d'utiliser notre nouvelle méthode.
+
+[source,ts]
+----
+// src/controllers/products.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpGet("/")
+  public async index(req: Request) {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    const products = await repository.search(req.query).getMany();
+    return productsSerializer.serialize(products);
+  }
+  // ...
+}
+----
+
+Nous pouvons exécuter l’ensemble de la suite de tests, pour nous assurer que l’application est en bonne santé jusqu’ici:
+
+[source,bash]
+----
+$ npm test
+  ProductsController
+    index
+      ✓ should respond 200 (47ms)
+      search
+        ✓ should find cheap TV
+        ✓ should find computer
+...
+  33 passing (786ms)
+----
+
+Super! _Commitons_ ces changements:
+
+[source,bash]
+----
+$ git commit -am "Adds search class method to filter products"
+----
+
+Et comme nous arrivons à la fin de notre chapitre, il est temps d'appliquer toutes nos modifications sur la branche master en faisant un _merge_:
+
+[source,bash]
+----
+$ git checkout master
+$ git merge chapter06
+----
+
+== Conclusion
+
+Jusqu’à présent, et grâce à la librairie https://github.com/SeyZ/jsonapi-serializer/[jsonapi-serializer], c’était facile. Sur les chapitres à venir, nous allons commencer à construire le modèle `Order` qui associera les utilisateurs aux produits.

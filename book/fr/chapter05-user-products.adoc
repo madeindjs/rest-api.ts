@@ -1,0 +1,862 @@
+[#chapter05-user-products]
+= Produits des utilisateurs
+
+Dans le chapitre précédent, nous avons implémenté le mécanisme d’authentification que nous allons utiliser tout au long de l’application.
+
+Pour l’instant nous avons une implémentation très simple du modèle `User` mais le moment de vérité est venu. Nous allons personnaliser la sortie JSON et ajouter une deuxième ressource: les produits de l’utilisateur. Ce sont les éléments que l’utilisateur vendra dans l’application.
+
+Si vous êtes familier avec un ORM, vous savez peut-être déjà de quoi je parle. Mais pour ceux qui ne le savent pas, nous allons associer le modèle `User` au modèle `Product` en utilisant les décorateurs `@ManyToOne` et `@OneToMany` de _TypeORM_.
+
+Dans ce chapitre, nous allons construire le modèle de `Product` à partir de zéro, l’associer à l’utilisateur et créer les entrées nécessaires pour que tout client puisse accéder aux informations.
+
+Vous pouvez cloner le projet jusqu’à ce point:
+
+[source,bash]
+----
+$ git checkout tags/checkpoint_chapter05
+----
+
+Avant de début, et comme d’habitude quand nous commençons de nouvelles fonctionnalités, nous créons une nouvelle branche:
+
+[source,bash]
+----
+$ git checkout -b chapter05
+----
+
+
+== Le modèle du produit
+
+Nous commencerons d’abord par créer un modèle de `Product` puis nous y ajouterons quelques validations et enfin nous l’associerons au modèle `User`. Comme le modèle `User`, le `Product` sera entièrement testé et sera automatiquement supprimé si l’utilisateur est supprimé.
+
+
+=== Les fondements du produit
+
+Le modèle `Product` aura besoin de plusieurs champs: un attribut `price` pour le prix du produit, un booléen `published` pour savoir si le produit est prêt à être vendu ou non, un `title` pour définir un titre de produit sexy, et enfin et surtout un `userId` pour associer ce produit particulier à un utilisateur:
+
+Passons directement à l'implémentation
+
+.Création de l'entité `Product`
+[source,ts]
+----
+// src/entities/product.entity.ts
+import {validateOrReject} from 'class-validator';
+import {BeforeInsert, BeforeUpdate, Column, CreateDateColumn, Entity, EntityRepository, ManyToOne, PrimaryGeneratedColumn, Repository, UpdateDateColumn,} from 'typeorm"; import {User} from "./user.entity';
+
+@Entity()
+export class Product {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: "text" })
+  title: string;
+
+  @Column({ type: "float" })
+  price: number;
+
+  @Column({ type: "boolean" })
+  published: boolean;
+
+  @Index()
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async validate() {
+    await validateOrReject(this);
+  }
+}
+
+@EntityRepository(Product)
+export class ProductRepository extends Repository<Product> {}
+----
+
+Comme vous le voyez cela est très lisible. La seule chose nouvelle ici est l'apparition de la relation `ManyToOne`. Ceci est un décorateur qui va créer une colonne `userId` de type `int`. Il prend trois paramètres:
+
+1. une fonction qui renvoie la classe correspondant à l'association
+2. une fonction qui définie comment est spécifié la liaison dans l'autre sens
+3. un object contenant diverses paramètres
+
+NOTE: J'ai aussi rajouté un décorateur `@Index` pour que cette colonne soit indexée. C’est une bonne pratique pour les clés d’associations car cela optimise les requêtes de la base de données. Ce n’est pas obligatoire, mais je vous le recommande vivement.
+
+Avant de passer à la suite, nous devons aussi définir l'association `OneToMany` dans l'entité `User`
+
+Le fichier de migration devrait ressembler à ceci:
+
+[source,ts]
+----
+// src/entities/user.entity.ts
+// ...
+@Entity()
+export class User {
+  // ...
+  @OneToMany(() => Product, (product) => product.user)
+  products: Product[];
+  // ...
+}
+// ...
+----
+
+Et voilà. Notre association est faite et si vous démarrez le serveur avec les logs des requêtes de TypeORM vous devriez voir la requête SQL qui crée la table:
+
+.Logs du serveur dans le terminal
+[source,sql]
+----
+...
+query: BEGIN TRANSACTION
+...
+query: CREATE TABLE "product" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "title" text NOT NULL, "price" float NOT NULL, "published" boolean NOT NULL, "createdAt" datetime NOT NULL DEFAULT (datetime('now')), "updatedAt" datetime NOT NULL DEFAULT (datetime('now')), 'userId' integer)
+...
+query: CREATE INDEX "IDX_329b8ae12068b23da547d3b479" ON "product" ('userId')
+query: COMMIT
+----
+
+Et voilà. Faisons un _commit_:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Generate product model"
+----
+
+=== Validations des produits
+
+
+Comme nous l’avons vu avec l’utilisateur, les validations sont une partie importante lors de la construction de tout type d’application. Cela nous permet d’empêcher toute donnée indésirable d’être enregistrée dans la base de données. Pour le produit, nous devons nous assurer, par exemple, que le prix est un nombre et qu’il n’est pas négatif.
+
+
+Pour cette partie là, nous n'avons pas besoin de mettre en place des tests car tout est déjà disponible et testé par la librairie https://github.com/typestack/class-validator/[`class-validator`]. Il nous suffit de simplement ajouter les décorateurs correspondants. Voici donc le résultat:
+
+[source,ts]
+----
+// src/entities/product.entity.ts
+import {IsDefined, IsPositive, validateOrReject} from 'class-validator';
+// ...
+@Entity()
+export class Product {
+  // ...
+  @IsDefined()
+  @Column({ type: "text", nullable: false })
+  title: string;
+
+  @IsPositive()
+  @IsDefined()
+  @Column({ type: "float", nullable: false })
+  price: number;
+
+  @Column({ type: "boolean", default: false })
+  published: boolean;
+
+  @Index()
+  @ManyToOne(() => User, (user) => user.products, { onDelete: "CASCADE" })
+  user: User;
+  // ...
+}
+// ...
+----
+
+Les décorateurs documente le code et il n'y a pas grand chose à ajouter ici. Notez simplement que j'ai ajouté la propriété `nullable: false` qui va modifier le schéma de la base de donnée et ajouter une contrainte `NOT NULL`.
+
+
+_Commitons_ ces changements et continuons d’avancer:
+
+[source,bash]
+----
+$ git commit -am "Adds some validations to products"
+----
+
+
+== Point d’entrée pour nos produits
+
+Il est maintenant temps de commencer à construire les points d’entrée des produits. Pour l’instant, nous allons juste construire cinq actions REST.
+
+Nous devons d’abord créer le `ProductsController`. En guise d’échauffement, nous allons commencer par construire l’action du `show` pour le produit.
+
+=== Action d’affichage d’un produit
+
+==== Tests
+
+Comme d’habitude, nous commençons par ajouter quelques test du contrôleur des produits. Le but ici est très simple. Il suffit d'afficher un seul produit et de s’assurer que la réponse du serveur est celle que nous attendons.
+
+Mais pour cela, nous allons tout d'abord créer un produit et un utilisateur dans la méthode `before`. Nous allons donc peaufiner notre utilitaire pour créer des modèles en ajoutant `generateProduct`:
+
+.Création de la méthode `generateProduct`
+[source,ts]
+----
+// src/utils/faker.utils.ts
+// ...
+import {Product} from '../entities/product.entity';
+
+export function randomString(size: number = 8): string {
+  return randomBytes(size).toString("hex");
+}
+// ...
+export function generateProduct(product?: Partial<Product>): Product {
+  const newProduct = new Product();
+  newProduct.price = product?.price ?? Math.random() * 100;
+  newProduct.published = product?.published ?? randomBoolean();
+  newProduct.title = product?.title ?? randomString();
+  newProduct.user = product?.user ?? generateUser();
+
+  return newProduct;
+}
+----
+
+
+Nous allons donc maintenant utiliser cette méthode dans le `before` du nouveau tests ci-dessous:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+import {container} from '../core/container.core';
+import {TYPES} from '../core/types.core';
+import {Product, ProductRepository} from '../entities/product.entity';
+import {User, UserRepository} from '../entities/user.entity';
+import {DatabaseService} from '../services/database.service';
+import {JsonWebTokenService} from '../services/jsonWebToken.service';
+import {generateProduct, generateUser} from '../tests/faker.utils';
+import {agent} from '../tests/supertest.utils';
+
+describe("ProductsController", () => {
+  let productRepository: ProductRepository;
+  let product: Product;
+
+  before(async () => {
+    const databaseService = container.get<DatabaseService>( TYPES.DatabaseService);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    product = await productRepository.save(generateProduct({ user }));
+  });
+});
+----
+
+
+Et maintenant nous pouvons utiliser ce produit et pour tester s'il est consultable:
+
+.Test fonctionnel de la méthode `ProductsController.show`
+[source, ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("show", () => {
+    it("should show product", (done) => {
+      agent.get(`/products/${product.id}`).expect(200, done);
+    });
+  });
+  // ...
+});
+----
+
+==== Implémentation
+
+Maintenant que notre test est en place, il est temps de faire passer le test.
+
+Tout comme nous l'avons fait avec les utilisateurs, nous allons créer un _middleware_ `FetchProductMiddleware`. Il s'occupera juste de récupérer le produit en fonction du paramètre `productId` et de l'injecter dans la requête:
+
+[source,ts]
+----
+// src/middlewares/fetchUser.middleware.ts
+// ...
+@injectable()
+export class FetchProductMiddleware extends BaseMiddleware {
+  constructor(@inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService) {
+    super();
+  }
+
+  public async handler(
+    req: Request & { product: Product },
+    res: Response,
+    next: NextFunction
+  ): Promise<void | Response> {
+    const productId = req.query.productId ?? req.params.productId;
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    req.product = await repository.findOne(Number(productId), { relations: ["user"] });
+
+    if (!req.product) {
+      return res.status(404).send("product not found");
+    }
+
+    next();
+  }
+}
+----
+
+La petite nouveauté ici est l'apparition du paramètre `relation` de la méthode `findOne`. Ce paramètre permet de récupérer aussi l'utilisateur associé au produit et de remplir la propriété `product.user` qui nous servira un peu plus loin.
+
+Nous pouvons maintenant passer au contrôleur:
+
+.Implémentaion de la méthode `ProductController.show`
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  public constructor(
+    @inject(TYPES.DatabaseService) private readonly databaseService: DatabaseService
+  ) {}
+
+  // ...
+
+  @httpGet("/:productId", TYPES.FetchProductMiddleware)
+  public async show(req: Request & { product: Product }) {
+    return req.product;
+  }
+}
+----
+
+Attendez! N’exécutez pas encore les tests. N’oubliez pas que nous devons ajouter la route au container:
+
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {
+  // ...
+  FetchProductMiddleware: Symbol.for("FetchProductMiddleware"),
+};
+----
+
+[source,ts]
+----
+// src/core/container.core.ts
+import "../controllers/products.controller";
+// ...
+
+export const container = new Container();
+// ...
+container.bind(TYPES.FetchProductMiddleware).to(FetchProductMiddleware);
+----
+
+Maintenant, nous nous assurons que les tests passent:
+
+[source,bash]
+----
+$ npm test
+...
+  ProductsController
+    show
+      ✓ should show product
+...
+----
+
+
+Parfait, nous pouvons maintenant passer à la suite.
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Add logic to show product"
+----
+
+=== Liste des produits
+
+Il est maintenant temps de créer une entrée pour une liste de produits qui pourrait permettre d’afficher le catalogue de produits d’un marché par exemple. Pour ce point d’accès, nous n’exigeons pas que l’utilisateur soit connecté. Comme d’habitude, nous allons commencer à écrire quelques tests:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("index", () => {
+    it("should respond 200", (done) => {
+      agent.get("/products").expect(200, done);
+    });
+  });
+});
+----
+
+Passons maintenant à la mise en œuvre, qui, pour l’instant, va être une petite méthode:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+
+@controller("/products")
+export class ProductController {
+  // ...
+
+  @httpGet("/")
+  public async index() {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    return repository.find();
+  }
+}
+----
+
+Dans les chapitres suivants, nous allons améliorer ce point d’entré et donner la possibilité de recevoir des paramètres pour les filtrer. _Commitons_ ces changements et continuons d’avancer:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Add logic to list product"
+----
+
+=== Création des produits
+
+Créer des produits est un peu plus délicat parce que nous aurons besoin d’une configuration supplémentaire. La stratégie que nous suivrons est d’attribuer le produit créé à l'utilisateur propriétaire du jeton JWT fourni d'en l'en-tête HTTP `Authorization`.
+
+==== Tests
+
+Notre premier arrêt sera donc le fichier `products.controller.spec.ts`. Nous allons tout d'abord créer un utilisateur spécifique dans le `before` et récupérer son jeton JWT:
+
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  let userRepository: UserRepository;
+  let productRepository: ProductRepository;
+  let jsonWebTokenService: JsonWebTokenService;
+  let user: User;
+  let jwt: string;
+  let product: Product;
+
+  before(async () => {
+    jsonWebTokenService = container.get(TYPES.JsonWebTokenService);
+
+    const databaseService = container.get<DatabaseService>(TYPES.DatabaseService);
+    userRepository = await databaseService.getRepository(UserRepository);
+    productRepository = await databaseService.getRepository(ProductRepository);
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    product = await productRepository.save(generateProduct({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
+  // ...
+});
+----
+
+Nous allons maintenant créer trois tests:
+
+. le cas ou on crée un produit avec un utilisateur
+. le cas ou on ne peut pas créer de produit car il est incomplet
+. le cas ou on ne fournis pas de jeton JWT et nous ne pouvons créer le produit
+
+C'est partit:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("create", () => {
+    it("should create product", (done) => {
+      const { title, price, published } = generateProduct();
+      agent
+        .post("/products")
+        .set("Authorization", jwt)
+        .send({ title, price, published })
+        .expect(201, done);
+    });
+
+    it("should not create product without auth", (done) => {
+      const { title, price, published } = generateProduct();
+      agent
+        .post("/products")
+        .send({ title, price, published })
+        .expect(403, done);
+    });
+
+    it("should not create user with missing title", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .post("/products")
+        .set("Authorization", jwt)
+        .send({ price, published })
+        .expect(400, done);
+    });
+  });
+  // ...
+});
+----
+
+Wow! Nous avons ajouté beaucoup de code. Si vous vous souvenez, les tests sont en fait les mêmes que ceux de la création de l’utilisateur excepté quelques changements mineurs.
+
+==== Implémentation
+
+Il est donc temps de faire passer le test. L'implémentation est encore une fois très similaire à celle précédente dans le contrôleur des utilisateur. A la différence près que ici nous allons récupérer l'utilisateur associé au jeton JWT et l'assigner au produit que nous somme en train de créer:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpPost("/", TYPES.FetchLoggedUserMiddleware)
+  public async create(
+    @requestBody() body: Partial<Product>,
+    req: Request & { user: User },
+    res: Response
+  ) {
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    const product = new Product();
+    product.title = body.title;
+    product.published = body.published;
+    product.price = body.price;
+    product.user = req.user;
+
+    const errors = await validate(product);
+
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
+
+    await repository.save(product);
+    return res.sendStatus(201);
+  }
+}
+----
+
+Et voilà. Si vous faites les tests maintenant, ils devraient tous passer:
+
+[source,bash]
+----
+$ npm test
+...
+  ProductsController
+    index
+      ✓ should respond 200
+    show
+      ✓ should show product
+    create
+      ✓ should create product
+      ✓ should not create product without auth
+      ✓ should not create user with missing title
+...
+----
+
+=== Mise à jour des produits
+
+J’espère que maintenant vous comprenez la logique pour construire les actions à venir. Dans cette section, nous nous concentrerons sur l’action de mise à jour qui fonctionnera de manière similaire à celle de création. Nous avons juste besoin d’aller chercher le produit dans la base de données et de le mettre à jour.
+
+Avant de commencer à coder certains tests je veux juste préciser que, de la même manière que pour l’action `create`, nous allons délimiter le produit à l’utilisateur courant. Nous voulons nous assurer que le produit que nous mettons à jour appartient bien à l’utilisateur. Nous allons donc chercher ce produit dans l’association `product.user`.
+
+==== Tests
+
+Tout d’abord, nous ajoutons quelques tests. Ici nous allons tester trois choses:
+
+. le cas ou l'utilisateur possède effectivement le produit
+. le cas ou l'utilisateur ne possède pas le produit et reçoit donc une réponse `403 - Forbidden`
+. le cas sans authentification
+
+Afin de mettre en place ces tests, nous allons créer un `product`, un `user` qui possède le produit et un utilisateur `stranger` qui sera un utilisateur qui n'est pas associé au produit:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  let user: User;
+  let stranger: User;
+  let jwt: string;
+  let strangerJwt: string;
+  let product: Product;
+
+  before(async () => {
+    // ...
+    stranger = await userRepository.save(generateUser());
+    strangerJwt = jsonWebTokenService.encode({ userId: stranger.id });
+  });
+
+  beforeEach(async () => {
+    user = await userRepository.save(generateUser());
+    product = await productRepository.save(generateProduct({ user }));
+    jwt = jsonWebTokenService.encode({ userId: user.id });
+  });
+
+  // ...
+});
+----
+
+Cela peut paraître abstrait mais regardez l'implémentation des tests qui vont utiliser ces variables:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("update", () => {
+    it("should update product", (done) => {
+      const { title, price, published } = generateProduct();
+      agent
+        .put(`/products/${product.id}`)
+        .set("Authorization", jwt)
+        .send({ title, price, published })
+        .expect(204, done);
+    });
+
+    it("should not update product of other users", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .put(`/products/${product.id}`)
+        .set("Authorization", strangerJwt)
+        .send({ price, published })
+        .expect(403, done);
+    });
+
+    it("should not update product without auth", (done) => {
+      const { price, published } = generateProduct();
+      agent
+        .put(`/products/${product.id}`)
+        .send({ price, published })
+        .expect(403, done);
+    });
+  });
+});
+----
+
+Les tests peuvent paraître complexes, mais en jetant un coup d’œil, ils sont presque identiques à ceux des utilisateurs.
+
+==== Implémentation
+
+Maintenant implémentons le code pour faire passer nos tests avec succès:
+
+.Implémentation de la méthode `update`
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+
+  @httpPut("/:productId", TYPES.FetchLoggedUserMiddleware, TYPES.FetchProductMiddleware)
+  public async update(
+    @requestBody() body: Partial<Product>,
+    req: Request & { user: User; product: Product },
+    res: Response
+  ) {
+    if (!this.canEditProduct(req.user, req.product)) {
+      return res.sendStatus(403);
+    }
+
+    req.product.title = body.title;
+    req.product.published = body.published;
+    req.product.price = body.price;
+
+    const errors = await validate(req.product);
+
+    if (errors.length !== 0) {
+      return res.status(400).json({ errors });
+    }
+    const repository = await this.databaseService.getRepository(ProductRepository);
+    await repository.save(req.product);
+    return res.sendStatus(204);
+  }
+
+  private canEditProduct(user: User, product: Product): boolean {
+    return user.id === product.user.id;
+  }
+}
+----
+
+Comme vous pouvez le constater, l’implémentation est assez simple. Les _Middleware_ vont automatiquement récupérer le produit et l'utilisateur lié au jeton JWT. Il ne nous reste plus qu'à vérifier que l'utilisateur possède bien le produit. C'est ce que nous faisons avec la méthode `canEditProduct`. Ensuite nous mettons à jour le produit et nous le sauvegardons après avoir vérifié qu'il est valide bien sûr.
+
+
+Si nous lançons les tests, ils devraient passer:
+
+[source,bash]
+----
+$ npm test
+...
+  ProductsController
+    index
+      ✓ should respond 200
+    show
+      ✓ should show product
+    create
+      ✓ should create product
+      ✓ should not create product without auth
+      ✓ should not create user with missing title
+    update
+      ✓ should update product
+      ✓ should not update product of other users
+      ✓ should not update product without auth
+...
+----
+
+=== Suppression des produits
+
+Notre dernier arrêt pour les route des produits, sera l’action `destroy`. Vous pouvez maintenant imaginer à quoi cela ressemblerait. La stratégie ici sera assez similaire à l’action de `create` et `update`. Ce qui signifie que nous allons récupérer l'utilisateur connecté puis vérifier que l'utilisateur possède bien le produit et enfin le supprimer en retournant un code 204.
+
+
+Commençons par ajouter quelques tests:
+
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe("ProductsController", () => {
+  // ...
+  describe("destroy", () => {
+    it("should destroy product", (done) => {
+      const jwt = jsonWebTokenService.encode({ userId: user.id });
+      agent
+        .delete(`/products/${product.id}`)
+        .set("Authorization", jwt)
+        .expect(204, done);
+    });
+
+    it("should not destroy product without auth", (done) => {
+      agent.delete(`/products/${product.id}`).expect(403, done);
+    });
+
+    it("should not destroy of other users", (done) => {
+      agent
+        .delete(`/products/${product.id}`)
+        .set("Authorization", strangerJwt)
+        .expect(403, done);
+    });
+  });
+});
+----
+
+Maintenant, ajoutons simplement le code nécessaire pour faire passer les tests:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+@controller("/products")
+export class ProductController {
+  // ...
+  @httpDelete("/:productId", TYPES.FetchLoggedUserMiddleware, TYPES.FetchProductMiddleware)
+  public async destroy(
+    req: Request & { user: User; product: Product },
+    res: Response
+  ) {
+    if (!this.canEditProduct(req.user, req.product)) {
+      return res.sendStatus(403);
+    }
+    const repository = await this.databaseService.getRepository(
+      ProductRepository
+    );
+    await repository.delete(req.product);
+    return res.sendStatus(204);
+  }
+  // ...
+}
+----
+
+Comme vous pouvez le voir, l’implémentation fait le travail en trois lignes. Nous pouvons lancer les tests pour nous assurer que tout est bon.
+
+[source,bash]
+----
+$ npm test
+...
+  ProductsController
+...
+    destroy
+      ✓ should destroy product
+      ✓ should not destroy product without auth
+      ✓ should not destroy of other users
+...
+  27 passing (344ms)
+----
+
+Après cela, nous _commitons_ les changements.
+
+[source,bash]
+----
+$ git commit -am "Adds the products create, update and destroy action"
+----
+
+== Essai avec cURL
+
+Nos tests nous indiquent que tout va bien mais c'est toujours bien de s'en assurer. Nous allons donc créer un utilisateur puis un produit le mettre à jour et enfin le supprimer. C'est partit.
+
+Démarrez votre serveur avec `npm start` si ce n'est déjà fait et commençons par créer un utilisateur:
+
+.Création de l'utilisateur
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/users
+{
+  "email": "test@test.io",
+  "hashedPassword": "8574a23599216d7752ef4a2f62d02b9efb24524a33d840f10ce6ceacda69777b",
+  "id": 1,
+  "createdAt": "2020-11-25T20:37:20.000Z",
+  "updatedAt": "2020-11-25T20:37:20.000Z"
+}
+----
+
+Et maintenant obtenons un jeton JWT valide:
+
+.Obtention d'un jeton d'authentification
+[source,bash]
+----
+$ curl -X POST -d "email=test@test.io" -d "password=test" http://localhost:3000/tokens
+{
+  "token": "eyJhbGciOiJ..."
+}
+----
+
+Notez ce jeton et sauvegardons le dans une variable Bash:
+
+[source,bash]
+----
+$ export JWT="eyJhbGciOiJ..."
+----
+
+Maintenant utilisons ce jetons pour créer un produit:
+
+[source,bash]
+----
+$ curl -X POST  -H "Authorization: $JWT" -d "title=my first product" -d "price=1"  http://localhost:3000/products
+{
+  "id": 1,
+  "title": "my first product",
+  "price": 1,
+...
+}
+----
+
+Nous pouvons le mettre à jour facilement avec le requête `PUT`:
+
+[source,bash]
+----
+$ curl -X PUT  -H "Authorization: $BASH" -d "title=my first product undated" -d "price=66"  http://localhost:3000/products/1
+----
+
+Et enfin supprimer ce produit:
+
+[source,bash]
+----
+$ curl -X DELETE -H "Authorization: $JWT" http://localhost:3000/products/1
+----
+
+C'est parfait.
+
+Il est donc temps de clôturer ce chapitre et de passer à la suite.
+
+[source,bash]
+----
+$ git checkout master
+$ git merge chapter05
+----
+
+== Conclusion
+
+J'espère que vous avez apprécié ce chapitre. C'est un long travail, mais le code que nous avons créé est une excellente base pour l'application principale.
+
+Dans le chapitre suivant, nous allons nous concentrer sur la personnalisation de la sortie des modèles utilisateur et produits à l’aide de la librairie https://github.com/SeyZ/jsonapi-serializer[jsonapi-serializer]. Elle nous permettra de filtrer facilement les attributs à afficher et à gérer les associations comme des objets embarqués par exemple.

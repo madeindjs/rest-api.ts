@@ -1,0 +1,492 @@
+[#chapter09-optimization]
+= Optimizations
+
+Welcome to the last chapter of the book. It's been a long road, but you're only one step away from the end. In the previous chapter, we finished modeling the order model. We could say that the project is now complete, but I want to cover a few important details about optimization. The topics I will cover here will be:
+
+* Pagination
+* Caching
+* SQL query optimization
+* the activation of CORS
+
+I will try to go as far as I can by trying to cover some common scenarios. I hope these scenarios will be useful for some of your projects.
+
+Let's create a new branch for this chapter:
+
+[source,bash]
+----
+$ git checkout -b chapter09
+----
+
+== Pagination
+
+A prevalent strategy for optimizing record retrieval from a database is to load only a limited amount of records by paging them. We will do it very easily.
+
+The only tricky part here is how to manage JSON output to give the customer enough information about how the table is paginated. In the previous section, I shared some resources on the practices I'm going to follow here. One of them was http://jsonapi.org/[JSON:API].
+
+The JSON:API standard imposes a strict but clear format. This allows us not to worry about how it should be implemented. A subsection called https://jsonapi.org/format/#document-top-level[Top Level] of the official JSON:API documentation mentions something about pagination:
+
+> "meta": meta-information about a resource, such as pagination.
+
+This is not very descriptive, but we have a hint on what to look for next about paging implementation. Don't worry, that's exactly what we're going to do here.
+
+Let's start with the list of products.
+
+=== The products
+
+We need to provide the paging information on the `meta` tag as the following JSON document:
+
+[source,jsonc]
+----
+{
+  "data": [
+    ...
+  ],
+  "links": {
+    "first": "/api/v1/products?page=1",
+    "last": "/api/v1/products?page=30",
+    "prev": "/api/v1/products",
+    "next": "/api/v1/products?page=2"
+  }
+}
+----
+
+Now that we see what we should return, all we have to do is change our code a little. But before going any further, let's add a few tests first:
+
+.Add functional tests about products pagination
+[source,ts]
+----
+// src/controllers/products.controller.spec.ts
+// ...
+describe('ProductsController', () => {
+  // ...
+  describe('index', () => {
+    // ...
+    it('should paginate results', async () => {
+      for (let i = 0; i < 25; i++) {
+        await productRepository.save(generateProduct({published: true}));
+      }
+
+      await agent
+        .get('/products')
+        .expect(200)
+        .then(response => {
+          assert.strictEqual(response.body.data.length, 20);
+          assert.ok(response.body.links);
+        });
+    });
+    // ...
+  });
+  // ...
+});
+----
+
+So we are testing two things:
+
+1. we create 25 products, so we have to find only 20 of them in the API response because the results must be limited to one page.
+2. we need to find the `links` attributes we saw previously
+
+So our goal is to get these tests done. We are not going to define the controller's behavior because we know in advance that we want the same behavior for all controllers. So we're going to create a generic method that will take as a parameter:
+
+The HTTP request will allow us to easily find the `page` parameter and build the `links` according to the current URL of the request.
+
+- the SQL query, which will be useful to know how many results there are in the database and also apply the `OFFSET` and `LIMIT` filters to get only part of the results
+- the serializer to serialize the data according to the JSON:API schema
+
+Let's go!
+
+[source,ts]
+----
+// src/utils/paginate.utils.ts
+import {Request} from 'express';
+import {Serializer} from 'jsonapi-serializer';
+import {SelectQueryBuilder} from 'typeorm';
+
+const PER_PAGE = 20;
+
+export async function paginate<T>(
+  queryBuilder: SelectQueryBuilder<T>,
+  serializer: Serializer,
+  {query, baseUrl}: Request,
+) {
+  const page = Number(query.page ?? 1);
+
+  const count = await queryBuilder.cache(60 * 1000).getCount();
+  const totalPage = Math.floor(count / PER_PAGE);
+  const prevPage = page === 1 ? 1 : page - 1;
+  const nextPage = page === totalPage ? page : page + 1;
+  const offset = page > 1 ? (page - 1) * PER_PAGE : 0;
+
+  const data = await queryBuilder
+    .clone()
+    .offset(offset)
+    .limit(PER_PAGE)
+    .getMany();
+
+  const getUrlForPage = page =>
+    `${baseUrl}?${new URLSearchParams({...query, page})}`;
+
+  const response = serializer.serialize(data);
+  response.links = {
+    first: getUrlForPage(1),
+    last: getUrlForPage(totalPage),
+    prev: getUrlForPage(prevPage),
+    next: getUrlForPage(nextPage),
+  };
+
+  return response;
+}
+----
+
+The implementation is a bit long, but we will review it together:
+
+1. `queryBuilder.getCount()` allows us to execute the query passed as a parameter but only to know the number of results.
+2. We use this value to calculate the number of pages and deduct the previous and next page number.
+3. we execute the SQL query of the `queryBuilder` adding an `offset` and a `limit`.
+4. we generate the URLs that we add to the previously serialized result
+
+Are you still there? The implementation in the controller is much easier:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {paginate} from '../utils/paginate.utils';
+
+@controller('/products')
+export class ProductController {
+  // ...
+  @httpGet('/')
+  public async index(/* ... */) {
+    // ...
+    return paginate(repository.search(req.query), productsSerializer, req);
+  }
+  // ...
+}
+----
+
+And there you go. Let's run the tests to be sure:
+
+[source,sh]
+---
+$ npm test
+...
+  ProductsController
+    index
+      ✓ should paginate results (94ms)
+...
+---
+
+Now that we've done a great optimization for the product list route, it's up to the customer to browse the pages.
+
+Let's go through these changes and continue with the order list.
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Adds pagination for products index action to optimize response"
+----
+
+=== List of orders
+
+Now it's time to do exactly the same for the order list route. This should be very easy to implement. But first, let's add some tests:
+
+[source,ts]
+----
+// src/controllers/orders.controller.spec.ts
+// ...
+describe('OrderController', () => {
+  // ...
+  describe('index', () => {
+    // ...
+    it('should paginate results', async () => {
+      for (let i = 0; i < 20; i++) {
+        await orderRepository.save(generateOrder({user}));
+      }
+
+      await agent
+        .get('/orders')
+        .set('Authorization', jwt)
+        .expect(200)
+        .then(response => {
+          assert.strictEqual(response.body.data.length, 20);
+          assert.ok(response.body.links);
+        });
+    });
+  });
+  // ...
+});
+----
+
+And, as you may already suspect, our tests no longer pass:
+
+[source,bash]
+----
+$ npm test
+...
+  1 failing
+
+  1) OrderController
+       index
+         should paginate results:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+21 !== 20
+
+      + expected - actual
+
+      -21
+      +20
+----
+
+Passing this test is again quite easy.
+
+[source,ts]
+----
+// src/controllers/orders.controller.ts
+// ...
+@controller('/orders', TYPES.FetchLoggedUserMiddleware)
+export class OrdersController {
+  // ...
+  @httpGet('/')
+  public async index(req: Request & {user: User}) {
+    const {manager} = await this.databaseService.getConnection();
+
+    return paginate(
+      manager
+        .createQueryBuilder(Order, 'o')
+        .where('o.user = :user', {user: req.user.id}),
+      ordersSerializer,
+      req,
+    );
+  }
+  // ...
+}
+----
+
+The only difference from the implementation of the product controller is that here we needed to transform `repository.find` into `queryBuilder`.
+
+The tests should now pass:
+
+[source,bash]
+----
+$ npm test
+...
+  46 passing (781ms)
+----
+
+Let's do a commit before moving forward
+
+[source,bash]
+----
+$ git commit -am "Adds pagination for orders index action"
+----
+
+== Caching
+
+We can easily set up simple caching for some of our requests. The implementation will be effortless thanks to TypeORM. TypeORM will create a new table that will store the executed query, and the result is returned. At the next execution, TypeORM will return the same result as the previous one. This saves precious resources to our database manager (here Sqlite) during some expensive SQL queries. Here the result will not be obvious because the executed SQL queries remain simple, but we will implement it anyway.
+
+Before seeing a little bit of the cache's behavior, we will create a script that will insert dummy data in our database. This will be very easy because we just need to use the methods we created during our tests. Here's a little script that we're going to create in a new `scripts` folder:
+
+.Create a script to insert lot's of data in development database
+[source,ts]
+----
+// src/scripts/loadFakeData.script.ts
+import 'reflect-metadata';
+// ...
+async function createOrder(manager: EntityManager) {
+  const user = await manager.save(User, generateUser());
+  const owner = await manager.save(User, generateUser());
+  const order = await manager.save(Order, generateOrder({user}));
+
+  for (let j = 0; j < 5; j++) {
+    const product = await manager.save(Product, generateProduct({user: owner}));
+    await manager.save(Placement, {order, product, quantity: 2});
+  }
+}
+
+async function main() {
+  const {manager} = await container
+    .get<DatabaseService>(TYPES.DatabaseService)
+    .getConnection();
+  const logger = container.get<Logger>(TYPES.Logger);
+
+  for (let i = 0; i < 100; i++) {
+    logger.log('DEBUG', `Inserting ${i} / 100`);
+    await createOrder(manager);
+  }
+}
+
+if (require.main === module) {
+  main().then().catch(console.error);
+}
+----
+
+And there you go. Some explanations:
+
+- The `createOrder` will, as its name suggests, create order and also create a product and five `places`.
+- The `main` will create a loop around `createOrder` to call it several times.
+- `require.main === module` may seem abstract, but it is actually straightforward: it means that the function will be executed only if we explicitly execute the file. In other words, it ensures that the method will not be executed if the file is accidentally imported.
+
+Now we can run the script with the following order:
+
+[source,sh]
+----
+$ npm run build && node dist/scripts/loadfakedata.script.js
+----
+
+We can verify that everything went well by sending a small SQL query directly to the database:
+
+[source,sh]
+----
+$ sqlite3 db/development.sqlite "SELECT COUNT(*) FROM product"
+500
+----
+
+Now let's try to activate the cache. It's really very easy. First we need to add the following environment variable so that TypeORM creates a table dedicated to the startup:
+
+[source,env]
+----
+# .env
+# ...
+TYPEORM_CACHE=true
+----
+
+Do not forget to deactivate this parameter during tests:
+
+[source,env]
+----
+# .test.env
+# ...
+TYPEORM_CACHE=false
+----
+
+Now we will add two lines to our `paginate` method:
+
+[source,ts]
+----
+// src/utils/paginate.utils.ts
+// ...
+export async function paginate<T>(/*...*/) {
+  // ...
+  const count = await queryBuilder.cache(60 * 1000).getCount();
+  // ...
+  const data = await queryBuilder
+    .clone()
+    .offset(offset)
+    .limit(PER_PAGE)
+    .cache(60 * 1000)
+    .getMany();
+  // ...
+  return response;
+}
+----
+
+And there you go. The `cache` method takes care of everything. Let's try it to see. Start the `npm start` server and send an HTTP request:
+
+[source,bash]
+----
+$ curl -w 'Total: %{time_total}\n' -o /dev/null -s "http://localhost:3000/products?title=42"
+Total: 0.019708
+----
+
+NOTE: The `-w` option allows us to retrieve the time of the request, `-w` redirects the response to a file and `--hides the cURL display.
+
+The response time takes about 20 milliseconds using cURL. But let's take a look at the server console that displays the SQL queries:
+
+[source,sql]
+----
+...
+query: SELECT * FROM "query-result-cache" "cache" WHERE "cache"."query" = ? -- PARAMETERS: ...
+query: SELECT COUNT(1) AS "cnt" FROM "product" "Product" WHERE published = TRUE AND lower(title) LIKE ? -- PARAMETERS: ...
+query: INSERT INTO "query-result-cache"("identifier", "query", "time", "duration", "result") VALUES (NULL, ?, ?, ?, ?) -- PARAMETERS: ...
+...
+----
+
+Here are some explanations for these requests:
+
+1. a query is made on the `query-result-cache` table to see if a cache is present
+2. the request is made because the cache did not exist
+3. the result is inserted in the ``query-result-cache`` table.
+
+Let's try to execute the cURL order again:
+
+[source,sh]
+----
+$ curl -w 'Total: %{time_total}\n' -o /dev/null -s "http://localhost:3000/products?title=42"
+Total: 0.007368
+----
+
+We see that the response time is now halved. Of course, this figure is to be taken with tweezers but let's see in the console what has just happened:
+
+[source,sql]
+----
+query: SELECT * FROM "query-result-cache" "cache" WHERE "cache" "query" = ? -- PARAMETERS: ...
+----
+
+And there you go. The cache has been used and ... nothing more! Now it's up to you to judge which queries can be cached and for how long as needed.
+
+So the improvement is huge! Let's commit our changes one last time.
+
+[source,sh]
+----
+$ git commit -am "Adds caching for the serializers"
+----
+
+== Activation of CORS
+
+In this last section, I will tell you about one last problem you will surely encounter if you have to work with your API.
+
+The first time you request an external site (via an AJAX request, for example), you will encounter such an error:
+
+> Failed to load https://example.com/: No 'Access-Control-Allow-Origin' header is present on the requested resource. Origin 'https://anfo.pl' is therefore not allowed access. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
+
+"But what does _Access-Control-Allow-Origin_ mean? The behavior you are observing is the effect of the CORS implementation of the browsers. Before the CORS standardization, there was no way to call an API terminal under another domain for security reasons. This was (and still is, to some extent) blocked by the policy of the same origin.
+
+CORS is a mechanism to allow requests made on your behalf and at the same time to block certain requests made by rogue scripts and is triggered when you make an HTTP request to:
+
+- a different domain
+- a different sub-domain
+- a different port
+- a different protocol
+
+We need to manually enable this feature so that any client can make requests to our API. A simple library already exists, so we will install it:
+
+[source,sh]
+----
+$ npm install --save horns
+----
+
+And then we just need to modify our server a little bit:
+
+.Setup CORS on Express.js
+[source,ts]
+----
+// src/main.ts
+import 'reflect-metadata';
+import cors from 'cors';
+// ...
+server
+  .setConfig(app => app.use(cors()))
+  .build()
+  .listen(port, () => console.log(`Listen on http://localhost:${port}/`));
+----
+
+And there it is! Now it's time to make our last commit and merge our changes on the master branch.
+
+[source,bash]
+----
+$ git commit -am "Activate CORS"
+$ git checkout master
+$ git merge chapter09
+----
+
+== Conclusion
+
+If you get to this point, it means you are done with the book. Good job! You've just become a great Node.js developer, that's for sure. So we have built together with a solid and complete API. This one has all the qualities to dethrone https://www.amazon.com/[Amazon], rest assured.
+
+Thank you for going through this great adventure with me. Keep in mind that you have just seen one of many ways to build an API with Node.js. I hope that this one will have allowed you to discover new notions and especially that you took as much pleasure in coding as I did.
+
+I would like to remind you that this book's source code is available in https://asciidoctor.org[Asciidoctor] format on https://github.com/madeindjs/rest-api.ts[GitHub]. So don't hesitate to https://github.com/madeindjs/rest-api.ts/fork[fork] the project if you want to improve it or correct a mistake I might have missed.
+
+If you liked this book, don't hesitate to let me know by mail mailto:contact@rousseau-alexandre.fr[contact@rousseau-alexandre.fr]. I'm open to any criticism, good or bad, over a good beer :) .

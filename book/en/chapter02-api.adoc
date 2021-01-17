@@ -1,0 +1,374 @@
+[#chapter02-api]
+= The API
+In this chapter, I will give you an overview of the application. You should have read the previous chapter. If you haven't, I recommend you do so.
+
+To summarize, we simply generated our Node.js application, setup Typescript, and performed our first commit.
+
+== Planning the application
+
+Our application will be quite simple. It will consist of five models. Don't worry if you don't understand what's going on. We will review and develop each of these resources as we move forward with the tutorial.
+
+.Diagram of Market Place API models
+----
++---------+     +---------+
+| User    +---->+Product  |
++---------+     +---------+
+     |               |
+     v               v
++---------+     +---------+
+|Order    +---->+Placement|
++---------+     +---------+
+----
+
+In short, we have the `User` who will be able to create `Product`. He also make an `Order` who link multiples `Product`s into a `Placement`.
+
+We are not going to build an interface for interaction with the API to not overload the tutorial. If you want to build views, there are many options, such as JavaScript frameworks (https://angularjs.org/[Angular], https://vuejs.org/[Vue.JS], https://reactjs.org/[React]) or mobile libraries (https://github.com/AFNetworking/AFNetworking[AFNetworking]).
+
+At this stage, you should ask yourself this question:
+
+> Okay, but I need to explore and visualize the API I'm going to build, right?
+
+That's right. If you _google_ something related to exploring an API, you'll find many results. For example, you can use https://www.getpostman.com/[Postman], which has become a must-have. But we're not going to use it. In our case, we will use *cURL*, which is a command line tool available almost everywhere. This will allow us to have reproductible commands whatever your development environment.
+
+== Set up the API
+
+An API is defined by https://fr.wikipedia.org/wiki/Interface_de_programmation[wikipedia] as _an Application Programming Interface (API) standardized set of components that serves as a front end through which one software provides services to other software_. In other words, it is a way in which systems interact with each other via an interface (in our case, a web service built with JSON). There are other communication protocols, such as SOAP, but we are not talking about them here.
+
+JSON has become a must as a file format for the Internet because of its readability, scalability, and ease of implementation. Many JavaScript frameworks use it as a default protocol, such as https://angularjs.org/[Angular] or http://emberjs.com/[EmberJS]. Other large Objective-C libraries use it like https://github.com/AFNetworking/AFNetworking [AFNetworking] or http://restkit.org/[RESTKit]. There are probably good solutions for Android, but I can't recommend anything due to my lack of experience on this development platform.
+
+So we will use the JSON format to build our API. The first idea that might come to your mind would be to start creating bulk routes. The problem is that they wouldn't be standardized. A user wouldn't be able to guess what resource is returned by an endpoint.
+
+That's why a standard exists: *REST* _(Representational State Transfer)_. REST imposes a standard for routes that create, read, update, or delete information on a server using simple HTTP calls. It is an alternative to more complex mechanisms such as SOAP, CORBA, and RPC. A REST call is simply an HTTP GET request to the server.
+
+And with REST, you can call a URL with a specific HTTP request. In this case, with a GET request:
+
+....
+http://domain.com/resources_name/uri_pattern
+....
+
+The _RESTful_ APIs must follow at least three rules:
+
+* A basic URI like http://example.com/resources/
+* A mime type to represent data is commonly JSON and is commonly defined by the exchange of headers.
+* Follow standard https://fr.wikipedia.org/wiki/Hypertext_Transfer_Protocol[HTTP] methods such as GET, POST, PUT, DELETE.
+  * *GET*: Reads the resource(s) defined by the URI model.
+  * *POST*: Creates a new entry in the resource collection
+  * *PUT*: Update a collection or resource member
+  * *DELETE*: Destroys a collection or a member of the resources.
+
+This may sound complicated, but it will become much easier to understand as we go through the tutorial.
+
+== Initialization of the application
+
+Now that we know what conventions we're going to follow, we can start building our application's architecture. Therefore, we will continue to set up Typescript and certain libraries, which will help us respect best practices in terms of software development.
+
+=== Dependency injection
+
+In this section, we will set up the *dependency injection* system. If you have never heard of it, this is probably the most abstract part of this chapter.
+
+Here I will try to summarize what dependency injection is and what it is used for. Let's imagine a `User` class that needs a `Database` class to be saved. We would try to initialize the database connection in the user's constructor:
+
+.An example of bad design
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    // do some stuff here
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+This causes several problems:
+
+1. The `User` class depends on the `Database` class. If you change the implementation of the `Database` class, you will have to change the `User` class.
+2. the code is much less testable because to test a user, I need to know how `User` class works.
+
+To accentuate the problem, let's add a `Logger` class that allows you to log events in the app. Let's say we need to log the database connection. The code becomes:
+
+
+[source,ts]
+----
+class Logger {
+  log(message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} -- ${message}`);
+  }
+}
+
+class Database {
+  constructor(connectionString: string) {
+    const logger = new Logger();
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  private database: Database;
+
+  constructor(public email: string, databaseString: string) {
+    this.database = new Database(databaseString);
+  }
+}
+
+const user = new User('john@doe.io', './user.sqlite')
+----
+
+We can see that the situation is getting worse because all classes are becoming dependent on each other. To correct this, we are going to inject the `Database` class directly into the `User` constructor:
+
+.The `Database` class is now injected in the constructor.
+[source,ts]
+----
+class Logger {/* ... */}
+
+class Database {
+  constructor(logger: Logger, connectionString: string) {
+    logger.log(`Connected to ${connectionString}`);
+  }
+}
+
+class User {
+  constructor(private database: Database) {}
+}
+
+const logger = new Logger();
+const database = new Database(logger, "db.sqlite");
+const user = new User(database);
+----
+
+This code becomes stronger because the `User`, `Database`, and `Logger` classes are decoupled.
+
+> OK, but it becomes harder to instantiate a `User`.
+
+Yes, it does. That's why we use a `Container` that will record the classes that can be injected and offer us to create instances easily:
+
+.An example of a container used to instantiate classes
+[source,ts]
+----
+class Logger {/* ... */}
+class Database {/* ... */}
+class User {/* ... */}
+
+class Container {
+  getLogger(): Logger {
+    return new Logger();
+  }
+
+  getDatabase(): Database {
+    return new Database(this.getLogger(), "db.sqlite");
+  }
+
+  getUser(): User {
+    return new User(this.getDatabase());
+  }
+}
+
+const container = new Container();
+const user = container.getUser();
+----
+
+The code is longer, but everything gets cut out. Rest assured, we are not going to implement all this by hand. Excellent libraries exist. The one I chose is https://github.com/inversify/InversifyJS[Inversify].
+
+In this section, we are going to concretely implement a complete dependency injection system.
+
+We will set up a Logger that can be injected into all classes of our application. It will allow us to handle HTTP requests, for example, but also many other events.
+
+So let's install `inversify`:
+
+[source,bash]
+----
+$ npm install inversify --save
+----
+
+And let's create a simple event logging class:
+
+NOTE: We could use a library like https://github.com/winstonjs/winston[Winston] or https://www.npmjs.com/package/morgan[Morgan], but for the example, I will create a fairly basic class:
+
+.Create a basic logger
+[source,ts]
+----
+// src/services/logger.service.ts
+export class Logger {
+  public log(level: 'DEBUG' | 'INFO' | 'ERROR', message: string): void {
+    const time = new Date().toISOString();
+    console.log(`${time} - ${level} - ${message}`);
+  }
+}
+----
+
+To make it injectable, you need to add a `@injectable` decorator to it. This decorator will simply https://github.com/inversify/InversifyJS/blob/master/src/annotation/injectable.ts#L12[add metadata] to our class so that it can be injected into our future dependencies.
+
+.Make `Logger` injectable
+[source,ts]
+----
+import {injectable} from 'inversify';
+
+@injectable()
+export class Logger {/* ... */}
+----
+
+And there you go. Now we just have to create the container that will register this service. https://github.com/inversify/InversifyJS#installation[The documentation] recommends creating a `TYPES` object that will simply store the identifiers of our services. We will create a `core` folder that will contain all the code that is transversal to our entire application.
+
+[source,ts]
+----
+// src/core/types.core.ts
+export const TYPES = {Logger: Symbol.for('Logger')};
+----
+
+NOTE: A https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol[`Symbol`] is a primitive type that allows you to have a unique reference.
+
+Now we can use this symbol to save our logger in a new `container.core.ts` file. Just instantiate a `Container` and add our service with the `bind()` method. We then export this instance for use in the application:
+
+[source,ts]
+----
+// src/core/container.core.ts
+import {Container} from 'inversify';
+import {Logger} from '../services/logger.service';
+import {TYPES} from './types.core';
+
+export const container = new Container();
+container.bind(TYPES.Logger).to(Logger);
+----
+
+And there you go.
+
+=== Creating a controller
+
+Let's leave aside this class that we will use later in our first controller. Controllers are part of the _design patern_ *MVC: Model, View, Controller*. Their purpose is to intercept the request and call the dedicated services. There is an official Inversify library to integrate dependency injection directly into our controllers: https://github.com/inversify/inversify-express-utils[`inverisfy-express-utils`].
+
+We start by installing the library. We'll also add `body-parser`, which will allow us to process the HTTP request parameters (we'll talk about this later).
+
+To install it, it's straightforward. Just follow the https://github.com/inversify/inversify-express-utils[official documentation]. So we start by installing some libraries.
+
+[source,bash]
+----
+$ npm install inversify-express-utils reflect-metadata body-parse --save
+----
+
+* `reflet-metadata` allows Inversify to add metadata on our class. This import must be located at the very beginning of the first file.
+* `body-parse` will give us the possibility to extract parameters from HTTP requests (we'll talk about it later).
+
+Before writing our first controller, it is necessary to make some modifications to the creation of our HTTP server. Let's create a new file `core/server.core.ts`, which will simply define our HTTP server with `inversify-express-utils`:
+
+.The definition of our HTTP server with `inversify-express-utils`.
+[source,ts]
+----
+// src/core/server.ts
+import * as bodyParser from 'body-parser';
+import {InversifyExpressServer} from 'inversify-express-utils';
+import {container} from './container.core';
+
+export const server = new InversifyExpressServer(container);
+server.setConfig(app => {
+  app.use(bodyParser.urlencoded({extended: true}));
+  app.use(bodyParser.json());
+});
+----
+
+As you can see, we are now using an instance of `InversifyExpressServer`. The `setConfig` method allows you to add _middleware_ (we'll return to this later). Let's move on to the `main.ts` file, which we'll modify a bit:
+
+[source,ts]
+----
+// src/main.ts
+import 'reflect-metadata';
+import {container} from './core/container.core';
+import {server} from './core/server';
+import {TYPES} from './core/types.core';
+
+const port = 3000;
+
+server
+  .build()
+  .listen(port, () => console.log(`Listen on http://localhost:${port}/`));
+----
+
+And there you go. Now we can tackle our first controller.
+
+The controller is a class like any other. It simply goes to the `@controller` decorator. This decorator will also declare this controller as `@injectable` but also offer us special features.
+
+Let's go straight to the implementation to make it more meaningful:
+
+.Creating the first controller with a single route
+[source,ts]
+----
+// src/controllers/home.controller.ts
+import {controller, httpGet} from 'inversify-express-utils';
+
+@controller('/')
+export class HomeController {
+
+  @httpGet('')
+  public index(req: Request, res: Response) {
+    return res.send('Hello world');
+  }
+}
+----
+
+As you can see, the implementation is obvious, thanks to the decorators:
+
+* The `@controller("/")` tells us that all the routes of this controller will be prefixed with `/`.
+* The second decorator `@httpGet("/")` defines that this method will be accessible on the URL `/` via the HTTP POST verb.
+
+Now let's try to inject the `Logger` to display a message when this route is used:
+
+[source,ts]
+----
+// src/controllers/home.controller.ts
+// ...
+import {TYPES} from '../core/types.core';
+import {Logger} from '../services/logger.service';
+
+@controller("/")
+export class HomeController {
+  public constructor(@inject(TYPES.Logger) private readonly logger: Logger) {}
+
+  @httpGet('')
+  public index(req: Request, res: Response) {
+    this.logger.log('INFO', 'Get Home.index');
+    return res.send('Hello world');
+  }
+}
+----
+
+There you go!
+
+The `@inject` decorator takes care of everything. Just specify the symbol. It's magic.
+
+The last step is to manually import this controller into the container. It's really very easy to do:
+
+[source,ts]
+----
+// src/core/container.core.ts
+// ...
+import '../controllers/home.controller';
+----
+
+You can now start the server with `npm run start` or wait for the transpilation to be done automatically if you have not stopped the previous server.
+
+If everything works as before, you can commit the changes:
+
+[source,bash]
+----
+$ git add .
+$ git commit -m "Add inversify"
+----
+
+== Conclusion
+
+It took a bit long, I know, but you did it! Don't give up. It's just our little foundation for something big, so keep going.
