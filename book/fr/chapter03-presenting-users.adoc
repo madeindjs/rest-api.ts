@@ -48,7 +48,7 @@ TYPEORM_CONNECTION=sqlite
 TYPEORM_DATABASE=db/development.sqlite
 TYPEORM_LOGGING=true
 TYPEORM_SYNCHRONIZE=true
-TYPEORM_ENTITIES=src/entities/*.entity.ts,dist/entities/*.entity.js
+TYPEORM_ENTITIES=dist/src/entities/*.entity.js
 ----
 
 Comme vous pouvez le voir on définis que nous utiliserons Sqlite et que la base de données sera stockée dans le dossier `db/`. `TYPEORM_SYNCHRONIZE` permet d'éviter de ne pas se soucier des migrations et ainsi laisser TypeORM faire les modifications sur le schéma de notre base de données si nécessaire. Nous spécifions ensuite ou sont situé nos entités avec `TYPEORM_ENTITIES`.
